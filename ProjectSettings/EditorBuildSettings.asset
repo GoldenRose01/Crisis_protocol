@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 0
+    path: Assets/Scenes/MainMenu-Scene.unity
+    guid: cb57c43aa4fdc9647aaf28b298e78722
+  - enabled: 1
+    path: Assets/Scenes/locale.unity
+    guid: 30b3a5596e3cc304484738cc65f9dbfe
+  - enabled: 0
+    path: Assets/Scenes/Passato_1961.unity
+    guid: 006203bc4281e374f99399c24e29df3b
+  m_configObjects:
+    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_UseUCBPForAssetBundles: 0

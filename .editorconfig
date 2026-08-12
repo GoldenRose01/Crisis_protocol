@@ -1,0 +1,26 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+[*.{json,asmdef,asmref,inputactions}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{unity,prefab,asset,mat,meta,controller,anim}]
+indent_style = space
+indent_size = 2
+
+[*.{png,jpg,jpeg,tga,psd,fbx,glb,blend,mp3,wav,ogg,mp4,mov,pdf,docx,dll,exe}]
+insert_final_newline = false
+trim_trailing_whitespace = false

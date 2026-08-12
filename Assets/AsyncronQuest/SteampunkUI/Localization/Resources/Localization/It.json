@@ -1,0 +1,84 @@
+{
+  "entries": [
+    {
+      "key": "main.title",
+      "value": ""
+    },
+    {
+      "key": "main.new_game",
+      "value": "NUOVA PARTITA"
+    },
+    {
+      "key": "main.resume_game",
+      "value": "RIPRENDI PARTITA"
+    },
+    {
+      "key": "pause.title",
+      "value": "PAUSA"
+    },
+    {
+      "key": "pause.resume",
+      "value": "RIPRENDI"
+    },
+    {
+      "key": "pause.exit_to_main_menu",
+      "value": "ESCI"
+    },
+    {
+      "key": "pause.map",
+      "value": "MAPPA"
+    },
+    {
+      "key": "pause.indicators",
+      "value": "INDICATORI"
+    },
+    {
+      "key": "indicator.asincronismo",
+      "value": "ASINCRONISMO"
+    },
+    {
+      "key": "indicator.warp_rad",
+      "value": "WARP RAD"
+    },
+    {
+      "key": "tooltip.movement",
+      "value": "Usa WASD per muoverti, Shift per correre e Spazio per saltare."
+    },
+    {
+      "key": "tooltip.pause_menu",
+      "value": "Premi Esc o M per aprire il menu di pausa, controllare la mappa e vedere gli indicatori."
+    },
+    {
+      "key": "tooltip.interaction",
+      "value": "Avvicinati agli oggetti evidenziati e premi E per interagire."
+    },
+    {
+      "key": "tooltip.scanner",
+      "value": "Premi Q per usare lo scanner temporale sugli oggetti anomali."
+    },
+    {
+      "key": "tooltip.time_rift",
+      "value": "Questa anomalia altera la linea temporale. Osservala con attenzione prima di agire."
+    },
+    {
+      "key": "tooltip.causal_wall",
+      "value": "Questo muro sembra legato alla linea temporale: vai nel passato, rompilo, poi torna nel futuro per vederne l'effetto distrutto."
+    },
+    {
+      "key": "tooltip.epoch.middle_ages",
+      "value": "Attento alle guardie: non farti uccidere, sembri uno strano forestiero."
+    },
+    {
+      "key": "tooltip.epoch.1860",
+      "value": "Attenzione: ti sei fatto notare da altri viaggiatori. Ora per loro tu sei un'anomalia da eliminare."
+    },
+    {
+      "key": "tooltip.epoch.2000",
+      "value": "Attento ai soldati e ai viaggiatori temporali: stai attento a dove ti muovi."
+    },
+    {
+      "key": "tooltip.epoch.future",
+      "value": "Attento ai droni: non starci sotto."
+    }
+  ]
+}

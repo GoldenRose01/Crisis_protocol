@@ -1,0 +1,277 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5782164321047829001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5782164321047829002}
+  - component: {fileID: 5782164321047829003}
+  m_Layer: 5
+  m_Name: GoldenCastPauseMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5782164321047829002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5782164321047829001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5782164321047829003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5782164321047829001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f7ef061d9194244ebf3da425ccb99ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canvasSortingOrder: 200
+  canvasReferenceResolution: {x: 1920, y: 1080}
+  canvasMatchWidthOrHeight: 0.5
+  safePadding: {x: 48, y: 36, z: 48, w: 36}
+  allowUpscale: 1
+  mapCameraHeight: 120
+  mapOrthographicSize: 48
+  mapTextureSize: 512
+  asincronismo: 0.99
+  warpRad: 0.365
+  pauseMenuBackgroundSprite: {fileID: 21300000, guid: a7664a174ccf4964dbf8ce9123830ef7, type: 3}
+  backgroundImageAlpha: 1
+  backgroundPreserveAspect: 0
+  shadeAlpha: 0
+  panelAlpha: 0.5
+  buttonAlpha: 0.5
+  frameAlpha: 0.5
+  actionsPanel:
+    anchorMin: {x: 0.5, y: 0.5}
+    anchorMax: {x: 0.5, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: -570, y: 0}
+    size: {x: 360, y: 360}
+    stretchToAnchors: 0
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  pauseTitle:
+    rect:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: 112}
+      size: {x: 280, y: 56}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    fontSize: 34
+  resumeButton:
+    rect:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: 24}
+      size: {x: 260, y: 62}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    labelText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: 0, y: 0}
+        size: {x: 230, y: 46}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 23
+  exitButton:
+    rect:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: -64}
+      size: {x: 260, y: 62}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    labelText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: 0, y: 0}
+        size: {x: 230, y: 46}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 23
+  mapPanel:
+    anchorMin: {x: 0.5, y: 0.5}
+    anchorMax: {x: 0.5, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: 0, y: 0}
+    size: {x: 560, y: 560}
+    stretchToAnchors: 0
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  mapTitle:
+    rect:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: 242}
+      size: {x: 360, y: 38}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    fontSize: 24
+  mapMask:
+    anchorMin: {x: 0.5, y: 0.5}
+    anchorMax: {x: 0.5, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: 0, y: -10}
+    size: {x: 430, y: 430}
+    stretchToAnchors: 0
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  mapImage:
+    anchorMin: {x: 0, y: 0}
+    anchorMax: {x: 1, y: 1}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: 0, y: 0}
+    size: {x: 0, y: 0}
+    stretchToAnchors: 1
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  mapFrame:
+    anchorMin: {x: 0.5, y: 0.5}
+    anchorMax: {x: 0.5, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: 0, y: -10}
+    size: {x: 456, y: 456}
+    stretchToAnchors: 0
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  indicatorsPanel:
+    anchorMin: {x: 0.5, y: 0.5}
+    anchorMax: {x: 0.5, y: 0.5}
+    pivot: {x: 0.5, y: 0.5}
+    position: {x: 570, y: 0}
+    size: {x: 380, y: 360}
+    stretchToAnchors: 0
+    offsetMin: {x: 0, y: 0}
+    offsetMax: {x: 0, y: 0}
+  indicatorsTitle:
+    rect:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: 122}
+      size: {x: 300, y: 44}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    fontSize: 26
+  asincronismoIndicator:
+    group:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: 34}
+      size: {x: 300, y: 82}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    labelText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: -24, y: 18}
+        size: {x: 190, y: 28}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 18
+    valueText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: 114, y: 18}
+        size: {x: 64, y: 28}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 18
+    track:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: -20}
+      size: {x: 238, y: 16}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+  warpRadIndicator:
+    group:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: -82}
+      size: {x: 300, y: 82}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+    labelText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: -24, y: 18}
+        size: {x: 190, y: 28}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 18
+    valueText:
+      rect:
+        anchorMin: {x: 0.5, y: 0.5}
+        anchorMax: {x: 0.5, y: 0.5}
+        pivot: {x: 0.5, y: 0.5}
+        position: {x: 114, y: 18}
+        size: {x: 64, y: 28}
+        stretchToAnchors: 0
+        offsetMin: {x: 0, y: 0}
+        offsetMax: {x: 0, y: 0}
+      fontSize: 18
+    track:
+      anchorMin: {x: 0.5, y: 0.5}
+      anchorMax: {x: 0.5, y: 0.5}
+      pivot: {x: 0.5, y: 0.5}
+      position: {x: 0, y: -20}
+      size: {x: 238, y: 16}
+      stretchToAnchors: 0
+      offsetMin: {x: 0, y: 0}
+      offsetMax: {x: 0, y: 0}
+  panelFrameThickness: 8
+  buttonFrameThickness: 4
+  indicatorFrameThickness: 4

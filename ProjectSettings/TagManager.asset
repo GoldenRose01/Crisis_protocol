@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 3
+  tags:
+  - Terrain
+  - Testa
+  - Player
+  - Enemy
+  - Drone
+  - Interactable
+  - AccessCredential
+  - EmergencyHotspot
+  - QuarantineGate
+  - ControlRoom
+  - StructuralHazard
+  - MaintenanceBot
+  - SecurityTerminal
+  - ReactorFault
+  - GasLeak
+  - ElectricArc
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - player
+  - Water
+  - UI
+  - nemici
+  - colpibile
+  - non
+  - Interactable
+  - AccessCredential
+  - EmergencyHotspot
+  - QuarantineGate
+  - StructuralHazard
+  - ControlRoom
+  - SecurityTerminal
+  - Drone
+  - Player
+  - Enemy
+  - MaintenanceBot
+  - ReactorFault
+  - GasLeak
+  - ElectricArc
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  m_RenderingLayers:
+  - Default

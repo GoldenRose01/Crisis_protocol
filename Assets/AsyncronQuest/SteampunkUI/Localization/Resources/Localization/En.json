@@ -1,0 +1,84 @@
+{
+  "entries": [
+    {
+      "key": "main.title",
+      "value": "ASYNCRON QUEST"
+    },
+    {
+      "key": "main.new_game",
+      "value": "NEW GAME"
+    },
+    {
+      "key": "main.resume_game",
+      "value": "RESUME GAME"
+    },
+    {
+      "key": "pause.title",
+      "value": "PAUSE"
+    },
+    {
+      "key": "pause.resume",
+      "value": "RESUME"
+    },
+    {
+      "key": "pause.exit_to_main_menu",
+      "value": "EXIT"
+    },
+    {
+      "key": "pause.map",
+      "value": "MAP"
+    },
+    {
+      "key": "pause.indicators",
+      "value": "INDICATORS"
+    },
+    {
+      "key": "indicator.asincronismo",
+      "value": "ASYNCHRONISM"
+    },
+    {
+      "key": "indicator.warp_rad",
+      "value": "WARP RAD"
+    },
+    {
+      "key": "tooltip.movement",
+      "value": "Use WASD to move, Shift to run, and Space to jump."
+    },
+    {
+      "key": "tooltip.pause_menu",
+      "value": "Press Esc or M to open the pause menu, check the map, and view your indicators."
+    },
+    {
+      "key": "tooltip.interaction",
+      "value": "Move close to highlighted objects and press E to interact."
+    },
+    {
+      "key": "tooltip.scanner",
+      "value": "Press Q to use the temporal scanner on anomalous objects."
+    },
+    {
+      "key": "tooltip.time_rift",
+      "value": "This anomaly is disturbing the timeline. Study it carefully before acting."
+    },
+    {
+      "key": "tooltip.causal_wall",
+      "value": "This wall is tied to the timeline: travel to the past, break it, then return to the future to see it destroyed."
+    },
+    {
+      "key": "tooltip.epoch.middle_ages",
+      "value": "Watch out for the guards: do not get killed, you look like a strange outsider."
+    },
+    {
+      "key": "tooltip.epoch.1860",
+      "value": "Warning: other travelers have noticed you. To them, you are now an anomaly to eliminate."
+    },
+    {
+      "key": "tooltip.epoch.2000",
+      "value": "Watch out for soldiers and time travelers: be careful where you move."
+    },
+    {
+      "key": "tooltip.epoch.future",
+      "value": "Watch out for drones: do not stand under them."
+    }
+  ]
+}
