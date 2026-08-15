@@ -15,4 +15,5 @@ La documentazione e' divisa per area, cosi' ogni parte del progetto ha un posto 
 
 ## Process
 
+- [`process/CHANGE_REPORT.md`](process/CHANGE_REPORT.md): report dettagliato delle modifiche effettuate.
 - [`process/RELEASE_CHECKLIST.md`](process/RELEASE_CHECKLIST.md): controlli prima di consegna, build o push.
