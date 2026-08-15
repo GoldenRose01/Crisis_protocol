@@ -30,9 +30,10 @@ Responsabilita':
 
 - persistenza JSON;
 - stato globale tra scene;
-- tag temporali acquisiti;
-- anacronismi risolti;
-- varchi temporali temporanei.
+- firme di sicurezza e credenziali acquisite;
+- incidenti/focolai risolti;
+- canali operativi temporanei;
+- migrazione dai salvataggi legacy GoldenCast.
 
 Script principali:
 
@@ -64,7 +65,7 @@ Script principali:
 Responsabilita':
 
 - input e interazioni;
-- scanner temporale;
+- scanner di emergenza;
 - danno e salute;
 - armi.
 
@@ -102,7 +103,7 @@ Responsabilita':
 - pause/menu;
 - schermata di morte;
 - tooltip;
-- feedback scanner/anomalie.
+- feedback scanner/anomalie legacy.
 
 Script principali:
 
@@ -152,3 +153,9 @@ Assets/script/
 ```
 
 Gli spostamenti degli script esistenti vanno fatti da Unity o in una PR dedicata, verificando scene e prefab subito dopo.
+
+## Compatibilita' GoldenCast
+
+La migrazione al GDD `Sector Containment: Emergency` e' stata applicata prima al comportamento dei sistemi core. Alcuni nomi di classi, file e namespace restano volutamente legacy, perche' Unity serializza i riferimenti a script, prefab e scene. Rinominare `ScannerTemporale`, `TemporalTagData`, `testAnacronismo` o parti della UI senza un passaggio in editor rischierebbe riferimenti mancanti.
+
+I nuovi sviluppi devono usare il lessico Sector Containment: credenziali, firme di sicurezza, incidenti, focolai, quarantena, estrazione e collasso. I wrapper `ExtractTag`, `ResolveAnachronism`, `IsTagUnlocked`, `ApriVarcoRitorno` e `ConsumaVarcoRitorno` restano solo come ponte tecnico.

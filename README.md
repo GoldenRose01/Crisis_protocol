@@ -8,7 +8,7 @@ Prototipo 3D realizzato in Unity per un action-stealth sci-fi con elementi puzzl
 
 L'obiettivo e' attraversare settori in quarantena, recuperare credenziali e frequenze di accesso, contenere focolai d'emergenza e raggiungere l'estrazione prima del collasso strutturale.
 
-Il progetto combina esplorazione, scanner temporale, gestione di anacronismi/sistemi compromessi, IA nemica su NavMesh, UI steampunk e missioni con punteggio.
+Il progetto combina esplorazione, scanner di emergenza, contenimento di focolai/sistemi compromessi, IA nemica su NavMesh, UI di missione e punteggio.
 
 ## Stato del progetto
 
@@ -27,6 +27,7 @@ La documentazione completa e' organizzata in [`docs/README.md`](docs/README.md):
 - [`docs/technical/ARCHITECTURE.md`](docs/technical/ARCHITECTURE.md): moduli e responsabilita' tecniche.
 - [`docs/technical/DEPENDENCIES.md`](docs/technical/DEPENDENCIES.md): dipendenze Unity e Git LFS.
 - [`docs/technical/MAINTENANCE.md`](docs/technical/MAINTENANCE.md): checklist di manutenzione.
+- [`docs/technical/MIGRATION_FROM_GOLDENCAST.md`](docs/technical/MIGRATION_FROM_GOLDENCAST.md): trasformazione dal prototipo GoldenCast al nuovo GDD.
 - [`docs/process/RELEASE_CHECKLIST.md`](docs/process/RELEASE_CHECKLIST.md): controlli prima di consegna o push.
 
 ## Gameplay
@@ -63,27 +64,27 @@ Classi di supporto:
 - `StructuralCollapseSettings`: valori di collasso, penalita' e recupero.
 - `SectorScoreSettings`: regole di scoring provvisorio e finale.
 
-### Persistenza e linea temporale
+### Persistenza e stato globale
 
 `GameManager` mantiene lo stato globale tra scene e sessioni:
 
-- tag temporali acquisiti;
-- anacronismi risolti;
-- storico dei tag sbloccati;
-- varchi temporali aperti per il ritorno;
-- stato volatile degli ostacoli causali.
+- firme di sicurezza e credenziali acquisite;
+- incidenti/focolai risolti;
+- storico delle autorizzazioni sbloccate;
+- canali operativi temporanei;
+- stato volatile degli ostacoli legacy.
 
 Il salvataggio viene scritto in:
 
 ```text
-Application.persistentDataPath/GoldenCast_Save.json
+Application.persistentDataPath/SectorContainment_Save.json
 ```
 
-Nota importante: il registro degli ostacoli causali e' volutamente volatile. Gli ostacoli possono cambiare durante la sessione, ma vengono ripristinati al riavvio del gioco.
+Se esiste ancora un vecchio `GoldenCast_Save.json`, viene letto come salvataggio legacy e convertito in memoria ai nuovi campi. Nota importante: il registro degli ostacoli causali e' volutamente volatile. Gli ostacoli possono cambiare durante la sessione, ma vengono ripristinati al riavvio del gioco.
 
-### Scanner temporale
+### Scanner di emergenza
 
-`ScannerTemporale` permette di emettere un raycast dalla prospettiva della camera per identificare ostacoli causali e acquisire il relativo tag.
+`ScannerTemporale` mantiene il nome tecnico legacy per non rompere scene e prefab, ma ora funziona come scanner di emergenza. Emette un raycast dalla prospettiva della camera e riconosce credenziali, focolai, interagibili e ostacoli legacy trasformati in firme di sicurezza.
 
 Comando predefinito:
 
@@ -95,7 +96,7 @@ Per funzionare correttamente richiede:
 
 - una `Main Camera`;
 - un layer scansionabile assegnato;
-- oggetti bersaglio con componente `OstacoloCausale`;
+- oggetti bersaglio con `AccessCredentialPickup`, `EmergencyHotspot`, `IInteractable` o `OstacoloCausale`;
 - un `GameManager` attivo nella scena o persistente.
 
 ### Emergenze di settore
@@ -137,7 +138,7 @@ Gli eventi esposti da `MissionManager` e `GameManager` consentono alla UI di agg
 
 ```text
 Assets/
-  AsyncronQuest/              UI, tooltip, video, sistemi anacronismo
+  AsyncronQuest/              UI, tooltip, video, sistemi scanner legacy
   Audio/                      Effetti sonori e tracce ambientali
   Blockout/                   Asset e strumenti di blockout
   Materials/                  Materiali e texture
@@ -247,6 +248,7 @@ Sono presenti documenti di progetto in formato Word:
 - `docs/technical/ARCHITECTURE.md`
 - `docs/technical/DEPENDENCIES.md`
 - `docs/technical/MAINTENANCE.md`
+- `docs/technical/MIGRATION_FROM_GOLDENCAST.md`
 - `docs/process/RELEASE_CHECKLIST.md`
 
 Questi file descrivono concept, struttura, direzione di design e manutenzione tecnica del progetto. Il file `docs/design/GDD.md` contiene la versione Markdown pulita e leggibile del GDD allegato.
@@ -269,7 +271,7 @@ Se gli NPC non si muovono:
 Se lo scanner non trova bersagli:
 
 - controlla il layer assegnato a `layerScansionabile`;
-- verifica che il bersaglio abbia `OstacoloCausale`;
+- verifica che il bersaglio abbia `AccessCredentialPickup`, `EmergencyHotspot`, `IInteractable` o `OstacoloCausale`;
 - controlla che la camera abbia il tag `MainCamera`;
 - verifica distanza e direzione del raycast nel Gizmo.
 

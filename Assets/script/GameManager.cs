@@ -4,19 +4,19 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine.SceneManagement;
 
-// 1. Classe contenitore ottimizzata per la serializzazione JSON
-[System.Serializable]
+[Serializable]
 public class SaveDataWrapper
 {
+    public string savedCredentialId;
+    public List<string> securitySignaturesAcquired = new List<string>();
+    public List<string> incidentsResolved = new List<string>();
+    public List<string> unlockedSecurityHistory = new List<string>();
+
+    // Legacy GoldenCast fields kept for migration from older local saves.
     public string savedTagID;
     public List<string> tagTemporaliAcquisiti = new List<string>();
     public List<string> anacronismiRisolti = new List<string>();
-    
-    // Registro dei tag storici estratti e sbloccati dal giocatore
     public List<string> tagSbloccatiStorico = new List<string>();
-
-    // NOTA: 'oggettiDistrutti' è stato rimosso da qui poiché la distruzione 
-    // degli ostacoli deve essere volatile (resettata al riavvio del gioco).
 }
 
 public class GameManager : MonoBehaviour
@@ -24,221 +24,202 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     private const string DefaultGameplaySceneName = "locale";
+    private const string SaveFileName = "SectorContainment_Save.json";
+    private const string LegacySaveFileName = "GoldenCast_Save.json";
 
-    [Header("Stato del Viaggiatore")]
-    [Tooltip("L'ultimo tag estratto dallo scanner temporale.")]
-    public string currentTagID = ""; 
+    [Header("Stato Operatore")]
+    [Tooltip("Ultima firma di sicurezza acquisita dallo scanner. Nome legacy mantenuto per non rompere scene e prefab.")]
+    public string currentTagID = "";
+
+    public static event Action<string, int> OnSecuritySignatureAcquired;
+    public static event Action<string, int> OnIncidentResolved;
 
     public static event Action<string, int> OnTemporalTagAcquired;
     public static event Action<string, int> OnAnachronismResolved;
 
-    // --- STRUTTURE DATI A RUNTIME (RAM) ---
-    // Questo registro è VOLATILE: tiene traccia dei muri rotti nella sessione corrente,
-    // garantendo la coerenza durante i viaggi nel tempo, ma si azzera al riavvio.
-    private HashSet<string> registroCausale = new HashSet<string>();
-    
-    // Strutture persistenti nel file JSON
-    private HashSet<string> tagTemporaliAcquisiti = new HashSet<string>();
-    private HashSet<string> anacronismiRisolti = new HashSet<string>();
-    private HashSet<string> storicoTagSbloccati = new HashSet<string>();
-    
-    // Registro volatile per la gestione asimmetrica delle Leyline (Andata -> Ritorno)
-    private HashSet<string> varchiApertiPerRitorno = new HashSet<string>();
+    private readonly HashSet<string> volatileContainmentState = new HashSet<string>();
+    private HashSet<string> securitySignaturesAcquired = new HashSet<string>();
+    private HashSet<string> incidentsResolved = new HashSet<string>();
+    private HashSet<string> unlockedSecurityHistory = new HashSet<string>();
+    private HashSet<string> authorizedReturnChannels = new HashSet<string>();
 
     private string saveFilePath;
+    private string legacySaveFilePath;
+
+    public string CurrentSecuritySignatureId => currentTagID;
+    public int AcquiredSecuritySignatureCount => securitySignaturesAcquired.Count;
+    public int ResolvedIncidentCount => incidentsResolved.Count;
+
+    public int AcquiredTemporalTagCount => AcquiredSecuritySignatureCount;
+    public int ResolvedAnachronismCount => ResolvedIncidentCount;
 
     private void Awake()
     {
-        // Implementazione rigorosa del pattern Singleton
         if (Instance != null && Instance != this)
         {
-            Destroy(this.gameObject);
+            Destroy(gameObject);
             return;
         }
 
         Instance = this;
-        DontDestroyOnLoad(this.gameObject);
+        DontDestroyOnLoad(gameObject);
 
-        // Definizione del percorso di persistenza conforme al file system del sistema operativo ospite
-        saveFilePath = Path.Combine(Application.persistentDataPath, "GoldenCast_Save.json");
+        saveFilePath = Path.Combine(Application.persistentDataPath, SaveFileName);
+        legacySaveFilePath = Path.Combine(Application.persistentDataPath, LegacySaveFileName);
 
-        // Deserializzazione e ripristino dello stato del mondo al boot dell'applicazione
         LoadGameState();
     }
 
     private void Update()
     {
-        // Forza l'azzeramento della memoria tramite shortcut di debug
         if (Input.GetKeyDown(KeyCode.F5))
         {
-            Debug.LogWarning("[DEBUG] Tasto F5 premuto. Avvio azzeramento completo dei dati...");
+            Debug.LogWarning("[DEBUG] F5 premuto. Reset completo dei dati di Sector Containment.");
             ResetDatiDebug();
         }
     }
 
-    // --- LOGICA DI ALTERAZIONE TEMPORALE (OSTACOLI) ---
-
     public bool GetCausalState(string id)
     {
-        return registroCausale.Contains(id);
+        return volatileContainmentState.Contains(id);
     }
 
-    public void SetCausalState(string id, bool stato)
+    public void SetCausalState(string id, bool state)
     {
-        if (stato)
-        {
-            registroCausale.Add(id);
-        }
-        else
-        {
-            registroCausale.Remove(id);
-        }
+        if (string.IsNullOrWhiteSpace(id))
+            return;
 
-        // Salva lo stato degli altri elementi, ma NON i muri (che rimangono solo in RAM)
+        if (state)
+            volatileContainmentState.Add(id);
+        else
+            volatileContainmentState.Remove(id);
+
         SaveGameState();
     }
 
-    // --- LOGICA DELLO SCANNER E REGISTRO TEMPORALE ---
-
-    /// <summary>
-    /// Registra l'estrazione di un neo tag, inserendolo sia come tag attivo che nello storico persistente.
-    /// </summary>
-    public void ExtractTag(string newTagID)
+    public void RegisterSecuritySignature(string signatureId)
     {
-        Debug.Log($"<color=yellow>[TEST ESTRAZIONE]</color> Ricevuta richiesta di salvataggio per il tag: '{newTagID}'");
+        Debug.Log($"<color=yellow>[SCANNER]</color> Firma di sicurezza rilevata: '{signatureId}'");
 
-        if (string.IsNullOrWhiteSpace(newTagID))
+        if (string.IsNullOrWhiteSpace(signatureId))
         {
-            Debug.LogError("[ERRORE ESTRAZIONE] Il tag ricevuto è vuoto o nullo! L'oggetto anacronismo non sta inviando l'ID corretto.");
+            Debug.LogError("[SCANNER] Firma di sicurezza vuota o nulla. Controllare configurazione dell'oggetto scansionato.");
             return;
         }
 
-        currentTagID = newTagID;
-        bool isNewTag = tagTemporaliAcquisiti.Add(newTagID);
+        currentTagID = signatureId;
+        bool isNewSignature = securitySignaturesAcquired.Add(signatureId);
 
-        // Inserimento all'interno del registro storico ad alta efficienza
-        if (!storicoTagSbloccati.Contains(newTagID))
-        {
-            storicoTagSbloccati.Add(newTagID);
-            Debug.Log($"<color=lime>[MANAGER]</color> Nuovo Tag <b>{newTagID}</b> archiviato permanentemente nello storico.");
-        }
+        if (unlockedSecurityHistory.Add(signatureId))
+            Debug.Log($"<color=lime>[SECURITY]</color> Firma <b>{signatureId}</b> archiviata nello storico autorizzazioni.");
 
-        Debug.Log($"[GAMEMANAGER] Tag registrato come attivo nel sistema: {currentTagID}");
+        if (MissionManager.Instance != null)
+            MissionManager.Instance.RegistraCredenziale(signatureId);
+
         SaveGameState();
 
-        if (isNewTag)
-            OnTemporalTagAcquired?.Invoke(newTagID, tagTemporaliAcquisiti.Count);
+        if (isNewSignature)
+        {
+            OnSecuritySignatureAcquired?.Invoke(signatureId, securitySignaturesAcquired.Count);
+            OnTemporalTagAcquired?.Invoke(signatureId, securitySignaturesAcquired.Count);
+        }
     }
 
-    public int AcquiredTemporalTagCount => tagTemporaliAcquisiti.Count;
-    public int ResolvedAnachronismCount => anacronismiRisolti.Count;
-
-    public bool ResolveAnachronism(string anachronismId)
+    public bool ResolveIncident(string incidentId)
     {
-        if (string.IsNullOrWhiteSpace(anachronismId))
+        if (string.IsNullOrWhiteSpace(incidentId))
             return false;
 
-        bool isNewResolution = anacronismiRisolti.Add(anachronismId);
+        bool isNewResolution = incidentsResolved.Add(incidentId);
         if (!isNewResolution)
             return false;
 
         SaveGameState();
-        OnAnachronismResolved?.Invoke(anachronismId, anacronismiRisolti.Count);
-        Debug.Log($"[GAMEMANAGER] Anacronismo risolto: {anachronismId}");
+        OnIncidentResolved?.Invoke(incidentId, incidentsResolved.Count);
+        OnAnachronismResolved?.Invoke(incidentId, incidentsResolved.Count);
+        Debug.Log($"[SECTOR] Incidente risolto: {incidentId}");
         return true;
     }
 
-    /// <summary>
-    /// Verifica se un determinato Tag ID è mai stato estratto.
-    /// </summary>
-    public bool IsTagUnlocked(string tagID)
+    public bool IsSecuritySignatureUnlocked(string signatureId)
     {
-        return storicoTagSbloccati.Contains(tagID);
+        return string.IsNullOrWhiteSpace(signatureId) || unlockedSecurityHistory.Contains(signatureId);
     }
 
-    // --- LOGICA TRAIETTORIE E VARCHI TEMPORALI (LEYLINE) ---
-
-    /// <summary>
-    /// Registra l'apertura di un canale di ritorno dal passato verso il futuro.
-    /// </summary>
-    public void ApriVarcoRitorno(string tagID)
+    public void AuthorizeReturnChannel(string signatureId)
     {
-        if (!varchiApertiPerRitorno.Contains(tagID))
-        {
-            varchiApertiPerRitorno.Add(tagID);
-            Debug.Log($"<color=cyan>[MANAGER]</color> Canale di ritorno abilitato in RAM per la firma temporale: <b>{tagID}</b>.");
-        }
+        if (string.IsNullOrWhiteSpace(signatureId))
+            return;
+
+        if (authorizedReturnChannels.Add(signatureId))
+            Debug.Log($"<color=cyan>[SECURITY]</color> Canale operativo autorizzato per firma <b>{signatureId}</b>.");
     }
 
-    /// <summary>
-    /// Verifica se il canale di ritorno è attivo e, in caso positivo, lo consuma chiudendo il varco.
-    /// </summary>
-    public bool ConsumaVarcoRitorno(string tagID)
+    public bool ConsumeReturnChannel(string signatureId)
     {
-        if (varchiApertiPerRitorno.Contains(tagID))
+        if (authorizedReturnChannels.Remove(signatureId))
         {
-            varchiApertiPerRitorno.Remove(tagID); // Consuma il varco per prevenire exploit di ritorno infinito
-            Debug.Log($"<color=orange>[MANAGER]</color> Varco temporale consumato. Canale <b>{tagID}</b> chiuso.");
+            Debug.Log($"<color=orange>[SECURITY]</color> Canale operativo consumato: <b>{signatureId}</b>.");
             return true;
         }
+
         return false;
     }
 
-    // --- PERSISTENZA DEI DATI (JSON) ---
+    public void ExtractTag(string newTagID) => RegisterSecuritySignature(newTagID);
+    public bool ResolveAnachronism(string anachronismId) => ResolveIncident(anachronismId);
+    public bool IsTagUnlocked(string tagID) => IsSecuritySignatureUnlocked(tagID);
+    public void ApriVarcoRitorno(string tagID) => AuthorizeReturnChannel(tagID);
+    public bool ConsumaVarcoRitorno(string tagID) => ConsumeReturnChannel(tagID);
 
     public void SaveGameState()
     {
-        SaveDataWrapper data = new SaveDataWrapper();
-        data.savedTagID = currentTagID;
-        data.tagTemporaliAcquisiti = new List<string>(tagTemporaliAcquisiti);
-        data.anacronismiRisolti = new List<string>(anacronismiRisolti);
-        data.tagSbloccatiStorico = new List<string>(storicoTagSbloccati);
-
-        // NOTA: La scrittura di 'registroCausale' su JSON è stata intenzionalmente omessa 
-        // per permettere il ripristino globale dei muri ad ogni avvio dell'applicazione.
+        SaveDataWrapper data = new SaveDataWrapper
+        {
+            savedCredentialId = currentTagID,
+            savedTagID = currentTagID,
+            securitySignaturesAcquired = new List<string>(securitySignaturesAcquired),
+            incidentsResolved = new List<string>(incidentsResolved),
+            unlockedSecurityHistory = new List<string>(unlockedSecurityHistory),
+            tagTemporaliAcquisiti = new List<string>(securitySignaturesAcquired),
+            anacronismiRisolti = new List<string>(incidentsResolved),
+            tagSbloccatiStorico = new List<string>(unlockedSecurityHistory)
+        };
 
         string jsonOutput = JsonUtility.ToJson(data, true);
         File.WriteAllText(saveFilePath, jsonOutput);
 
-        Debug.Log($"[SISTEMA] Dati serializzati e salvati in: {saveFilePath}");
+        Debug.Log($"[SISTEMA] Stato Sector Containment salvato in: {saveFilePath}");
     }
 
     public void LoadGameState()
     {
-        // 1. Inizializziamo SEMPRE il registro causale come vuoto ad ogni avvio (I muri riappaiono)
-        registroCausale = new HashSet<string>();
-        varchiApertiPerRitorno = new HashSet<string>();
+        volatileContainmentState.Clear();
+        authorizedReturnChannels = new HashSet<string>();
 
-        if (File.Exists(saveFilePath))
+        string pathToLoad = File.Exists(saveFilePath)
+            ? saveFilePath
+            : File.Exists(legacySaveFilePath) ? legacySaveFilePath : string.Empty;
+
+        if (!string.IsNullOrEmpty(pathToLoad))
         {
-            string jsonInput = File.ReadAllText(saveFilePath);
+            string jsonInput = File.ReadAllText(pathToLoad);
             SaveDataWrapper data = JsonUtility.FromJson<SaveDataWrapper>(jsonInput);
 
-            currentTagID = data.savedTagID ?? "TAG_001"; // Fallback di sicurezza
+            currentTagID = FirstNonEmpty(data.savedCredentialId, data.savedTagID, "KEYCARD_A01");
+            securitySignaturesAcquired = MergeLists(data.securitySignaturesAcquired, data.tagTemporaliAcquisiti);
+            incidentsResolved = MergeLists(data.incidentsResolved, data.anacronismiRisolti);
+            unlockedSecurityHistory = MergeLists(data.unlockedSecurityHistory, data.tagSbloccatiStorico);
 
-            // Ripristino delle collezioni persistenti
-            tagTemporaliAcquisiti = data.tagTemporaliAcquisiti != null 
-                ? new HashSet<string>(data.tagTemporaliAcquisiti) 
-                : new HashSet<string>();
-                
-            anacronismiRisolti = data.anacronismiRisolti != null 
-                ? new HashSet<string>(data.anacronismiRisolti) 
-                : new HashSet<string>();
-                
-            storicoTagSbloccati = data.tagSbloccatiStorico != null 
-                ? new HashSet<string>(data.tagSbloccatiStorico) 
-                : new HashSet<string>();
+            Debug.Log($"[SISTEMA] Stato Sector Containment ripristinato da: {pathToLoad}");
+            return;
+        }
 
-            Debug.Log("[SISTEMA] Stato del mondo ripristinato dal file JSON. Registro degli ostacoli pulito (tutti integri).");
-        }
-        else
-        {
-            // Inizializzazione pulita totale in caso di assenza di file precedenti
-            tagTemporaliAcquisiti = new HashSet<string>();
-            anacronismiRisolti = new HashSet<string>();
-            storicoTagSbloccati = new HashSet<string>();
-            Debug.Log("[SISTEMA] Nessun file di salvataggio rilevato. Avvio di una nuova linea temporale.");
-        }
+        securitySignaturesAcquired = new HashSet<string>();
+        incidentsResolved = new HashSet<string>();
+        unlockedSecurityHistory = new HashSet<string>();
+        currentTagID = "KEYCARD_A01";
+        Debug.Log("[SISTEMA] Nessun salvataggio rilevato. Avvio nuova emergenza di settore.");
     }
 
     public void ResumeSavedGame()
@@ -247,31 +228,60 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(DefaultGameplaySceneName);
     }
 
-    // --- STRUMENTI DI DEBUG E CALIBRAZIONE ---
     [ContextMenu("RESETTA DATI DEBUG (CANCELLA JSON)")]
     public void ResetDatiDebug()
     {
-        // 1. Epurazione della memoria volatile a runtime (RAM)
-        registroCausale.Clear();
-        tagTemporaliAcquisiti.Clear();
-        anacronismiRisolti.Clear();
-        storicoTagSbloccati.Clear();
-        varchiApertiPerRitorno.Clear();
-        currentTagID = "TAG_001";
+        volatileContainmentState.Clear();
+        securitySignaturesAcquired.Clear();
+        incidentsResolved.Clear();
+        unlockedSecurityHistory.Clear();
+        authorizedReturnChannels.Clear();
+        currentTagID = "KEYCARD_A01";
 
-        // 2. Rimozione fisica del file JSON di salvataggio
-        if (File.Exists(saveFilePath))
+        DeleteSaveFile(saveFilePath);
+        DeleteSaveFile(legacySaveFilePath);
+
+        Scene activeScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(activeScene.name);
+    }
+
+    private static HashSet<string> MergeLists(List<string> primary, List<string> legacy)
+    {
+        HashSet<string> result = new HashSet<string>();
+        AddRange(result, primary);
+        AddRange(result, legacy);
+        return result;
+    }
+
+    private static void AddRange(HashSet<string> target, List<string> source)
+    {
+        if (source == null)
+            return;
+
+        foreach (string item in source)
         {
-            File.Delete(saveFilePath);
-            Debug.Log("[DEBUG] File JSON eliminato dal disco.");
+            if (!string.IsNullOrWhiteSpace(item))
+                target.Add(item);
         }
-        else
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        foreach (string value in values)
         {
-            Debug.LogWarning("[DEBUG] Nessun file JSON presente sul disco.");
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
         }
 
-        // 3. Ricaricamento della scena attiva per rigenerare i GameObject
-        Scene scenaAttiva = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(scenaAttiva.name);
+        return string.Empty;
+    }
+
+    private static void DeleteSaveFile(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+            Debug.Log($"[DEBUG] File salvataggio eliminato: {path}");
+        }
     }
 }
