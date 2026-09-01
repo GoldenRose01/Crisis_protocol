@@ -205,12 +205,12 @@ Riferimento per la resa scenica delle riparazioni d'emergenza, dei guasti strutt
 Il prototipo corrente implementa gia' diversi pilastri del GDD:
 
 - `MissionManager`: gestione missione, collasso, punteggio e win/lose condition.
-- `GameManager`: persistenza, stato globale e anacronismi risolti.
+- `GameManager`: persistenza, stato globale, firme di sicurezza acquisite e incidenti risolti. Mantiene wrapper legacy GoldenCast per non rompere prefab e UI esistenti.
 - `EmergencyHotspot`: focolai d'emergenza da contenere.
 - `AccessCredentialPickup`: raccolta credenziali.
 - `QuarantineGate`: estrazione dopo completamento obiettivi.
 - `ViaggiatoreTemporale`, `GuardiaNpc`, `DroneRonda`: minacce, pattuglie e combattimento.
-- `ScannerTemporale`: lettura/interazione con oggetti e tag temporali.
+- `ScannerTemporale`: scanner di emergenza per credenziali, focolai, terminali/interagibili e firme di sicurezza. Il nome classe e' legacy per compatibilita' Unity.
 - `HUDManager` e UI AsyncronQuest: feedback di missione, morte, tooltip e interfacce.
 
 ## 11. Priorita' di sviluppo

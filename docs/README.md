@@ -11,7 +11,9 @@ La documentazione e' divisa per area, cosi' ogni parte del progetto ha un posto 
 - [`technical/ARCHITECTURE.md`](technical/ARCHITECTURE.md): mappa dei sistemi principali e responsabilita'.
 - [`technical/DEPENDENCIES.md`](technical/DEPENDENCIES.md): pacchetti Unity, Git LFS e note sulle dipendenze.
 - [`technical/MAINTENANCE.md`](technical/MAINTENANCE.md): checklist di manutenzione tecnica.
+- [`technical/MIGRATION_FROM_GOLDENCAST.md`](technical/MIGRATION_FROM_GOLDENCAST.md): differenze tra GoldenCast e la versione allineata al nuovo GDD.
 
 ## Process
 
+- [`process/CHANGE_REPORT.md`](process/CHANGE_REPORT.md): report dettagliato delle modifiche effettuate.
 - [`process/RELEASE_CHECKLIST.md`](process/RELEASE_CHECKLIST.md): controlli prima di consegna, build o push.
