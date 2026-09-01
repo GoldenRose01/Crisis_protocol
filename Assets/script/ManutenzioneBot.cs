@@ -3,15 +3,14 @@ using UnityEngine.AI;
 using GoldenCast.UI;
 
 [RequireComponent(typeof(NavMeshAgent), typeof(Animator))]
-public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
+public class ManutenzioneBot : MonoBehaviour, IDamageable
 {
     public enum StatoIA { RicercaAttiva, Inseguimento, CombattimentoDistanza, Morto }
 
     [Header("Stato e Navigazione")]
-    [SerializeField] private bool applicaTagMaintenanceBotAutomatico = true;
     public StatoIA statoAttuale = StatoIA.RicercaAttiva;
     [SerializeField] private float velocitaRicerca = 1.5f;
-    [SerializeField] private float velocitaInseguimento = 3.5f; 
+    [SerializeField] private float velocitaInseguimento = 3.5f;
     [SerializeField] private float distanzaOttimaleTiro = 8f;
 
     [Header("Vagabondaggio Casuale (Roaming)")]
@@ -24,7 +23,7 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
     [Header("Sensori e Rilevamento (Visione)")]
     [SerializeField] private float raggioVisione = 20f;
     [Range(0, 360)] [SerializeField] private float angoloVisione = 110f;
-    [SerializeField] private float raggioRilevamentoRavvicinato = 3f; 
+    [SerializeField] private float raggioRilevamentoRavvicinato = 3f;
     [SerializeField] private LayerMask layerOstacoli;
     [SerializeField] private Transform puntoOcchi;
 
@@ -46,7 +45,7 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
     private NavMeshAgent agente;
     private Animator anim;
     private Transform playerTransform;
-    
+
     // Cache degli hash dei parametri dell'Animator per ottimizzare le performance
     private int speedHash;
     private int morteTriggerHash;
@@ -57,16 +56,17 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
 
     void Start()
     {
-        ApplicaTagUnity();
+        // Applica automaticamente il tag corretto per il riconoscimento da parte del sistema di missione
+        SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.MaintenanceBot);
 
         agente = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
-        
+
         if (agente != null)
         {
             agente.speed = velocitaRicerca;
         }
-        
+
         speedHash = Animator.StringToHash("Speed");
         morteTriggerHash = Animator.StringToHash(triggerMorte);
         sparoTriggerHash = Animator.StringToHash(triggerSparo);
@@ -92,20 +92,15 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
                 if (NavMesh.SamplePosition(transform.position, out hit, 2.0f, NavMesh.AllAreas))
                 {
                     transform.position = hit.position;
-                    agente.Warp(hit.position); 
+                    agente.Warp(hit.position);
                     ImpostaNuovaDestinazioneCasuale();
                 }
                 else
                 {
-                    Debug.LogError($"[NPC] {gameObject.name} è posizionato troppo lontano dalla NavMesh. Impossibile avviare il pattugliamento.", this);
+                    Debug.LogError($"[BOT] {gameObject.name} è posizionato troppo lontano dalla NavMesh. Impossibile avviare il pattugliamento.", this);
                 }
             }
         }
-    }
-
-    private void OnValidate()
-    {
-        ApplicaTagUnity();
     }
 
     void Update()
@@ -137,7 +132,7 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
                     statoAttuale = StatoIA.Inseguimento;
                     inPausa = false;
                     if (AgentePronto) agente.stoppingDistance = distanzaOttimaleTiro;
-                    Debug.Log("<color=red>[AI] Bersaglio rilevato! Inizio inseguimento.</color>");
+                    Debug.Log("<color=red>[BOT] Bersaglio rilevato! Inizio inseguimento.</color>");
                 }
                 else
                 {
@@ -186,7 +181,7 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
         if (distanza > raggioVisione) return false;
 
         Vector3 direzioneVersoPlayer = (playerTransform.position - puntoOcchi.position).normalized;
-        
+
         if (distanza <= raggioRilevamentoRavvicinato)
         {
             if (!Physics.Raycast(puntoOcchi.position, direzioneVersoPlayer, distanza, layerOstacoli))
@@ -232,7 +227,7 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
         if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.3f)
         {
             inPausa = true;
-            timerPausa = Random.Range(tempoPausaMin, tempoPausaMax); 
+            timerPausa = Random.Range(tempoPausaMin, tempoPausaMax);
         }
     }
 
@@ -265,38 +260,32 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
         if (timerSparo >= cadenzaDiFuoco)
         {
             if (anim != null) anim.SetTrigger(sparoTriggerHash);
-            
-            // INTEGRAZIONE LOGICA DI ATTACCO BALISTICO
             SparaProiettileVirtuale();
-            
             timerSparo = 0f;
         }
     }
 
     private void SparaProiettileVirtuale()
     {
-        // Calcola la traiettoria mirando al centro del Player (offset verticale di 1 metro)
         Vector3 centroPlayer = playerTransform.position + Vector3.up * 1.0f;
         Vector3 direzioneTraiettoria = (centroPlayer - puntoDiFuoco.position).normalized;
 
-        // Maschera bitwise inversa per evitare l'auto-collisione con il layer dell'NPC stesso
         int layerMaskSparo = ~LayerMask.GetMask(SectorContainmentTags.Enemy, "Ignore Raycast");
 
-        Debug.Log("<color=yellow>[BALISTICA] Fuoco di soppressione sferrato dall'unità.</color>");
+        Debug.Log("<color=yellow>[BOT] Fuoco di soppressione sferrato dall'unità.</color>");
 
         if (Physics.Raycast(puntoDiFuoco.position, direzioneTraiettoria, out RaycastHit hit, raggioVisione, layerMaskSparo))
         {
-            // Verifica polimorfica: controlla se l'oggetto colpito possiede il componente SalutePlayer
             SalutePlayer vitaPlayer = hit.collider.GetComponent<SalutePlayer>() ?? hit.collider.GetComponentInParent<SalutePlayer>();
 
             if (vitaPlayer != null)
             {
                 vitaPlayer.SubisciDanno(dannoArma);
-                Debug.Log($"<color=red><b>[BALISTICA]</b> Colpo a segno su {hit.collider.gameObject.name}! Inflitti {dannoArma} HP.</color>");
+                Debug.Log($"<color=red><b>[BOT]</b> Colpo a segno su {hit.collider.gameObject.name}! Inflitti {dannoArma} HP.</color>");
             }
             else
             {
-                Debug.Log($"<color=gray>[BALISTICA] Il colpo ha impattato un ostacolo ambientale: {hit.collider.gameObject.name}</color>");
+                Debug.Log($"<color=gray>[BOT] Il colpo ha impattato un ostacolo ambientale: {hit.collider.gameObject.name}</color>");
             }
         }
     }
@@ -306,14 +295,14 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
         if (isMorto) return;
 
         salute -= quantitaDanno;
-        
+
         if (statoAttuale == StatoIA.RicercaAttiva)
         {
             statoAttuale = StatoIA.Inseguimento;
             inPausa = false;
         }
 
-        Debug.Log($"[NPC] {gameObject.name} ha subito {quantitaDanno} di danno. Salute residua: {salute}");
+        Debug.Log($"[BOT] {gameObject.name} ha subito {quantitaDanno} di danno. Salute residua: {salute}");
 
         if (salute <= 0)
         {
@@ -325,19 +314,19 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
     {
         isMorto = true;
         statoAttuale = StatoIA.Morto;
-        
-        Debug.Log($"<b><color=red>[DECESSO CRITICO] {gameObject.name} ha esaurito i punti vita.</color></b>");
 
-        if (agente != null) 
+        Debug.Log($"<b><color=red>[DECESSO] {gameObject.name} ha esaurito i punti vita.</color></b>");
+
+        if (agente != null)
         {
             agente.ResetPath();
             agente.enabled = false;
         }
 
         Collider col = GetComponent<Collider>();
-        if (col != null) 
+        if (col != null)
         {
-            col.isTrigger = true; 
+            col.isTrigger = true;
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -347,18 +336,12 @@ public class ViaggiatoreTemporale : MonoBehaviour, IDamageable
             rb.linearVelocity = Vector3.zero;
             rb.isKinematic = true;
         }
-        
-        if (anim != null) 
+
+        if (anim != null)
         {
             anim.SetTrigger(morteTriggerHash);
         }
-        
-        Destroy(gameObject, tempoDistruzioneCorpo);
-    }
 
-    private void ApplicaTagUnity()
-    {
-        if (applicaTagMaintenanceBotAutomatico)
-            SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.MaintenanceBot);
+        Destroy(gameObject, tempoDistruzioneCorpo);
     }
 }

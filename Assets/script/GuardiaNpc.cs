@@ -69,13 +69,26 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         if (agente != null)
         {
             NavMeshHit hitMesh;
-            if (NavMesh.SamplePosition(transform.position, out hitMesh, 4.0f, NavMesh.AllAreas))
+            // Raggio 8 m: copre NPC posizionati poco sopra/sotto la NavMesh
+            if (NavMesh.SamplePosition(transform.position, out hitMesh, 8.0f, NavMesh.AllAreas))
             {
                 transform.position = hitMesh.position;
                 agente.Warp(hitMesh.position);
             }
-            agente.updateRotation = true;
-            agente.stoppingDistance = distanzaArresto;
+            else
+            {
+                // Nessuna NavMesh entro 8 m: disabilita l'agente e usa il movimento
+                // di fallback basato su Transform già presente in MuoviInRonda/InseguiEAttacca.
+                Debug.LogWarning($"[NPC] {gameObject.name}: NavMesh non trovata entro 8 m. " +
+                                 "L'NPC userà il movimento diretto (senza pathfinding). " +
+                                 "Verifica la posizione nella scena o ribaka la NavMesh.", this);
+                agente.enabled = false;
+            }
+            if (agente.enabled)
+            {
+                agente.updateRotation = true;
+                agente.stoppingDistance = distanzaArresto;
+            }
         }
 
         GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);

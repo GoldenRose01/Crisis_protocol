@@ -138,7 +138,7 @@ public class MissionManager : MonoBehaviour
         AggiungiCollasso(-collassoStrutturale.RecuperoPerFocolaioContenuto);
 
         if (GameManager.Instance != null)
-            GameManager.Instance.ResolveAnachronism(hotspotId);
+            GameManager.Instance.RegistraMissioneCompletata(hotspotId);
 
         AggiornaEstrazione();
         OnFocolaiCambiati?.Invoke(focolaiContenuti.Count, TotaleFocolai);

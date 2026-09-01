@@ -90,6 +90,7 @@ namespace AsyncronQuest.SteampunkUI
         private RectTransform resumeButtonRect;
         private RectTransform exitButtonRect;
         private Transform cachedPlayer;
+        private SceneTopDownMapUI mapUI; // riferimento per abilitare/disabilitare la camera solo quando il menu è aperto
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsurePauseMenu()
@@ -120,14 +121,14 @@ namespace AsyncronQuest.SteampunkUI
 #endif
             BuildInterface();
             SceneManager.sceneLoaded += OnSceneLoaded;
-            GameManager.OnAnachronismResolved += OnAnachronismResolved;
+            GameManager.OnMissioneCompletata += OnMissioneCompletata;
             SetPaused(false, true);
         }
 
         private void OnDestroy()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
-            GameManager.OnAnachronismResolved -= OnAnachronismResolved;
+            GameManager.OnMissioneCompletata -= OnMissioneCompletata;
         }
 
 #if UNITY_EDITOR
@@ -232,9 +233,11 @@ namespace AsyncronQuest.SteampunkUI
             SetPaused(false, true);
         }
 
-        private void OnAnachronismResolved(string anachronismId, int resolvedCount)
+        // Bridged from GameManager.OnMissioneCompletata (string missionId)
+        private void OnMissioneCompletata(string missionId)
         {
-            RefreshAsincronismoFromResolvedAnachronisms(resolvedCount);
+            if (GameManager.Instance != null)
+                RefreshAsincronismoFromResolvedAnachronisms(GameManager.Instance.MissioniCompletateCount);
             UpdateIndicatorUI();
         }
 
@@ -269,6 +272,11 @@ namespace AsyncronQuest.SteampunkUI
                 menuGroup.interactable = isPaused;
                 menuGroup.blocksRaycasts = isPaused;
             }
+
+            // Abilita/disabilita la camera della mappa insieme al menu:
+            // evita che renderizzi ogni frame causando l'assertion subMesh.topology.
+            if (mapUI != null)
+                mapUI.enabled = isPaused;
         }
 
         private bool IsMainMenuScene()
@@ -355,6 +363,7 @@ namespace AsyncronQuest.SteampunkUI
             warpRadValueText = null;
             resumeButtonRect = null;
             exitButtonRect = null;
+            mapUI = null;
         }
 
         private RectTransform CreatePanel(string name, Transform parent, RectLayout layout)
@@ -389,6 +398,11 @@ namespace AsyncronQuest.SteampunkUI
 
             SceneTopDownMapUI mapUi = rawMap.GetComponent<SceneTopDownMapUI>();
             mapUi.Configure(null, mapCameraHeight, mapOrthographicSize, mapTextureSize);
+            // Disabilitata subito: verrà attivata solo quando il menu pause è aperto.
+            // Questo impedisce alla camera di renderizzare ogni frame (e di triggerare
+            // l'assertion "subMesh.topology" su LineRenderer/Trail fuori menu).
+            mapUi.enabled = false;
+            mapUI = mapUi;
         }
 
         private void LoadMainMenuScene()
@@ -428,7 +442,7 @@ namespace AsyncronQuest.SteampunkUI
         private void UpdateIndicatorUI()
         {
             if (autoCalculateAsincronismo && GameManager.Instance)
-                RefreshAsincronismoFromResolvedAnachronisms(GameManager.Instance.ResolvedAnachronismCount);
+                RefreshAsincronismoFromResolvedAnachronisms(GameManager.Instance.MissioniCompletateCount);
 
             if (autoCalculateWarpRad)
                 warpRad = CalculateWarpRadFromLeylineDistance();
@@ -476,19 +490,10 @@ namespace AsyncronQuest.SteampunkUI
             return cachedPlayer;
         }
 
+        // LeylineTrigger is not part of this project — returns infinity so warpRad falls back to leylineMinimumSignal.
         private static float GetNearestLeylineDistance(Vector3 origin)
         {
-            LeylineTrigger[] leylines = FindObjectsByType<LeylineTrigger>(FindObjectsSortMode.None);
-            float nearest = float.PositiveInfinity;
-
-            foreach (LeylineTrigger leyline in leylines)
-            {
-                float distance = Vector3.Distance(origin, leyline.transform.position);
-                if (distance < nearest)
-                    nearest = distance;
-            }
-
-            return nearest;
+            return float.PositiveInfinity;
         }
 
         private static void ApplyIndicatorValue(Image fill, TMP_Text valueText, float value01)

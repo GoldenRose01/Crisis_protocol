@@ -74,16 +74,25 @@ public class NPC : MonoBehaviour, IDamageable
 
     private void AncoraSuNavMesh()
     {
-        if (agente != null && !agente.isOnNavMesh)
+        if (agente == null) return;
+
+        if (!agente.isOnNavMesh)
         {
-            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 3.0f, NavMesh.AllAreas))
+            // Raggio 8 m: tolleranza generosa per NPC poco fuori mesh
+            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 8.0f, NavMesh.AllAreas))
             {
                 transform.position = hit.position;
                 agente.Warp(hit.position);
             }
             else
             {
-                Debug.LogError($"[NPC] {gameObject.name} non è stato possibile ancorarlo alla NavMesh.", this);
+                // Nessuna NavMesh entro 8 m: disabilita l'agente (usa solo idle visuale)
+                // e logga UN SOLO avviso cliccabile invece di errori ripetuti.
+                Debug.LogWarning($"[NPC] {gameObject.name}: NavMesh non trovata entro 8 m. " +
+                                 "L'NPC sarà inattivo. Sposta il GameObject su una superficie " +
+                                 "percorribile e ribaka la NavMesh (Window → AI → Navigation → Bake).", this);
+                agente.enabled = false;
+                statoCorrente = StatoNPC.Morto; // evita Update loop su agente disabilitato
             }
         }
     }
@@ -114,6 +123,8 @@ public class NPC : MonoBehaviour, IDamageable
 
     private void ApplicaRotazioneFisica()
     {
+        if (agente == null || !agente.enabled || !agente.isOnNavMesh) return;
+
         if (agente.velocity.sqrMagnitude > 0.1f)
         {
             // Calcola la direzione basandosi solo sull'asse orizzontale (Y locale bloccata)
@@ -187,9 +198,8 @@ public class NPC : MonoBehaviour, IDamageable
 
     private void SincronizzaAnimazioni()
     {
-        if (anim != null)
+        if (anim != null && agente != null && agente.enabled)
         {
-            // Sincronizza il parametro Speed con l'intensità del movimento reale
             anim.SetFloat(speedHash, agente.velocity.magnitude);
         }
     }

@@ -9,7 +9,7 @@ public class SparoPlayer : MonoBehaviour
     public float dannoTesta = 100f;
     public float gittataSparo = 150f;
 
-    [Header("Munizioni e Viaggio Temporale")]
+    [Header("Munizioni")]
     public int proiettiliMassimi = 5;
     private int proiettiliAttuali;
 
@@ -65,7 +65,7 @@ private void TentaSparo()
     }
     else
     {
-        Debug.Log("<color=red>[ARMA] Clic! Caricatore vuoto. Necessario salto temporale.</color>");
+        Debug.Log("<color=red>[ARMA] Clic! Caricatore vuoto. Ricarica necessaria.</color>");
     }
 }
 
@@ -116,10 +116,10 @@ private void TentaSparo()
             GuardiaNpc guardia = col.GetComponentInParent<GuardiaNpc>();
             if (guardia != null) guardia.RiceviAllarmeRinforzi(transform);
 
-            ViaggiatoreTemporale viaggiatore = col.GetComponentInParent<ViaggiatoreTemporale>();
-            if (viaggiatore != null && viaggiatore.statoAttuale == ViaggiatoreTemporale.StatoIA.RicercaAttiva)
+            ManutenzioneBot bot = col.GetComponentInParent<ManutenzioneBot>();
+            if (bot != null && bot.statoAttuale == ManutenzioneBot.StatoIA.RicercaAttiva)
             {
-                viaggiatore.statoAttuale = ViaggiatoreTemporale.StatoIA.Inseguimento;
+                bot.statoAttuale = ManutenzioneBot.StatoIA.Inseguimento;
             }
         }
     }

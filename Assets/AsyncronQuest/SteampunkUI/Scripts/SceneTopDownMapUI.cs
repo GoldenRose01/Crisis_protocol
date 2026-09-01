@@ -12,7 +12,10 @@ namespace AsyncronQuest.SteampunkUI
         [SerializeField, Min(10f)] private float cameraHeight = 120f;
         [SerializeField, Min(5f)] private float orthographicSize = 48f;
         [SerializeField, Min(64)] private int textureSize = 512;
-        [SerializeField] private LayerMask cullingMask = ~0;
+        // Exclude layer 2 (Ignore Raycast), layer 1 (TransparentFX), layer 5 (UI).
+        // These layers host LineRenderers, ParticleSystems and other non-triangle meshes
+        // that cause the Unity assertion "subMesh.topology == kPrimitiveTriangleStrip".
+        [SerializeField] private LayerMask cullingMask = ~((1 << 1) | (1 << 2) | (1 << 5));
         [SerializeField] private Color backgroundColor = new Color(0.015f, 0.045f, 0.025f, 1f);
 
         private RawImage rawImage;
@@ -105,6 +108,8 @@ namespace AsyncronQuest.SteampunkUI
             mapCamera.depth = -100f;
             mapCamera.targetTexture = renderTexture;
             mapCamera.enabled = isActiveAndEnabled;
+            // Apply safe culling mask immediately so non-triangle meshes are never rendered.
+            mapCamera.cullingMask = cullingMask;
 
             rawImage.texture = renderTexture;
         }

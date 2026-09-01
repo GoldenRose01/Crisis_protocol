@@ -138,16 +138,9 @@ public sealed class DeathScreenController : MonoBehaviour
     if (pauseTimeDuringDeath)
         Time.timeScale = previousTimeScale <= 0f ? 1f : previousTimeScale;
 
-    // === MODIFICA DI SICUREZZA: Svuota i vecchi ascoltatori degli eventi prima di ricaricare ===
-    // Questo evita che i vecchi oggetti distrutti lascino "fantasmi" nella memoria di Unity
-    System.Delegate[] clients = GoldenCast.Legacy.GlobalEnvironmentManager.OnCambioEpoca?.GetInvocationList();
-    if (clients != null)
-    {
-        foreach (System.Delegate d in clients)
-        {
-            GoldenCast.Legacy.GlobalEnvironmentManager.OnCambioEpoca -= (System.Action<int>)d;
-        }
-    }
+
+    // === Pulizia eventi legacy rimossa (sistema epoche non più presente) ===
+
 
     // 3. Ricaricamento della scena
     Scene activeScene = SceneManager.GetActiveScene();
