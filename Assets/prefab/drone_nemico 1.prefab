@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: -749033698137498020}
   m_Layer: 0
   m_Name: drone_nemico 1
-  m_TagString: Untagged
+  m_TagString: Drone
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
@@ -47,6 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0373c724938192e4cb04b00253528629, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  applicaTagDroneAutomatico: 1
   waypoints:
   - {fileID: 0}
   - {fileID: 0}

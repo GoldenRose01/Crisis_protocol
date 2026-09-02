@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using GoldenCast.UI;
 
-public class ScannerTemporale : MonoBehaviour
+public class EmergencyScanner : MonoBehaviour
 {
     [Header("Scanner di Emergenza")]
     [Tooltip("Punto fisico da cui parte lo scan. Se vuoto, usa il centro del corpo.")]
@@ -11,7 +11,7 @@ public class ScannerTemporale : MonoBehaviour
     [Tooltip("Portata massima del raggio di scansione in metri.")]
     [SerializeField] private float portataScanner = 6f;
 
-    [Tooltip("Layer degli oggetti scansionabili: credenziali, terminali, focolai o anomalie legacy.")]
+    [Tooltip("Layer degli oggetti scansionabili: credenziali, terminali, focolai o anomalie.")]
     [SerializeField] private LayerMask layerScansionabile;
 
     private Camera telecameraPrincipale;
@@ -65,20 +65,13 @@ public class ScannerTemporale : MonoBehaviour
             return;
         }
 
-        EmergencyHotspot hotspot = target.GetComponent<EmergencyHotspot>() ?? target.GetComponentInParent<EmergencyHotspot>();
-        if (hotspot != null)
-        {
-            Debug.Log($"<color=orange>[SCANNER]</color> Focolaio d'emergenza identificato: <b>{hotspot.name}</b>. Richiede procedura di contenimento.");
-            return;
-        }
-
         OstacoloCausale obstacle = target.GetComponent<OstacoloCausale>() ?? target.GetComponentInParent<OstacoloCausale>();
         if (obstacle != null)
         {
             if (GameManager.Instance != null)
                 GameManager.Instance.RegisterSecuritySignature(obstacle.idCausale);
 
-            Debug.Log($"<color=cyan>[SCANNER]</color> Firma di sicurezza acquisita: <b>{obstacle.idCausale}</b>.");
+            Debug.Log($"<color=cyan>[SCANNER]</color> Firma di sicurezza acquisita da anomalia: <b>{obstacle.idCausale}</b>.");
             return;
         }
 
@@ -99,5 +92,16 @@ public class ScannerTemporale : MonoBehaviour
 
         Gizmos.color = Color.cyan;
         Gizmos.DrawRay(origineGizmo, direzioneGizmo * portataScanner);
+    }
+
+    private void OnGUI()
+    {
+        // Disegna un piccolo mirino (puntino) al centro dello schermo
+        float size = 4f;
+        float x = (Screen.width / 2f) - (size / 2f);
+        float y = (Screen.height / 2f) - (size / 2f);
+        
+        GUI.color = new Color(0f, 1f, 1f, 0.8f); // Colore ciano scanner (semitrasparente)
+        GUI.DrawTexture(new Rect(x, y, size, size), Texture2D.whiteTexture);
     }
 }

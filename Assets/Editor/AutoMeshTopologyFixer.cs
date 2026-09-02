@@ -19,7 +19,7 @@ using UnityEngine;
 [InitializeOnLoad]
 public static class AutoMeshTopologyFixer
 {
-    private const string SessionKey = "AutoMeshTopologyFixer_v2";
+    private const string SessionKey = "AutoMeshTopologyFixer_v3";
 
     static AutoMeshTopologyFixer()
     {
@@ -79,8 +79,8 @@ public static class AutoMeshTopologyFixer
                             topo != MeshTopology.LineStrip &&
                             topo != MeshTopology.Points) continue;
 
-                        // Svuota la sub-mesh: 0 indici = nessun primitivo da cuocere
-                        mesh.SetIndices(new int[0], topo, i, false);
+                        // Svuota la sub-mesh: 0 indici e la forza a Triangles per non mandare in crash Unity
+                        mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false);
                         EditorUtility.SetDirty(mesh);
                         totalFixed++;
                         anyFixed = true;
@@ -150,7 +150,7 @@ public class MeshTopologyPostprocessor : AssetPostprocessor
                 t == MeshTopology.LineStrip ||
                 t == MeshTopology.Points)
             {
-                mesh.SetIndices(new int[0], t, i, false);
+                mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false);
                 n++;
             }
         }

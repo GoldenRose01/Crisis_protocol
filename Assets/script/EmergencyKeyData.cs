@@ -2,15 +2,15 @@ using UnityEngine;
 using UnityEngine.Video;
 
 [CreateAssetMenu(fileName = "NuovaFirmaSicurezza", menuName = "Sector Containment/Firma Scanner")]
-public class TemporalTagData : ScriptableObject
+public class EmergencyKeyData : ScriptableObject
 {
     [Header("Identificativo di Sistema")]
-    [Tooltip("ID della firma, credenziale o criticita' rilevata. Campo legacy mantenuto come idTag per compatibilita'.")]
+    [Tooltip("ID della firma, credenziale o criticita' rilevata.")]
     public string idTag = "TAG_000";
 
     [Header("Informazioni Scansione")]
     [Tooltip("Nome mostrato nello scanner: settore, terminale o anomalia.")]
-    public string epochName;
+    public string displayName;
 
     [Tooltip("Descrizione operativa della criticita' analizzata.")]
     [TextArea(3, 5)]
@@ -18,9 +18,9 @@ public class TemporalTagData : ScriptableObject
 
     [Header("Video Scanner")]
     [Tooltip("Video riprodotto quando il protocollo scanner completa tutti i passaggi.")]
-    public VideoClip anachronismVideo;
+    public VideoClip scannerVideo;
 
     public string SecuritySignatureId => idTag;
-    public string DisplayName => epochName;
+    public string DisplayName => displayName;
     public string IncidentDescription => description;
 }
