@@ -8,11 +8,9 @@ public class move_camara : MonoBehaviour
     public Transform target;
     public Vector3 offsetTesta = new Vector3(0, 1.5f, 0);
 
-    [Header("Zoom (Rotellina)")]
-    public float distanza = 2f;
-    public float minDistanza = 0f;
-    public float maxDistanza = 15f;
-    public float velocitaZoom = 0f;
+    [Header("Impostazioni Prima Persona")]
+    [Tooltip("Distanza bloccata a 0 per la visuale in prima persona.")]
+    public float distanza = 0f;
 
     [Header("Rotazione Continua Libera")]
     [Tooltip("ATTENZIONE: Avendo rimosso il deltaTime, imposta la sensibilità molto bassa (es. 0.1 o 0.5)")]
@@ -41,13 +39,8 @@ public class move_camara : MonoBehaviour
 
         if (target == null || Mouse.current == null) return;
 
-        // --- GESTIONE DELLO ZOOM MATEMATICO ---
-        float scrollY = Mouse.current.scroll.ReadValue().y;
-        if (scrollY != 0)
-        {
-            distanza -= Mathf.Sign(scrollY) * velocitaZoom;
-            distanza = Mathf.Clamp(distanza, minDistanza, maxDistanza);
-        }
+        // --- ZOOM DISABILITATO PER PRIMA PERSONA ---
+        distanza = 0f;
 
         // --- RISOLUZIONE VISIBILITÀ MESH ---
         bool deveEssereVisibile = distanza > sogliaSparizione;
@@ -70,8 +63,8 @@ public class move_camara : MonoBehaviour
         rotazioneX += deltaX;
         rotazioneY -= deltaY;
 
-        // Il Clamp previene il "Gimbal Lock" impedendo alla telecamera di ribaltarsi sottosopra
-        rotazioneY = Mathf.Clamp(rotazioneY, -45f, 80f);
+        // Il Clamp previene il "Gimbal Lock" (espanso per la prima persona)
+        rotazioneY = Mathf.Clamp(rotazioneY, -85f, 85f);
 
         // --- CALCOLO POSIZIONALE MEDIANTE QUATERNIONI ---
         Quaternion rotazioneCorrente = Quaternion.Euler(rotazioneY, rotazioneX, 0);
