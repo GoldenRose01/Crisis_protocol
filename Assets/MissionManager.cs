@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -218,7 +219,10 @@ public class MissionManager : MonoBehaviour
     public void RicaricaScenaCorrente()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        if (GameManager.Instance != null)
+            GameManager.Instance.CaricaSettoreCorrente();
+        else
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void RegistraRaccolta()
@@ -267,6 +271,19 @@ public class MissionManager : MonoBehaviour
         OnPunteggioCambiato?.Invoke(punteggioFinale);
         OnMissioneTerminata?.Invoke(outcome, punteggioFinale, reason);
         Debug.Log($"<color=gold>[MISSIONE TERMINATA]</color> Esito: {outcome}. Score: {punteggioFinale}. Motivo: {reason}");
+
+        if (outcome == MissionOutcome.Victory && GameManager.Instance != null)
+            StartCoroutine(DelayCaricaProssimoSettore(2f));
+    }
+
+    /// <summary>
+    /// Attende <paramref name="delay"/> secondi, poi carica il settore successivo.
+    /// Il delay lascia il tempo alla UI di mostrare il risultato prima della transizione.
+    /// </summary>
+    private IEnumerator DelayCaricaProssimoSettore(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        GameManager.Instance.CaricaProssimoSettore();
     }
 
     private int CalcolaPunteggioProvvisorio()

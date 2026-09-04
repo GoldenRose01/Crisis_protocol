@@ -20,6 +20,16 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     [Tooltip("Distanza minima di arresto dal giocatore per evitare collisioni fisiche.")]
     public float distanzaArresto = 1.8f;
     private int indiceWaypointAttuale = 0;
+
+    [Header("Pattuglia Random (attiva se Waypoint Ronda è vuoto)")]
+    [Tooltip("Raggio entro cui scegliere il prossimo punto casuale sulla NavMesh.")]
+    public float raggioRondaRandom = 15f;
+    [Tooltip("Secondi di pausa tra un punto casuale e il successivo.")]
+    public float attesaTraPuntiRandom = 1.5f;
+    private Vector3 destinazioneRandom;
+    private float timerAttesaRandom = 0f;
+    private bool inAttesaRandom = false;
+    private bool destinazioneRandomValida = false;
     
     private Vector3 posizioneIniziale;
 
@@ -195,41 +205,97 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void MuoviInRonda()
     {
-        if (waypointRonda == null || waypointRonda.Length == 0) return;
-
-        Transform target = waypointRonda[indiceWaypointAttuale];
-
-        if (agente != null && agente.isOnNavMesh)
+        // ── MODALITÀ WAYPOINT FISSI ────────────────────────────────────────────
+        if (waypointRonda != null && waypointRonda.Length > 0)
         {
-            agente.isStopped = false;
-            agente.speed = velocitaRonda;
-            agente.SetDestination(target.position);
+            Transform target = waypointRonda[indiceWaypointAttuale];
 
-            if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.6f)
+            if (agente != null && agente.isOnNavMesh)
             {
-                indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
+                agente.isStopped = false;
+                agente.speed = velocitaRonda;
+                agente.SetDestination(target.position);
+
+                if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.6f)
+                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
+            }
+            else
+            {
+                // Fallback senza NavMesh: movimento diretto
+                Vector3 direzione = (target.position - transform.position).normalized;
+                direzione.y = 0;
+                Vector3 targetPos = target.position;
+                targetPos.y = transform.position.y;
+                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime);
+                if (direzione != Vector3.zero)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime);
+                if (Vector3.Distance(transform.position, target.position) < 0.5f)
+                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
+            }
+            return;
+        }
+
+        // ── MODALITÀ RANDOM SU NAVMESH ─────────────────────────────────────────
+        if (agente == null || !agente.isOnNavMesh)
+            return;
+
+        // Pausa al punto raggiunto
+        if (inAttesaRandom)
+        {
+            agente.isStopped = true;
+            agente.velocity = Vector3.zero;
+            timerAttesaRandom -= Time.deltaTime;
+            if (timerAttesaRandom <= 0f)
+            {
+                inAttesaRandom = false;
+                destinazioneRandomValida = false; // forza scelta nuovo punto
+            }
+            return;
+        }
+
+        // Scegli un nuovo punto casuale se necessario
+        if (!destinazioneRandomValida)
+        {
+            destinazioneRandomValida = ScegliPuntoRandom();
+            if (!destinazioneRandomValida)
+                return; // NavMesh non ha trovato un punto valido, riprova al frame successivo
+        }
+
+        // Muoviti verso la destinazione random
+        agente.isStopped = false;
+        agente.speed = velocitaRonda;
+        agente.SetDestination(destinazioneRandom);
+
+        // Controlla se siamo arrivati
+        if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.4f)
+        {
+            destinazioneRandomValida = false;
+            inAttesaRandom = true;
+            timerAttesaRandom = attesaTraPuntiRandom;
+            Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: punto raggiunto. Pausa {attesaTraPuntiRandom}s.");
+        }
+    }
+
+    /// <summary>
+    /// Sceglie un punto casuale sulla NavMesh entro <see cref="raggioRondaRandom"/> dalla posizione iniziale.
+    /// Tenta fino a 8 volte per trovare un punto valido.
+    /// </summary>
+    private bool ScegliPuntoRandom()
+    {
+        for (int tentativi = 0; tentativi < 8; tentativi++)
+        {
+            Vector3 puntoCandiato = posizioneIniziale + Random.insideUnitSphere * raggioRondaRandom;
+            puntoCandiato.y = posizioneIniziale.y;
+
+            if (NavMesh.SamplePosition(puntoCandiato, out NavMeshHit hit, raggioRondaRandom * 0.5f, NavMesh.AllAreas))
+            {
+                destinazioneRandom = hit.position;
+                Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: nuovo punto → {destinazioneRandom}");
+                return true;
             }
         }
-        else
-        {
-            Vector3 direzione = (target.position - transform.position).normalized;
-            direzione.y = 0;
-
-            Vector3 targetPos = target.position;
-            targetPos.y = transform.position.y;
-            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime);
-
-            if (direzione != Vector3.zero)
-            {
-                Quaternion rotazioneTarget = Quaternion.LookRotation(direzione);
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotazioneTarget, 5f * Time.deltaTime);
-            }
-
-            if (Vector3.Distance(transform.position, target.position) < 0.5f)
-            {
-                indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
-            }
-        }
+        Debug.LogWarning($"[GUARDIA RANDOM] {gameObject.name}: nessun punto NavMesh valido trovato entro {raggioRondaRandom}m.");
+        return false;
     }
 
     private void InseguiEAttacca()
@@ -310,18 +376,23 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     
     private void EseguiRitornoAllaBase()
     {
-        Vector3 destinazione = eStatica ? posizioneIniziale : (waypointRonda.Length > 0 ? waypointRonda[0].position : posizioneIniziale);
+        // In modalità random torna sempre alla posizioneIniziale;
+        // in modalità waypoint torna al primo waypoint (comportamento originale).
+        Vector3 destinazione = (waypointRonda != null && waypointRonda.Length > 0)
+            ? waypointRonda[0].position
+            : posizioneIniziale;
 
         if (agente != null && agente.isOnNavMesh)
         {
             agente.isStopped = false;
-            agente.speed = velocitaRonda; 
+            agente.speed = velocitaRonda;
             agente.SetDestination(destinazione);
 
             if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.5f)
             {
                 statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
-                indiceWaypointAttuale = 0; 
+                indiceWaypointAttuale = 0;
+                destinazioneRandomValida = false; // forza nuovo punto random al riavvio ronda
                 Debug.Log("<color=green>[GUARDIA] Posizione di partenza raggiunta. Riprendo le direttive operative.</color>");
             }
         }
@@ -331,18 +402,17 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             direzione.y = 0;
             Vector3 targetPos = destinazione;
             targetPos.y = transform.position.y;
-            
+
             transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime);
-            
+
             if (direzione != Vector3.zero)
-            {
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime);
-            }
 
             if (Vector3.Distance(transform.position, targetPos) < 0.5f)
             {
                 statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
                 indiceWaypointAttuale = 0;
+                destinazioneRandomValida = false;
             }
         }
     }

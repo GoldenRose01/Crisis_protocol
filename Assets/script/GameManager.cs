@@ -15,6 +15,9 @@ public class SaveDataWrapper
     public List<string> securitySignaturesAcquired = new List<string>();
     public List<string> incidentsResolved = new List<string>();
     public List<string> unlockedSecurityHistory = new List<string>();
+
+    /// <summary>Indice dell'ultimo settore raggiunto (0 = Settore 0).</summary>
+    public int lastSectorIndex = 0;
 }
 
 /// <summary>
@@ -24,7 +27,16 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    private const string DefaultGameplaySceneName = "locale";
+    [Header("Configurazione Scene")]
+    [Tooltip("Lista ordinata dei settori del gioco. Devono corrispondere esattamente ai nomi in Build Settings.")]
+    [SerializeField] private List<string> livelliInOrdine = new List<string> { "settore 0", "settore 1", "settore 2" };
+
+    /// <summary>Indice del settore attualmente caricato (0-based).</summary>
+    private int indiceSettoreCorrente = 0;
+
+    /// <summary>Nome della scena del menu principale.</summary>
+    [SerializeField] private string scenaMainMenu = "MainMenu-Scene";
+
     private const string SaveFileName = "SectorContainment_Save.json";
 
     public static event Action<int> OnPunteggioAggiornato;
@@ -171,7 +183,8 @@ public class GameManager : MonoBehaviour
             savedCredentialId = currentCredentialID,
             securitySignaturesAcquired = new List<string>(this.securitySignaturesAcquired),
             incidentsResolved = new List<string>(this.incidentsResolved),
-            unlockedSecurityHistory = new List<string>(this.unlockedSecurityHistory)
+            unlockedSecurityHistory = new List<string>(this.unlockedSecurityHistory),
+            lastSectorIndex = this.indiceSettoreCorrente
         };
 
         File.WriteAllText(saveFilePath, JsonUtility.ToJson(data, true));
@@ -192,7 +205,8 @@ public class GameManager : MonoBehaviour
             unlockedSecurityHistory = new HashSet<string>(data.unlockedSecurityHistory);
             punteggioTotale = data.punteggioTotale;
             missioniCompletate = new HashSet<string>(data.missioniCompletateIds);
-            Debug.Log($"[SISTEMA] Stato ripristinato.");
+            indiceSettoreCorrente = Mathf.Clamp(data.lastSectorIndex, 0, Mathf.Max(0, livelliInOrdine.Count - 1));
+            Debug.Log($"[SISTEMA] Stato ripristinato. Ultimo settore: {indiceSettoreCorrente}.");
             return;
         }
 
@@ -201,6 +215,7 @@ public class GameManager : MonoBehaviour
         unlockedSecurityHistory = new HashSet<string>();
         currentCredentialID = "KEYCARD_A01";
         punteggioTotale = 0;
+        indiceSettoreCorrente = 0;
         missioniCompletate = new HashSet<string>();
         Debug.Log("[SISTEMA] Nessun salvataggio rilevato. Avvio nuova emergenza/partita.");
     }
@@ -208,16 +223,61 @@ public class GameManager : MonoBehaviour
     public void ResumeSavedGame()
     {
         LoadGameState();
-        SceneManager.LoadScene(DefaultGameplaySceneName);
+        CaricaSettore(indiceSettoreCorrente);
     }
 
     public void NuovaPartita()
     {
         punteggioTotale = 0;
+        indiceSettoreCorrente = 0;
         missioniCompletate.Clear();
+        securitySignaturesAcquired.Clear();
+        incidentsResolved.Clear();
+        unlockedSecurityHistory.Clear();
+        currentCredentialID = "KEYCARD_A01";
         SaveGameState();
-        SceneManager.LoadScene(DefaultGameplaySceneName);
+        CaricaSettore(0);
     }
+
+    /// <summary>
+    /// Carica il settore per indice. Se l'indice supera la lista, torna al MainMenu (fine gioco).
+    /// </summary>
+    public void CaricaSettore(int indice)
+    {
+        if (livelliInOrdine == null || livelliInOrdine.Count == 0)
+        {
+            Debug.LogError("[GAMEMANAGER] Lista livelli vuota. Aggiungila nell'Inspector.");
+            return;
+        }
+
+        if (indice >= livelliInOrdine.Count)
+        {
+            Debug.Log("[GAMEMANAGER] Tutti i settori completati. Ritorno al MainMenu.");
+            SceneManager.LoadScene(scenaMainMenu);
+            return;
+        }
+
+        indiceSettoreCorrente = Mathf.Clamp(indice, 0, livelliInOrdine.Count - 1);
+        string nomeScena = livelliInOrdine[indiceSettoreCorrente];
+        SaveGameState();
+        Debug.Log($"[GAMEMANAGER] Carico settore {indiceSettoreCorrente}: '{nomeScena}'");
+        SceneManager.LoadScene(nomeScena);
+    }
+
+    /// <summary>Avanza al settore successivo (chiamato da MissionManager su vittoria).</summary>
+    public void CaricaProssimoSettore()
+    {
+        CaricaSettore(indiceSettoreCorrente + 1);
+    }
+
+    /// <summary>Ricarica il settore corrente (chiamato su sconfitta).</summary>
+    public void CaricaSettoreCorrente()
+    {
+        CaricaSettore(indiceSettoreCorrente);
+    }
+
+    /// <summary>Indice del settore attualmente attivo (0-based).</summary>
+    public int IndiceSettoreCorrente => indiceSettoreCorrente;
 
     [ContextMenu("RESETTA DATI DEBUG (CANCELLA JSON)")]
     public void ResetDatiDebug()
