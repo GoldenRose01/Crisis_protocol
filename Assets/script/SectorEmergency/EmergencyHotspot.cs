@@ -37,6 +37,9 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
             containedStateObject.SetActive(false);
     }
 
+    public event System.Action OnFocolaioContenuto;
+    public bool Contenuto => contenuto;
+
     public void Interact()
     {
         if (contenuto)
@@ -62,6 +65,8 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
 
         if (containedStateObject != null)
             containedStateObject.SetActive(true);
+
+        OnFocolaioContenuto?.Invoke();
     }
 
     private void ApplicaTagUnity()

@@ -17,6 +17,10 @@ public class PortaSettore : MonoBehaviour, IInteractable
 {
     public enum TipoApertura { Slide, Rotazione }
 
+    [Header("Target Animazione (Opzionale)")]
+    [Tooltip("Trascina qui l'oggetto o l'anta da muovere se lo script si trova su un oggetto padre/telaio. Se lasciato vuoto, muove questo GameObject.")]
+    [SerializeField] private Transform oggettoDaAnimare;
+
     [Header("Configurazione Porta")]
     [Tooltip("ID univoco: usato per salvare lo stato nel GameManager.")]
     [SerializeField] private string portaId = "DOOR_S0_001";
@@ -28,24 +32,34 @@ public class PortaSettore : MonoBehaviour, IInteractable
     [SerializeField] private TipoApertura tipoApertura = TipoApertura.Slide;
 
     [Header("Slide - solo se Tipo = Slide")]
-    [Tooltip("Direzione locale: Vector3.up = si solleva, Vector3.right = laterale, Vector3.forward = scorre in profondita'.")]
+    [Tooltip("Direzione locale di movimento: (0,1,0) = sale in alto, (1,0,0) = scorre a destra, (0,0,1) = profondità.")]
     [SerializeField] private Vector3 direzioneScivolamento = Vector3.up;
-    [Tooltip("Distanza di scivolamento in unita' Unity.")]
+    [Tooltip("Distanza di scivolamento in metri Unity.")]
     [SerializeField] private float offsetApertura = 3f;
 
     [Header("Rotazione - solo se Tipo = Rotazione")]
-    [Tooltip("Gradi di rotazione sull'asse Y quando si apre (90 = anta, 180 = doppia anta).")]
+    [Tooltip("Gradi di rotazione sull'asse Y quando si apre (es. 90 o -90).")]
     [SerializeField] private float angoloApertura = 90f;
 
     [Header("Animazione")]
     [Tooltip("Durata dell'animazione apertura/chiusura in secondi.")]
     [SerializeField] private float durataAnimazione = 0.5f;
 
-    [Header("Feedback Visivo")]
-    [Tooltip("Luce di stato opzionale: rossa = chiusa/bloccata, verde = aperta.")]
+    [Header("Feedback Visivo (Luce & Cubo/Lampadina)")]
+    [Tooltip("Luce di stato opzionale: rossa = bloccata (manca chiave), verde = sbloccata (si può aprire).")]
     [SerializeField] private Light luceDiStato;
-    [SerializeField] private Color coloreBlocco = Color.red;
-    [SerializeField] private Color coloreAperta = Color.green;
+
+    [Tooltip("Slot per il Cubo / Lampadina / Mesh che emana la luce. Cambierà colore insieme alla luce.")]
+    [SerializeField] private Renderer oggettoEmettitoreLuce;
+
+    [Tooltip("Colore quando la porta è BLOCCATA (richiede una credenziale non ancora raccolta).")]
+    [SerializeField] private Color coloreBloccato = Color.red;
+
+    [Tooltip("Colore quando la porta è SBLOCCATA / SI PUÒ APRIRE (credenziale posseduta o nessuna credenziale richiesta).")]
+    [SerializeField] private Color coloreSbloccato = Color.green;
+
+    [Tooltip("Intensità del bagliore (emissione) sul materiale del Cubo.")]
+    [SerializeField] private float intensitaEmissione = 2f;
 
     [Header("Stato Iniziale")]
     [Tooltip("Se true la porta parte gia' aperta all'avvio della scena.")]
@@ -55,27 +69,66 @@ public class PortaSettore : MonoBehaviour, IInteractable
     private bool aperta = false;
     private bool inAnimazione = false;
 
-    private Vector3 posizioneChiusa;
-    private Vector3 posizioneAperta;
-    private Quaternion rotazioneChiusa;
-    private Quaternion rotazioneAperta;
+    private Transform targetTransform;
+    private Vector3 posizioneChiusaWorld;
+    private Vector3 posizioneApertaWorld;
+    private Quaternion rotazioneChiusaWorld;
+    private Quaternion rotazioneApertaWorld;
 
     private Collider colliderFisico;
-    private NavMeshObstacle ostacolo; // opzionale
+    private NavMeshObstacle ostacolo;
 
     // ─────────────────────────────────────────────────────────────────────────
 
+    private void OnEnable()
+    {
+        MissionManager.OnCredenzialiCambiate += OnCredenzialiModificate;
+        AggiornaFeedbackVisivo();
+    }
+
+    private void OnDisable()
+    {
+        MissionManager.OnCredenzialiCambiate -= OnCredenzialiModificate;
+    }
+
+    private void OnCredenzialiModificate(int totaleCredenziali)
+    {
+        AggiornaFeedbackVisivo();
+    }
+
     private void Awake()
     {
+        targetTransform = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform;
+
         colliderFisico = GetComponent<Collider>();
-        ostacolo = GetComponent<NavMeshObstacle>(); // null se non presente
+        if (colliderFisico == null)
+            colliderFisico = GetComponentInChildren<Collider>();
 
-        // Memorizza le posizioni di riferimento basandosi sulla posizione attuale nell'Editor
-        posizioneChiusa = transform.localPosition;
-        rotazioneChiusa = transform.localRotation;
+        ostacolo = GetComponent<NavMeshObstacle>();
+        if (ostacolo == null)
+            ostacolo = GetComponentInChildren<NavMeshObstacle>();
 
-        posizioneAperta = posizioneChiusa + direzioneScivolamento.normalized * offsetApertura;
-        rotazioneAperta  = rotazioneChiusa * Quaternion.Euler(0f, angoloApertura, 0f);
+        if (targetTransform.gameObject.isStatic)
+        {
+            Debug.LogError($"<color=red>[PORTA] '{targetTransform.name}' ha il flag STATIC attivo!</color> Unity non muoverà la mesh se l'oggetto è Static. Deseleziona 'Static' nell'Inspector in alto a destra!", this);
+        }
+
+        if (tipoApertura == TipoApertura.Slide && Mathf.Approximately(offsetApertura, 0f))
+        {
+            Debug.LogWarning($"[PORTA] '{name}' ha Offset Apertura = 0! La porta non si sposterà visivamente.", this);
+        }
+        else if (tipoApertura == TipoApertura.Rotazione && Mathf.Approximately(angoloApertura, 0f))
+        {
+            Debug.LogWarning($"[PORTA] '{name}' ha Angolo Apertura = 0! La porta non ruoterà visivamente.", this);
+        }
+
+        // Calcolo delle posizioni assolute nel mondo per evitare distorsioni da scale o rotazioni complesse dei padri
+        posizioneChiusaWorld = targetTransform.position;
+        rotazioneChiusaWorld = targetTransform.rotation;
+
+        Vector3 dirMondo = targetTransform.TransformDirection(direzioneScivolamento.normalized);
+        posizioneApertaWorld = posizioneChiusaWorld + dirMondo * offsetApertura;
+        rotazioneApertaWorld = rotazioneChiusaWorld * Quaternion.Euler(0f, angoloApertura, 0f);
     }
 
     private void Start()
@@ -90,6 +143,24 @@ public class PortaSettore : MonoBehaviour, IInteractable
         }
 
         ApplicaStatoIstantaneo(apertaAllInizio);
+        AggiornaFeedbackVisivo();
+    }
+
+    /// <summary>
+    /// Controlla se la porta si può aprire (se possiede la credenziale o se non ne richiede).
+    /// </summary>
+    public bool PuoEssereAperta()
+    {
+        if (string.IsNullOrEmpty(credenzialeRichiesta))
+            return true;
+
+        if (MissionManager.Instance != null && MissionManager.Instance.PossiedeCredenziale(credenzialeRichiesta))
+            return true;
+
+        if (GameManager.Instance != null && GameManager.Instance.IsSecuritySignatureUnlocked(credenzialeRichiesta))
+            return true;
+
+        return false;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -109,17 +180,12 @@ public class PortaSettore : MonoBehaviour, IInteractable
             return;
         }
 
-        // Controlla credenziale richiesta
-        if (!string.IsNullOrEmpty(credenzialeRichiesta))
+        // Controlla se si può aprire
+        if (!PuoEssereAperta())
         {
-            bool haCred = MissionManager.Instance != null &&
-                          MissionManager.Instance.PossiedeCredenziale(credenzialeRichiesta);
-            if (!haCred)
-            {
-                Debug.LogWarning("[PORTA] " + portaId + ": credenziale '" + credenzialeRichiesta + "' non posseduta. Porta bloccata.");
-                StartCoroutine(FlashCoroutine()); // luce lampeggia in bianco
-                return;
-            }
+            Debug.LogWarning("[PORTA] " + portaId + ": credenziale '" + credenzialeRichiesta + "' non posseduta. Porta bloccata.");
+            StartCoroutine(FlashCoroutine());
+            return;
         }
 
         // Apri
@@ -134,44 +200,51 @@ public class PortaSettore : MonoBehaviour, IInteractable
     {
         inAnimazione = true;
 
-        Vector3 posizioneStart    = transform.localPosition;
-        Vector3 posizioneFine     = versoAperta ? posizioneAperta : posizioneChiusa;
-        Quaternion rotazioneStart = transform.localRotation;
-        Quaternion rotazioneFine  = versoAperta ? rotazioneAperta : rotazioneChiusa;
+        Vector3 posStart = targetTransform.position;
+        Vector3 posFine  = versoAperta ? posizioneApertaWorld : posizioneChiusaWorld;
+
+        Quaternion rotStart = targetTransform.rotation;
+        Quaternion rotFine  = versoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld;
 
         float tempo = 0f;
-        while (tempo < durataAnimazione)
+        float dur = Mathf.Max(durataAnimazione, 0.01f);
+
+        while (tempo < dur)
         {
-            tempo += Time.deltaTime;
-            float t = Mathf.SmoothStep(0f, 1f, tempo / durataAnimazione); // curva fluida
+            float dt = Time.deltaTime > 0f ? Time.deltaTime : Time.unscaledDeltaTime;
+            tempo += dt;
+            float t = Mathf.SmoothStep(0f, 1f, tempo / dur);
 
             if (tipoApertura == TipoApertura.Slide)
-                transform.localPosition = Vector3.Lerp(posizioneStart, posizioneFine, t);
+                targetTransform.position = Vector3.Lerp(posStart, posFine, t);
             else
-                transform.localRotation = Quaternion.Slerp(rotazioneStart, rotazioneFine, t);
+                targetTransform.rotation = Quaternion.Slerp(rotStart, rotFine, t);
 
             yield return null;
         }
 
         // Snap finale preciso
         if (tipoApertura == TipoApertura.Slide)
-            transform.localPosition = posizioneFine;
+            targetTransform.position = posFine;
         else
-            transform.localRotation = rotazioneFine;
+            targetTransform.rotation = rotFine;
 
         aperta = versoAperta;
         inAnimazione = false;
         AggiornaStato();
 
-        Debug.Log("[PORTA] " + portaId + ": " + (aperta ? "APERTA" : "CHIUSA"));
+        Debug.Log($"<color=green>[PORTA]</color> {portaId}: {(aperta ? "APERTA" : "CHIUSA")} (Pos finale: {targetTransform.position})");
     }
 
     private void ApplicaStatoIstantaneo(bool statoAperta)
     {
+        if (targetTransform == null)
+            targetTransform = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform;
+
         if (tipoApertura == TipoApertura.Slide)
-            transform.localPosition = statoAperta ? posizioneAperta : posizioneChiusa;
+            targetTransform.position = statoAperta ? posizioneApertaWorld : posizioneChiusaWorld;
         else
-            transform.localRotation = statoAperta ? rotazioneAperta : rotazioneChiusa;
+            targetTransform.rotation = statoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld;
 
         aperta = statoAperta;
         AggiornaStato();
@@ -179,40 +252,82 @@ public class PortaSettore : MonoBehaviour, IInteractable
 
     private void AggiornaStato()
     {
-        // Collider: disabilitato quando aperta (player e nemici possono passare)
+        // Disabilita collider e navmesh se aperta per consentire il passaggio
         if (colliderFisico != null)
             colliderFisico.enabled = !aperta;
 
-        // NavMeshObstacle: disabilitato quando aperta (NavMesh non bloccato)
         if (ostacolo != null)
             ostacolo.enabled = !aperta;
 
-        // Luce di stato
-        if (luceDiStato != null)
-            luceDiStato.color = aperta ? coloreAperta : coloreBlocco;
+        AggiornaFeedbackVisivo();
     }
 
-    // Fa lampeggiare la luce 3 volte in bianco quando la credenziale manca
+    /// <summary>
+    /// Aggiorna il colore della Point Light e del Cubo in base alla possibilità di apertura.
+    /// </summary>
+    public void AggiornaFeedbackVisivo()
+    {
+        bool puoAprire = PuoEssereAperta();
+        ImpostaColoreFeedback(puoAprire ? coloreSbloccato : coloreBloccato);
+    }
+
+    /// <summary>
+    /// Applica il colore sia alla Light component sia al materiale del Cubo/Renderer.
+    /// </summary>
+    private void ImpostaColoreFeedback(Color colore)
+    {
+        if (luceDiStato != null)
+            luceDiStato.color = colore;
+
+        if (oggettoEmettitoreLuce != null)
+        {
+            Material mat = oggettoEmettitoreLuce.material;
+            if (mat != null)
+            {
+                mat.color = colore;
+
+                if (mat.HasProperty("_BaseColor"))
+                    mat.SetColor("_BaseColor", colore);
+
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", colore * intensitaEmissione);
+                }
+            }
+        }
+    }
+
     private IEnumerator FlashCoroutine()
     {
         for (int i = 0; i < 3; i++)
         {
-            if (luceDiStato != null) luceDiStato.color = Color.white;
+            ImpostaColoreFeedback(Color.white);
             yield return new WaitForSeconds(0.1f);
-            if (luceDiStato != null) luceDiStato.color = coloreBlocco;
+            ImpostaColoreFeedback(coloreBloccato);
             yield return new WaitForSeconds(0.1f);
         }
+        AggiornaFeedbackVisivo();
     }
 
-    private void OnDrawGizmos()
+    [ContextMenu("Test Toggle Porta (In Play Mode)")]
+    public void TestToggle()
     {
-        // Mostra nell'Editor la direzione e la distanza di apertura
+        Interact();
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Transform t = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform;
+
         if (tipoApertura == TipoApertura.Slide)
         {
-            Gizmos.color = new Color(0f, 1f, 0f, 0.5f);
-            Gizmos.DrawLine(
-                transform.position,
-                transform.position + transform.TransformDirection(direzioneScivolamento.normalized * offsetApertura));
+            Vector3 dir = t.TransformDirection(direzioneScivolamento.normalized);
+            Vector3 targetPos = t.position + dir * offsetApertura;
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(t.position, targetPos);
+            Gizmos.DrawWireCube(targetPos, Vector3.one * 0.5f);
         }
     }
 }
