@@ -21,6 +21,7 @@ namespace AsyncronQuest.SteampunkUI
         private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
 #if UNITY_EDITOR
         private const string DefaultPauseMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Option_menu.png";
+        private const string DefaultMapFramePath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/TacticalMap_Frame.jpg";
         private const string PauseMenuPrefabPath = "Assets/AsyncronQuest/SteampunkUI/Prefabs/GoldenCastPauseMenu.prefab";
         private const string DefaultLoadingVideoPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Caricamento.mp4";
 #endif
@@ -39,9 +40,12 @@ namespace AsyncronQuest.SteampunkUI
         [SerializeField] private int videoSortingOrder = 1000;
 
         [Header("Map Camera")]
-        [SerializeField, Min(10f)] private float mapCameraHeight = 120f;
-        [SerializeField, Min(5f)] private float mapOrthographicSize = 48f;
-        [SerializeField, Min(64)] private int mapTextureSize = 512;
+        [SerializeField, Min(10f)] private float mapCameraHeight = 150f;
+        [SerializeField, Min(5f)] private float mapOrthographicSize = 65f;
+        [SerializeField, Min(64)] private int mapTextureSize = 1024;
+
+        [Header("Map Frame Asset")]
+        [SerializeField] private Sprite mapFrameSprite;
 
         [Header("Indicators")]
         [SerializeField, Range(0f, 1f)] private float asincronismo = 1f;
@@ -64,18 +68,18 @@ namespace AsyncronQuest.SteampunkUI
         [SerializeField, Range(0f, 1f)] private float buttonAlpha = 0.86f;
 
         [Header("Left Commands Layout")]
-        [SerializeField] private RectLayout actionsPanel = RectLayout.Center(new Vector2(-570f, 0f), new Vector2(360f, 360f));
+        [SerializeField] private RectLayout actionsPanel = RectLayout.Center(new Vector2(-590f, 0f), new Vector2(340f, 360f));
         [SerializeField] private TextLayout pauseTitle = TextLayout.Center(new Vector2(0f, 112f), new Vector2(280f, 56f), 34f);
         [SerializeField] private ButtonLayout resumeButton = ButtonLayout.Center(new Vector2(0f, 24f), new Vector2(260f, 62f), new Vector2(230f, 46f), 23f);
         [SerializeField] private ButtonLayout exitButton = ButtonLayout.Center(new Vector2(0f, -64f), new Vector2(260f, 62f), new Vector2(230f, 46f), 23f);
 
         [Header("Map Layout")]
-        [SerializeField] private RectLayout mapPanel = RectLayout.Center(Vector2.zero, new Vector2(560f, 560f));
-        [SerializeField] private RectLayout mapMask = RectLayout.Stretch(new Vector2(66f, 82f), new Vector2(-66f, -66f));
+        [SerializeField] private RectLayout mapPanel = RectLayout.Center(Vector2.zero, new Vector2(700f, 420f));
+        [SerializeField] private RectLayout mapMask = RectLayout.Stretch(new Vector2(32f, 28f), new Vector2(-32f, -28f));
         [SerializeField] private RectLayout mapImage = RectLayout.Stretch();
 
         [Header("Right Indicators Layout")]
-        [SerializeField] private RectLayout indicatorsPanel = RectLayout.Center(new Vector2(570f, 0f), new Vector2(380f, 360f));
+        [SerializeField] private RectLayout indicatorsPanel = RectLayout.Center(new Vector2(590f, 0f), new Vector2(360f, 360f));
         [SerializeField] private TextLayout indicatorsTitle = TextLayout.Center(new Vector2(0f, 122f), new Vector2(300f, 44f), 26f);
         [SerializeField] private IndicatorLayout asincronismoIndicator = IndicatorLayout.Default(new Vector2(0f, 34f));
         [SerializeField] private IndicatorLayout warpRadIndicator = IndicatorLayout.Default(new Vector2(0f, -82f));
@@ -288,7 +292,6 @@ namespace AsyncronQuest.SteampunkUI
         {
             ClearGeneratedInterface();
             EnsureEventSystem();
-            SteampunkUILocalization localization = SteampunkUILocalization.Load(languageCode);
 
             Canvas canvas = new GameObject("GoldenCast Pause Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster)).GetComponent<Canvas>();
             canvas.transform.SetParent(transform, false);
@@ -296,51 +299,68 @@ namespace AsyncronQuest.SteampunkUI
             canvas.sortingOrder = canvasSortingOrder;
 
             CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
-            scaler.scaleFactor = 1f;
-            scaler.referencePixelsPerUnit = 100f;
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = canvasReferenceResolution;
+            scaler.matchWidthOrHeight = 0.5f;
 
             RectTransform canvasRoot = canvas.GetComponent<RectTransform>();
-            RectTransform fixedRoot = CreateRect("FixedReferenceRoot", canvasRoot);
-            Stretch(fixedRoot);
-            FixedReferenceCanvasRoot resizeRoot = fixedRoot.gameObject.AddComponent<FixedReferenceCanvasRoot>();
+            Stretch(canvasRoot);
 
-            RectTransform layoutRoot = CreateRect("Pause_ReferenceLayout", fixedRoot);
-            resizeRoot.Configure(layoutRoot, canvasReferenceResolution, safePadding, allowUpscale);
+            // 1. Sfondo scuro tattico
+            Image darkBg = CreateImage("TacticalDarkBackground", canvasRoot, new Color(0.005f, 0.015f, 0.012f, 0.98f));
+            Stretch(darkBg.rectTransform);
+            darkBg.raycastTarget = true; // Blocca i clic sul gioco sottostante
 
-            RectTransform backgroundLayer = CreateRect("BackgroundLayer", layoutRoot);
-            Stretch(backgroundLayer);
-
-            if (pauseMenuBackgroundSprite)
+            // 2. Cornice HUD Neon a Pieno Schermo (come sfondo/frame monitor)
+            Sprite frameSprite = GetMapFrameSprite();
+            if (frameSprite != null)
             {
-                Image backgroundImage = CreateImage("Pause_Background_Image", backgroundLayer, WithAlpha(Color.white, backgroundImageAlpha));
-                Stretch(backgroundImage.rectTransform);
-                backgroundImage.sprite = pauseMenuBackgroundSprite;
-                backgroundImage.preserveAspect = backgroundPreserveAspect;
-                backgroundImage.raycastTarget = false;
+                Image frameBg = CreateImage("Fullscreen_HUD_Frame", canvasRoot, Color.white);
+                Stretch(frameBg.rectTransform);
+                frameBg.sprite = frameSprite;
+                frameBg.preserveAspect = false;
+                frameBg.raycastTarget = false;
             }
 
-            Image shade = CreateImage("Pause_Shade", backgroundLayer, new Color(0.02f, 0.015f, 0.01f, shadeAlpha));
-            Stretch(shade.rectTransform);
-            shade.raycastTarget = false;
+            // 3. Schermo Radar a Pieno Schermo (posizionato SOPRA la cornice nell'area centrale)
+            RectTransform mapGroup = CreateRect("Fullscreen_Map_Group", canvasRoot);
+            Stretch(mapGroup);
 
-            RectTransform leftPanel = CreatePanel("Pause_Actions_Block", layoutRoot, actionsPanel);
-            AddText(localization.Get("pause.title"), leftPanel, pauseTitle, new Color(1f, 0.78f, 0.34f, 1f), FontStyles.Bold);
-            RectTransform commandsGroup = CreateRect("CommandsGroup", leftPanel);
-            ApplyLayout(commandsGroup, RectLayout.Stretch());
-            resumeButtonRect = AddButton("Button_Resume", localization.Get("pause.resume"), commandsGroup, resumeButton, Resume).GetComponent<RectTransform>();
-            exitButtonRect = AddButton("Button_ExitToMainMenu", localization.Get("pause.exit_to_main_menu"), commandsGroup, exitButton, BackToMainMenu).GetComponent<RectTransform>();
+            // Maschera interna posizionata per riempire l'area del monitor con margini puliti
+            Image mapMaskImage = CreateImage("Map_Square_Mask", mapGroup, new Color(0.005f, 0.015f, 0.010f, 1f));
+            mapMaskImage.raycastTarget = false;
+            RectTransform maskRect = mapMaskImage.rectTransform;
+            Stretch(maskRect);
+            maskRect.offsetMin = new Vector2(140f, 85f);
+            maskRect.offsetMax = new Vector2(-140f, -85f);
+            mapMaskImage.type = Image.Type.Simple;
 
-            RectTransform mapContainer = CreatePanel("Pause_Map_Container", layoutRoot, mapPanel);
-            BuildSquareMap(mapContainer);
+            Mask mask = mapMaskImage.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
 
-            RectTransform rightPanel = CreatePanel("Pause_Indicators_Block", layoutRoot, indicatorsPanel);
-            AddText(localization.Get("pause.indicators"), rightPanel, indicatorsTitle, new Color(1f, 0.78f, 0.34f, 1f), FontStyles.Bold);
-            RectTransform indicatorsGroup = CreateRect("IndicatorsGroup", rightPanel);
-            ApplyLayout(indicatorsGroup, RectLayout.Stretch());
-            asincronismoFill = AddIndicator("Indicator_Asincronismo", localization.Get("indicator.asincronismo"), indicatorsGroup, asincronismoIndicator, out asincronismoValueText);
-            warpRadFill = AddIndicator("Indicator_WarpRad", localization.Get("indicator.warp_rad"), indicatorsGroup, warpRadIndicator, out warpRadValueText);
-            UpdateIndicatorUI();
+            RawImage rawMap = new GameObject("Map_TopDown_RawImage", typeof(RectTransform), typeof(RawImage), typeof(SceneTopDownMapUI)).GetComponent<RawImage>();
+            rawMap.transform.SetParent(maskRect, false);
+            rawMap.color = Color.white;
+            rawMap.raycastTarget = false;
+            Stretch(rawMap.rectTransform);
+
+            SceneTopDownMapUI mapUi = rawMap.GetComponent<SceneTopDownMapUI>();
+            mapUi.Configure(null, mapCameraHeight, mapOrthographicSize, mapTextureSize);
+            mapUi.enabled = false;
+            mapUI = mapUi;
+
+            // 4. Barra Pulsanti Azione Neon in Basso
+            GameObject actionsBar = new GameObject("NeonActionsBar", typeof(RectTransform));
+            actionsBar.transform.SetParent(canvasRoot, false);
+            RectTransform rtActions = actionsBar.GetComponent<RectTransform>();
+            rtActions.anchorMin = new Vector2(0.5f, 0f);
+            rtActions.anchorMax = new Vector2(0.5f, 0f);
+            rtActions.pivot = new Vector2(0.5f, 0f);
+            rtActions.sizeDelta = new Vector2(650f, 60f);
+            rtActions.anchoredPosition = new Vector2(0f, 20f);
+
+            resumeButtonRect = AddNeonButton("Btn_Resume", "[ ⏵ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-155f, 22f), new Vector2(270f, 40f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>();
+            exitButtonRect = AddNeonButton("Btn_Exit", "[ ✕ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(155f, 22f), new Vector2(270f, 40f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>();
 
             menuGroup = canvas.gameObject.AddComponent<CanvasGroup>();
         }
@@ -366,43 +386,68 @@ namespace AsyncronQuest.SteampunkUI
             mapUI = null;
         }
 
-        private RectTransform CreatePanel(string name, Transform parent, RectLayout layout)
+        private Button AddNeonButton(string objectName, string label, Transform parent, Vector2 position, Vector2 size, Color neonColor, UnityEngine.Events.UnityAction action)
         {
-            Image image = CreateImage(name, parent, new Color(0.16f, 0.075f, 0.035f, panelAlpha));
-            image.raycastTarget = false;
-            RectTransform panel = image.rectTransform;
-            ApplyLayout(panel, layout);
-            return panel;
+            GameObject btnObj = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(Button));
+            btnObj.transform.SetParent(parent, false);
+
+            RectTransform rect = btnObj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+
+            Image img = btnObj.GetComponent<Image>();
+            img.color = new Color(0.015f, 0.06f, 0.045f, 0.94f);
+            img.raycastTarget = true;
+
+            // Bordo neon
+            GameObject borderObj = new GameObject("Border", typeof(RectTransform), typeof(Image));
+            borderObj.transform.SetParent(btnObj.transform, false);
+            RectTransform rtBorder = borderObj.GetComponent<RectTransform>();
+            Stretch(rtBorder);
+            rtBorder.offsetMin = new Vector2(-2, -2);
+            rtBorder.offsetMax = new Vector2(2, 2);
+            Image imgBorder = borderObj.GetComponent<Image>();
+            imgBorder.color = neonColor * 0.75f;
+            imgBorder.raycastTarget = false;
+            borderObj.transform.SetAsFirstSibling();
+
+            Button button = btnObj.GetComponent<Button>();
+            button.interactable = true;
+            ColorBlock colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.3f, 1.3f, 1.3f, 1f);
+            colors.pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f);
+            button.colors = colors;
+            button.onClick.AddListener(action);
+
+            GameObject txtObj = new GameObject("Text", typeof(RectTransform), typeof(Text));
+            txtObj.transform.SetParent(btnObj.transform, false);
+            RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
+            Stretch(rtTxt);
+            Text txt = txtObj.GetComponent<Text>();
+            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+            txt.text = label;
+            txt.fontSize = 15;
+            txt.fontStyle = FontStyle.Bold;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = neonColor;
+            txt.raycastTarget = false;
+
+            return button;
         }
 
-        private void BuildSquareMap(RectTransform parent)
+        private Sprite GetMapFrameSprite()
         {
-            RectTransform mapGroup = CreateRect("MapContent", parent);
-            ApplyLayout(mapGroup, RectLayout.Stretch());
+            if (mapFrameSprite != null) return mapFrameSprite;
 
-            Image mapMaskImage = CreateImage("Map_Square_Mask", mapGroup, new Color(0.02f, 0.045f, 0.03f, 1f));
-            mapMaskImage.raycastTarget = false;
-            RectTransform maskRect = mapMaskImage.rectTransform;
-            ApplyLayout(maskRect, mapMask);
-            // mapMaskImage.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
-            mapMaskImage.type = Image.Type.Simple;
-
-            Mask mask = mapMaskImage.gameObject.AddComponent<Mask>();
-            mask.showMaskGraphic = false;
-
-            RawImage rawMap = new GameObject("Map_TopDown_RawImage", typeof(RectTransform), typeof(RawImage), typeof(SceneTopDownMapUI)).GetComponent<RawImage>();
-            rawMap.transform.SetParent(maskRect, false);
-            rawMap.color = Color.white;
-            rawMap.raycastTarget = false;
-            ApplyLayout(rawMap.rectTransform, mapImage);
-
-            SceneTopDownMapUI mapUi = rawMap.GetComponent<SceneTopDownMapUI>();
-            mapUi.Configure(null, mapCameraHeight, mapOrthographicSize, mapTextureSize);
-            // Disabilitata subito: verrà attivata solo quando il menu pause è aperto.
-            // Questo impedisce alla camera di renderizzare ogni frame (e di triggerare
-            // l'assertion "subMesh.topology" su LineRenderer/Trail fuori menu).
-            mapUi.enabled = false;
-            mapUI = mapUi;
+#if UNITY_EDITOR
+            mapFrameSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DefaultMapFramePath);
+            if (mapFrameSprite != null) return mapFrameSprite;
+#endif
+            return null;
         }
 
         private void LoadMainMenuScene()
@@ -667,6 +712,9 @@ namespace AsyncronQuest.SteampunkUI
         {
             if (!pauseMenuBackgroundSprite)
                 pauseMenuBackgroundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DefaultPauseMenuBackgroundPath);
+
+            if (!mapFrameSprite)
+                mapFrameSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DefaultMapFramePath);
 
             if (!exitLoadingVideo)
                 exitLoadingVideo = AssetDatabase.LoadAssetAtPath<VideoClip>(DefaultLoadingVideoPath);
