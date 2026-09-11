@@ -24,6 +24,10 @@ public class TerminalePorta : MonoBehaviour, IInteractable
     [Tooltip("Consente l'apertura tramite minigioco di bypass circuiti a tempo.")]
     public bool consentiBypassElettronico = true;
 
+    [Header("Guasto Elettronico / Solo Bypass")]
+    [Tooltip("Se true, il tastierino PIN è guasto o bloccato elettronicamente: digitare il PIN fallisce ed è OBBLIGATORIO aprire la porta tramite il Minigioco di Bypass Circuiti.")]
+    public bool pinGuastoRichiedeBypass = false;
+
     [Header("Feedback Visivo Monitor")]
     [Tooltip("Renderer dello schermo del monitor per cambiare colore (Rosso = Bloccato, Verde = Sbloccato).")]
     public Renderer monitorRenderer;

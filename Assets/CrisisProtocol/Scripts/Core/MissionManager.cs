@@ -81,6 +81,25 @@ public class MissionManager : MonoBehaviour
 
     private void Update()
     {
+        // Hotkey di debug rapido
+        if (Input.GetKeyDown(KeyCode.F4))
+        {
+            Debug.LogWarning("[DEBUG] Tasto F4 premuto: Risoluzione emergenza e completamento totale task.");
+            RisolviStatoEmergenzaETuttiTaskDebug();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F6))
+        {
+            Debug.LogWarning("[DEBUG] Tasto F6 premuto: Sblocco immediato estrazione/portellone.");
+            ForzaSbloccoEstrazioneDebug();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F7))
+        {
+            Debug.LogWarning("[DEBUG] Tasto F7 premuto: Vittoria forzata e passaggio al prossimo livello.");
+            ForzaCompletamentoMissioneDebug();
+        }
+
         if (missioneTerminata)
             return;
 
@@ -165,6 +184,75 @@ public class MissionManager : MonoBehaviour
         }
 
         TerminaMissione(MissionOutcome.Victory, "Estrazione in sicurezza completata prima del collasso della struttura.");
+    }
+
+    [ContextMenu("DEBUG: Risolvi Stato Emergenza e Completa Tutti i Task (F4)")]
+    public void RisolviStatoEmergenzaETuttiTaskDebug()
+    {
+        Debug.Log("<color=lime><b>[DEBUG] RISOLUZIONE TOTALE EMERGENZA AVVIATA...</b></color>");
+
+        // 1. Raccogli tutte le credenziali/keycard presenti nella scena
+        AccessCredentialPickup[] pickups = UnityEngine.Object.FindObjectsByType<AccessCredentialPickup>(FindObjectsSortMode.None);
+        foreach (var p in pickups)
+        {
+            if (p != null)
+            {
+                var idField = typeof(AccessCredentialPickup).GetField("credentialId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                string credId = idField != null ? (string)idField.GetValue(p) : "KEYCARD_A01";
+                RegistraCredenziale(credId);
+                if (GameManager.Instance != null)
+                    GameManager.Instance.RegisterSecuritySignature(credId);
+            }
+        }
+        RegistraCredenziale("KEYCARD_A01");
+        RegistraCredenziale("KEYCARD_B02");
+        RegistraCredenziale("KEYCARD_MASTER");
+
+        // 2. Risolvi tutti i focolai nella scena
+        EmergencyHotspot[] focolai = UnityEngine.Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
+        foreach (var f in focolai)
+        {
+            if (f != null && !f.Contenuto)
+            {
+                f.ForzaRisoluzioneDebug();
+            }
+        }
+
+        // 3. Azzera il collasso strutturale
+        collassoCorrente = 0f;
+        OnDestabilizzazioneCambiata?.Invoke(0f, collassoStrutturale.CollassoMassimo);
+        OnCollassoStrutturaleCambiato?.Invoke(0f, collassoStrutturale.CollassoMassimo);
+
+        // 4. Sblocca estrazione
+        estrazioneSbloccata = true;
+        OnEstrazioneSbloccata?.Invoke(true);
+
+        // 5. Spegni tutte le luci e sirene di emergenza del settore
+        LuceEmergenzaSettore[] luciEmergenza = UnityEngine.Object.FindObjectsByType<LuceEmergenzaSettore>(FindObjectsSortMode.None);
+        foreach (var l in luciEmergenza)
+        {
+            if (l != null) l.SetStatoEmergenza(false);
+        }
+
+        // 6. Notifica stato e aggiorna UI
+        NotificaStatoMissione();
+
+        Debug.Log("<color=lime><b>[DEBUG] STATO DI EMERGENZA RIMOSSO CON SUCCESSO! TUTTI I TASK SONO PRONTI E L'USCITA È APERTA.</b></color>");
+    }
+
+    [ContextMenu("DEBUG: Forza Sblocco Estrazione (F6)")]
+    public void ForzaSbloccoEstrazioneDebug()
+    {
+        estrazioneSbloccata = true;
+        OnEstrazioneSbloccata?.Invoke(true);
+        Debug.Log("<color=lime>[DEBUG]</color> Estrazione/Portellone sbloccato con successo!");
+    }
+
+    [ContextMenu("DEBUG: Completa Missione e Avanza (F7)")]
+    public void ForzaCompletamentoMissioneDebug()
+    {
+        ForzaSbloccoEstrazioneDebug();
+        TentaEstrazione();
     }
 
     public void RegistraRilevamento(string sourceName)

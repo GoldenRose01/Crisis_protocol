@@ -61,6 +61,10 @@ public class PortaSettore : MonoBehaviour, IInteractable
     [Tooltip("Intensità del bagliore (emissione) sul materiale del Cubo.")]
     [SerializeField] private float intensitaEmissione = 2f;
 
+    [Header("Sblocco Automatico Fine Crisi")]
+    [Tooltip("Se true, la porta si sblocca e si apre automaticamente quando tutti i focolai sono contenuti e finisce la crisi (estrazione sbloccata).")]
+    [SerializeField] private bool apriAlTermineCrisi = false;
+
     [Header("Stato Iniziale")]
     [Tooltip("Se true la porta parte gia' aperta all'avvio della scena.")]
     [SerializeField] private bool apertaAllInizio = false;
@@ -83,17 +87,28 @@ public class PortaSettore : MonoBehaviour, IInteractable
     private void OnEnable()
     {
         MissionManager.OnCredenzialiCambiate += OnCredenzialiModificate;
+        MissionManager.OnEstrazioneSbloccata += OnEstrazioneModificata;
         AggiornaFeedbackVisivo();
     }
 
     private void OnDisable()
     {
         MissionManager.OnCredenzialiCambiate -= OnCredenzialiModificate;
+        MissionManager.OnEstrazioneSbloccata -= OnEstrazioneModificata;
     }
 
     private void OnCredenzialiModificate(int totaleCredenziali)
     {
         AggiornaFeedbackVisivo();
+    }
+
+    private void OnEstrazioneModificata(bool sbloccata)
+    {
+        if (apriAlTermineCrisi && sbloccata)
+        {
+            Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>");
+            SbloccaEDApri();
+        }
     }
 
     private void Awake()
@@ -110,7 +125,12 @@ public class PortaSettore : MonoBehaviour, IInteractable
 
         if (targetTransform.gameObject.isStatic)
         {
-            Debug.LogError($"<color=red>[PORTA] '{targetTransform.name}' ha il flag STATIC attivo!</color> Unity non muoverà la mesh se l'oggetto è Static. Deseleziona 'Static' nell'Inspector in alto a destra!", this);
+            Debug.LogWarning($"<color=yellow>[PORTA] '{targetTransform.name}' aveva il flag STATIC attivo!</color> È stato rimosso automaticamente per consentire l'animazione di apertura/scorrimento.", this);
+            targetTransform.gameObject.isStatic = false;
+            foreach (Transform c in targetTransform.GetComponentsInChildren<Transform>(true))
+            {
+                c.gameObject.isStatic = false;
+            }
         }
 
         if (tipoApertura == TipoApertura.Slide && Mathf.Approximately(offsetApertura, 0f))
@@ -137,6 +157,13 @@ public class PortaSettore : MonoBehaviour, IInteractable
         if (GameManager.Instance != null &&
             !string.IsNullOrEmpty(portaId) &&
             GameManager.Instance.GetCausalState(portaId))
+        {
+            ApplicaStatoIstantaneo(true);
+            return;
+        }
+
+        // Se la crisi è già risolta all'avvio e la porta deve aprirsi a fine crisi
+        if (apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
         {
             ApplicaStatoIstantaneo(true);
             return;

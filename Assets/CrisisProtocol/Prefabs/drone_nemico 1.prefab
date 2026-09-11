@@ -64,6 +64,9 @@ MonoBehaviour:
   luceDrone: {fileID: 4812318081547250379}
   coloreRonda: {r: 0.015686274, g: 0.47786364, b: 1, a: 1}
   coloreAllarme: {r: 1, g: 0, b: 0, a: 1}
+  pacificaAFineEmergenza: 1
+  spegniAFineEmergenza: 0
+  coloreStandbyRisolto: {r: 0, g: 1, b: 0, a: 1}
   cadenzaDiFuoco: 1.5
 --- !u!82 &-749033698137498020
 AudioSource:

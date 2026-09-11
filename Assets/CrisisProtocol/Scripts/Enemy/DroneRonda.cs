@@ -20,6 +20,16 @@ public class DroneRonda : MonoBehaviour
     public Color coloreRonda = Color.yellow;
     public Color coloreAllarme = Color.red;
 
+    [Header("Comportamento Post-Emergenza (Fine Crisi)")]
+    [Tooltip("Se true, il drone passa in modalità pacifica (luce verde, non spara né dà allarme) quando l'emergenza termina.")]
+    [SerializeField] private bool pacificaAFineEmergenza = true;
+
+    [Tooltip("Se true, il drone si spegne e ferma completamente a fine emergenza.")]
+    [SerializeField] private bool spegniAFineEmergenza = false;
+
+    [Tooltip("Colore della luce del drone quando il settore è sicuro e l'emergenza è terminata.")]
+    [SerializeField] private Color coloreStandbyRisolto = Color.green;
+
     [Header("Combattimento")]
     [Tooltip("Tempo in secondi tra uno sparo e l'altro")]
     public float cadenzaDiFuoco = 1.5f; 
@@ -53,6 +63,24 @@ public class DroneRonda : MonoBehaviour
     {
         if (ModalUIState.IsModalOpen)
             return;
+
+        bool emergenzaFinita = MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata;
+
+        if (emergenzaFinita && pacificaAFineEmergenza)
+        {
+            if (spegniAFineEmergenza)
+            {
+                if (luceDrone != null) luceDrone.enabled = false;
+                return;
+            }
+
+            MuoviDrone();
+            if (luceDrone != null)
+            {
+                luceDrone.color = coloreStandbyRisolto;
+            }
+            return; // Non spara né invia allarmi quando la crisi è risolta
+        }
 
         MuoviDrone();
         timerSparo += Time.deltaTime; 

@@ -59,6 +59,10 @@ public class NPC : MonoBehaviour, IDamageable
     {
         agente = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;
+        }
         
         // Ottimizzazione NavMeshAgent per rotazioni credibili ed evitanza ostacoli
         agente.speed = velNormale;

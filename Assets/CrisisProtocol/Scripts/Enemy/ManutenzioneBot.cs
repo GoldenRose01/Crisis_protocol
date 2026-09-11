@@ -19,6 +19,13 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
     [SerializeField] [Range(60f, 240f)] private float velocitaRotazione = 120f;
     [SerializeField] private float distanzaOttimaleTiro = 6.5f;
 
+    [Header("Comportamento Post-Emergenza (Fine Crisi)")]
+    [Tooltip("Se true, il bot entra in modalità manutenzione pacifica (non attacca, non insegue) quando l'emergenza finisce.")]
+    [SerializeField] private bool pacificaAFineEmergenza = true;
+
+    [Tooltip("Se true, il bot si spegne/ferma completamente sul posto a fine emergenza.")]
+    [SerializeField] private bool spegniAFineEmergenza = false;
+
     [Header("Vagabondaggio Casuale (Roaming)")]
     [Tooltip("Raggio massimo entro cui scegliere il prossimo punto di ronda locale.")]
     [SerializeField] private float raggioPattugliamento = 8f;
@@ -134,6 +141,11 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
         if (anim == null)
             anim = GetComponentInChildren<Animator>();
 
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;
+        }
+
         // Disabilita Root Motion su TUTTI gli animatori per evitare trascinamenti o scatti della mesh
         Animator[] allAnimators = GetComponentsInChildren<Animator>();
         foreach (Animator a in allAnimators)
@@ -241,6 +253,43 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
         {
             agente.acceleration = accelerazione;
             agente.angularSpeed = velocitaRotazione;
+        }
+
+        bool emergenzaFinita = MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata;
+
+        if (emergenzaFinita && pacificaAFineEmergenza)
+        {
+            if (spegniAFineEmergenza)
+            {
+                if (AgentePronto)
+                {
+                    agente.isStopped = true;
+                    agente.velocity = Vector3.zero;
+                }
+                if (anim != null && anim.runtimeAnimatorController != null) anim.SetFloat(speedHash, 0f);
+                return;
+            }
+
+            // Se era in combattimento o inseguimento, torna alla ronda pacifica
+            if (statoAttuale == StatoIA.Inseguimento || statoAttuale == StatoIA.CombattimentoDistanza)
+            {
+                statoAttuale = StatoIA.RicercaAttiva;
+                if (AgentePronto)
+                {
+                    agente.isStopped = false;
+                    agente.speed = velocitaRicerca;
+                    agente.stoppingDistance = 0.5f;
+                }
+                ImpostaNuovaDestinazioneCasuale();
+            }
+
+            EseguiRondaCasuale();
+
+            if (anim != null && anim.runtimeAnimatorController != null && AgentePronto)
+            {
+                anim.SetFloat(speedHash, agente.velocity.magnitude, 0.15f, Time.deltaTime);
+            }
+            return; // Nessun attacco o sparo quando l'emergenza è terminata
         }
 
         timerSparo += Time.deltaTime;

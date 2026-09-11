@@ -21,6 +21,12 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     public float distanzaArresto = 1.8f;
     private int indiceWaypointAttuale = 0;
 
+    [Header("Comportamento Post-Emergenza (Fine Crisi)")]
+    [Tooltip("Se true, la guardia smette di essere ostile quando l'emergenza termina (focolai contenuti ed estrazione sbloccata).")]
+    [SerializeField] private bool disattivaOstilitAFineEmergenza = true;
+    [Tooltip("Se true, la guardia si ferma completamente/si spegne a fine emergenza. Se false, continua la ronda pacifica senza attaccare.")]
+    [SerializeField] private bool spegniAFineEmergenza = false;
+
     [Header("Pattuglia Random (attiva se Waypoint Ronda è vuoto)")]
     [Tooltip("Raggio entro cui scegliere il prossimo punto casuale sulla NavMesh.")]
     public float raggioRondaRandom = 15f;
@@ -133,6 +139,43 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         if (animatore == null)
         {
             animatore = GetComponentInChildren<Animator>();
+        }
+
+        if (animatore != null)
+        {
+            animatore.applyRootMotion = false;
+        }
+    }
+
+    private void OnEnable()
+    {
+        MissionManager.OnEstrazioneSbloccata += OnStatoEmergenzaCambiato;
+    }
+
+    private void OnDisable()
+    {
+        MissionManager.OnEstrazioneSbloccata -= OnStatoEmergenzaCambiato;
+    }
+
+    private void OnStatoEmergenzaCambiato(bool emergenzaRisolta)
+    {
+        if (emergenzaRisolta && disattivaOstilitAFineEmergenza)
+        {
+            if (spegniAFineEmergenza)
+            {
+                StopAgente();
+                statoAttuale = StatoGuardia.Inattiva;
+            }
+            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa)
+            {
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
+                if (agente != null && agente.isOnNavMesh)
+                {
+                    agente.speed = velocitaRonda;
+                    agente.isStopped = false;
+                }
+            }
+            Debug.Log($"<color=green>[GUARDIA]</color> Emergenza risolta: {gameObject.name} non è più ostile.");
         }
     }
 
@@ -481,6 +524,21 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     private void RilevaGiocatore()
     {
         if (playerTransform == null) return;
+
+        // Se l'emergenza è rientrata e le guardie sono state pacificate, non rilevano né attaccano
+        if (disattivaOstilitAFineEmergenza && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
+        {
+            if (spegniAFineEmergenza)
+            {
+                StopAgente();
+                statoAttuale = StatoGuardia.Inattiva;
+            }
+            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa)
+            {
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
+            }
+            return;
+        }
 
         float distanza = Vector3.Distance(transform.position, playerTransform.position);
 

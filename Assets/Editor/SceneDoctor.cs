@@ -42,7 +42,41 @@ public class SceneDoctor : EditorWindow
         if (botCount > 0)
             Debug.Log($"<color=green>[SceneDoctor] Calibrati {botCount} ManutenzioneBot con velocità di ronda calmi.</color>");
 
-        // 3. Classificazione geometrica e semantica di Pavimenti (Walkable) e Muri (Not Walkable + NavMeshObstacle)
+        // 3. Rimuovi il flag Static da tutte le Porte e Portelloni (altrimenti non si muovono)
+        int porteStaticFix = 0;
+        PortaSettore[] tutteLePorte = Object.FindObjectsByType<PortaSettore>(FindObjectsSortMode.None);
+        foreach (PortaSettore p in tutteLePorte)
+        {
+            if (p != null)
+            {
+                foreach (Transform t in p.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.gameObject.isStatic)
+                    {
+                        t.gameObject.isStatic = false;
+                        EditorUtility.SetDirty(t.gameObject);
+                        porteStaticFix++;
+                    }
+                }
+            }
+        }
+        if (porteStaticFix > 0)
+            Debug.Log($"<color=green>[SceneDoctor] Rimosso flag Static da {porteStaticFix} elementi porta/vetrata.</color>");
+
+        // 3b. Calibra Collider Solidi su tutti i Focolai di Emergenza (evita attraversamento mesh)
+        int hotspotColliderFix = 0;
+        EmergencyHotspot[] tuttiIFocolai = Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
+        foreach (EmergencyHotspot h in tuttiIFocolai)
+        {
+            if (h != null)
+            {
+                h.AssicuraColliderValido();
+                EditorUtility.SetDirty(h.gameObject);
+                hotspotColliderFix++;
+            }
+        }
+        if (hotspotColliderFix > 0)
+            Debug.Log($"<color=green>[SceneDoctor] Generati/Verificati {hotspotColliderFix} collider fisici solidi su focolai ed emergenze.</color>");
         int pavimentiCount = 0;
         int muriCount = 0;
 
@@ -253,6 +287,44 @@ public class SceneDoctor : EditorWindow
         EditorUtility.DisplayDialog(
             "Animazioni Corrette",
             $"Completato!\n\n{fixedCount} file di animazioni FBX sono stati impostati con 'Bake Into Pose' (XZ, Y, Rotazione).\n\nI personaggi non salteranno né attraverseranno più i muri durante le animazioni!",
+            "OK"
+        );
+    }
+
+    [MenuItem("Tools/Potenzia e Calibra Gocce d'Acqua e Focolai (Settore 2)")]
+    public static void FixHotspotWaterAndParticles()
+    {
+        EmergencyHotspot[] hotspots = Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
+        int calibratedCount = 0;
+
+        foreach (EmergencyHotspot h in hotspots)
+        {
+            if (h != null)
+            {
+                h.AutoTrovaParticelleGuastoSeVuoto();
+                EditorUtility.SetDirty(h.gameObject);
+                calibratedCount++;
+            }
+        }
+
+        // Calibra tutti i ParticleSystem di gocce d'acqua e scintille nella scena
+        ParticleSystem[] allPS = Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None);
+        int psCount = 0;
+        foreach (var ps in allPS)
+        {
+            if (ps == null) continue;
+            string n = ps.name.ToLower();
+            if (n.Contains("water") || n.Contains("drip") || n.Contains("gocc") || n.Contains("leak") || n.Contains("spark"))
+            {
+                EmergencyHotspot.CalibraVisibilitaGocce(ps);
+                EditorUtility.SetDirty(ps.gameObject);
+                psCount++;
+            }
+        }
+
+        EditorUtility.DisplayDialog(
+            "Calibrazione Perdite Chimiche",
+            $"Completato con successo!\n\n- Focolai di emergenza configurati: {calibratedCount}\n- Emettitori calibrati su Perdita Chimica Verde Fluorescente: {psCount}\n\nLe perdite hanno ora il colore Verde Neon Radioattivo, gocciolano verticalmente verso il basso senza spruzzi e si spengono all'istante quando contieni il focolaio!",
             "OK"
         );
     }

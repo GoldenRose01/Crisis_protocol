@@ -25,8 +25,6 @@ public class TerminalePortaUI : MonoBehaviour
     private Text testoStatoMessaggio;
     private GameObject tabKeypadObj;
     private GameObject tabBypassObj;
-    private Button btnTabKeypad;
-    private Button btnTabBypass;
 
     // Elementi Keypad
     private Text testoDisplayCodice;
@@ -108,18 +106,12 @@ public class TerminalePortaUI : MonoBehaviour
 
         if (testoStatoMessaggio != null)
         {
-            testoStatoMessaggio.text = "SISTEMA DI SICUREZZA BLOCCATO - INSERISCI CODICE O BYPASSA CIRCUITO";
+            testoStatoMessaggio.text = "SISTEMA DI SICUREZZA // DIGITA IL CODICE PIN PER SBLOCCARE";
             testoStatoMessaggio.color = new Color(0.3f, 0.85f, 1f);
         }
 
-        // Gestione visibilità delle tab
-        if (btnTabKeypad != null) btnTabKeypad.gameObject.SetActive(terminale.consentiCodicePin);
-        if (btnTabBypass != null) btnTabBypass.gameObject.SetActive(terminale.consentiBypassElettronico);
-
-        if (terminale.consentiCodicePin)
-            MostraTabKeypad();
-        else if (terminale.consentiBypassElettronico)
-            MostraTabBypass();
+        // Apre sempre direttamente la schermata con il tastierino PIN
+        MostraTabKeypad();
 
         // Blocca i movimenti di gioco e mostra il cursore del mouse
         ModalUIState.TryOpen(ModalOwner);
@@ -166,17 +158,29 @@ public class TerminalePortaUI : MonoBehaviour
 
     #region Logica Keypad PIN
 
+    private bool inAnimazioneErroreCritico = false;
+
     public void InserisciCifra(string cifra)
     {
+        if (inAnimazioneErroreCritico) return;
+
         if (codiceDigitato.Length < 6)
         {
             codiceDigitato += cifra;
             AggiornaDisplayCodice();
+
+            // Quando si raggiungono le 4 cifre, valida subito
+            if (terminaleAttivo != null && codiceDigitato.Length >= terminaleAttivo.codiceSegreto.Length)
+            {
+                ConfermaCodice();
+            }
         }
     }
 
     public void CancellaCifra()
     {
+        if (inAnimazioneErroreCritico) return;
+
         if (codiceDigitato.Length > 0)
         {
             codiceDigitato = codiceDigitato.Substring(0, codiceDigitato.Length - 1);
@@ -186,7 +190,14 @@ public class TerminalePortaUI : MonoBehaviour
 
     public void ConfermaCodice()
     {
-        if (terminaleAttivo == null) return;
+        if (terminaleAttivo == null || inAnimazioneErroreCritico) return;
+
+        // Se il terminale ha il tastierino guasto, fa inserire il PIN ma subito dopo scatena l'ERRORE CRITICO e passa al bypass
+        if (terminaleAttivo.pinGuastoRichiedeBypass)
+        {
+            StartCoroutine(SequenzaErroreCriticoBypass());
+            return;
+        }
 
         if (codiceDigitato == terminaleAttivo.codiceSegreto)
         {
@@ -196,6 +207,38 @@ public class TerminalePortaUI : MonoBehaviour
         {
             StartCoroutine(SequenzaErrore("ACCESSO NEGATO // CODICE ERRATO"));
         }
+    }
+
+    private IEnumerator SequenzaErroreCriticoBypass()
+    {
+        inAnimazioneErroreCritico = true;
+
+        if (testoDisplayCodice != null)
+        {
+            testoDisplayCodice.text = "ERR-CRITICO";
+            testoDisplayCodice.color = Color.red;
+        }
+
+        if (testoStatoMessaggio != null)
+        {
+            testoStatoMessaggio.text = "✗ ERRORE CRITICO // TASTIERINO CORROTTO - BYPASS OBBLIGATORIO!";
+            testoStatoMessaggio.color = Color.red;
+        }
+
+        yield return new WaitForSecondsRealtime(1.1f);
+
+        // Passa automaticamente alla scheda di Bypass Circuiti
+        MostraTabBypass();
+
+        if (testoStatoMessaggio != null)
+        {
+            testoStatoMessaggio.text = "PROTOCOLLO DI EMERGENZA // ESEGUI IL BYPASS MANUALE PER APRIRE";
+            testoStatoMessaggio.color = new Color(1f, 0.5f, 0.1f);
+        }
+
+        codiceDigitato = "";
+        AggiornaDisplayCodice();
+        inAnimazioneErroreCritico = false;
     }
 
     private void AggiornaDisplayCodice()
@@ -251,19 +294,20 @@ public class TerminalePortaUI : MonoBehaviour
         switch (nodoCorrente)
         {
             case 1:
-                velocitaOscillatore = 2.2f;
-                zonaVerdeMin = -55f;
-                zonaVerdeMax = 55f;
+                velocitaOscillatore = 1.6f;
+                zonaVerdeMin = -65f;
+                zonaVerdeMax = 65f;
                 break;
             case 2:
-                velocitaOscillatore = 3.2f;
-                zonaVerdeMin = -40f;
-                zonaVerdeMax = 40f;
+                velocitaOscillatore = 2.2f;
+                zonaVerdeMin = -50f;
+                zonaVerdeMax = 50f;
                 break;
             case 3:
-                velocitaOscillatore = 4.5f;
-                zonaVerdeMin = -28f;
-                zonaVerdeMax = 28f;
+                // Fase 3 ricalibrata: più lenta, fluida e fattibile
+                velocitaOscillatore = 2.8f;
+                zonaVerdeMin = -40f;
+                zonaVerdeMax = 40f;
                 break;
         }
 
@@ -409,8 +453,21 @@ public class TerminalePortaUI : MonoBehaviour
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+            scaler.dynamicPixelsPerUnit = 3.0f;
 
             canvasObj.AddComponent<GraphicRaycaster>();
+        }
+        else
+        {
+            CanvasScaler scaler = canvasRoot.GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920, 1080);
+                scaler.matchWidthOrHeight = 0.5f;
+                scaler.dynamicPixelsPerUnit = 3.0f;
+            }
         }
 
         // Overlay sfondo oscurato
@@ -459,6 +516,8 @@ public class TerminalePortaUI : MonoBehaviour
         testoTitoloTerminale.fontStyle = FontStyle.Bold;
         testoTitoloTerminale.alignment = TextAnchor.MiddleLeft;
         testoTitoloTerminale.color = new Color(0.4f, 0.9f, 1f);
+        testoTitoloTerminale.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoTitoloTerminale.verticalOverflow = VerticalWrapMode.Overflow;
 
         // Pulsante Chiudi X
         GameObject btnCloseObj = new GameObject("BtnClose");
@@ -484,6 +543,8 @@ public class TerminalePortaUI : MonoBehaviour
         txtClose.fontSize = 20;
         txtClose.alignment = TextAnchor.MiddleCenter;
         txtClose.color = Color.white;
+        txtClose.horizontalOverflow = HorizontalWrapMode.Overflow;
+        txtClose.verticalOverflow = VerticalWrapMode.Overflow;
 
         // Barra Messaggi di Stato
         GameObject statusObj = new GameObject("StatusMessage");
@@ -492,29 +553,15 @@ public class TerminalePortaUI : MonoBehaviour
         rtStatus.anchorMin = new Vector2(0, 1);
         rtStatus.anchorMax = new Vector2(1, 1);
         rtStatus.pivot = new Vector2(0.5f, 1);
-        rtStatus.sizeDelta = new Vector2(0, 40);
+        rtStatus.sizeDelta = new Vector2(600, 45);
         rtStatus.anchoredPosition = new Vector2(0, -75);
         testoStatoMessaggio = statusObj.AddComponent<Text>();
         testoStatoMessaggio.font = testoTitoloTerminale.font;
-        testoStatoMessaggio.fontSize = 14;
+        testoStatoMessaggio.fontSize = 15;
         testoStatoMessaggio.alignment = TextAnchor.MiddleCenter;
-
-        // Pulsanti Selezione Tab
-        GameObject tabSwitcher = new GameObject("TabSwitcher");
-        tabSwitcher.transform.SetParent(pannelloPrincipale.transform, false);
-        RectTransform rtSwitcher = tabSwitcher.AddComponent<RectTransform>();
-        rtSwitcher.anchorMin = new Vector2(0.5f, 1);
-        rtSwitcher.anchorMax = new Vector2(0.5f, 1);
-        rtSwitcher.sizeDelta = new Vector2(550, 45);
-        rtSwitcher.anchoredPosition = new Vector2(0, -125);
-
-        HorizontalLayoutGroup hlg = tabSwitcher.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing = 15;
-        hlg.childControlWidth = true;
-        hlg.childControlHeight = true;
-
-        btnTabKeypad = CreaBottone(tabSwitcher.transform, "🔢 TASTIERINO PIN", () => MostraTabKeypad());
-        btnTabBypass = CreaBottone(tabSwitcher.transform, "⚡ BYPASS CIRCUITI", () => MostraTabBypass());
+        testoStatoMessaggio.horizontalOverflow = HorizontalWrapMode.Wrap;
+        testoStatoMessaggio.verticalOverflow = VerticalWrapMode.Overflow;
+        testoStatoMessaggio.lineSpacing = 1.15f;
 
         // ── Creazione Contenitore Tab 1: KEYPAD ─────────────────────────────
         tabKeypadObj = new GameObject("Tab_Keypad");
@@ -523,7 +570,7 @@ public class TerminalePortaUI : MonoBehaviour
         rtKeypadTab.anchorMin = Vector2.zero;
         rtKeypadTab.anchorMax = Vector2.one;
         rtKeypadTab.offsetMin = new Vector2(25, 20);
-        rtKeypadTab.offsetMax = new Vector2(-25, -180);
+        rtKeypadTab.offsetMax = new Vector2(-25, -125);
 
         // Display PIN
         GameObject displayObj = new GameObject("DisplayPIN");
@@ -581,7 +628,7 @@ public class TerminalePortaUI : MonoBehaviour
         rtBypassTab.anchorMin = Vector2.zero;
         rtBypassTab.anchorMax = Vector2.one;
         rtBypassTab.offsetMin = new Vector2(25, 20);
-        rtBypassTab.offsetMax = new Vector2(-25, -180);
+        rtBypassTab.offsetMax = new Vector2(-25, -125);
 
         // Testo Progresso Nodo
         GameObject txtNodoObj = new GameObject("TxtNodo");
@@ -679,10 +726,12 @@ public class TerminalePortaUI : MonoBehaviour
         Text txt = txtObj.AddComponent<Text>();
         txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
         txt.text = testo;
-        txt.fontSize = 17;
+        txt.fontSize = 18;
         txt.fontStyle = FontStyle.Bold;
         txt.alignment = TextAnchor.MiddleCenter;
         txt.color = Color.white;
+        txt.horizontalOverflow = HorizontalWrapMode.Overflow;
+        txt.verticalOverflow = VerticalWrapMode.Overflow;
 
         return btn;
     }

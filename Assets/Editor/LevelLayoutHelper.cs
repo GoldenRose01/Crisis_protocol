@@ -410,5 +410,266 @@ public class LevelLayoutHelper : EditorWindow
             "OK"
         );
     }
+
+    [MenuItem("Tools/Debug/Trova e Seleziona Portellone Uscita (Quarantine Gate)")]
+    public static void TrovaESelezionaPortelloneUscita()
+    {
+        QuarantineGate gate = Object.FindAnyObjectByType<QuarantineGate>();
+        if (gate != null)
+        {
+            Selection.activeGameObject = gate.gameObject;
+            EditorGUIUtility.PingObject(gate.gameObject);
+            if (SceneView.lastActiveSceneView != null)
+            {
+                SceneView.lastActiveSceneView.FrameSelected();
+            }
+
+            if (Application.isPlaying)
+            {
+                gate.ForzaSbloccoEditor();
+                Debug.Log($"<color=lime>[DEBUG]</color> Portellone di uscita <b>'{gate.name}'</b> selezionato e SBLOCCATO in Play Mode!");
+            }
+            else
+            {
+                Debug.Log($"<color=cyan>[DEBUG]</color> Portellone di uscita <b>'{gate.name}'</b> selezionato e inquadrato nella scena.");
+            }
+        }
+        else
+        {
+            bool crea = EditorUtility.DisplayDialog(
+                "Portellone Non Trovato",
+                "Nessun componente 'QuarantineGate' trovato nella scena corrente.\n\nVuoi creare automaticamente un Portellone di Uscita adesso?",
+                "Sì, Crea Portellone",
+                "Annulla"
+            );
+
+            if (crea)
+            {
+                CreaPortelloneUscitaQuarantena();
+            }
+        }
+    }
+
+    [MenuItem("Tools/Debug/Crea Portellone Uscita Quarantena nel Settore")]
+    public static void CreaPortelloneUscitaQuarantena()
+    {
+        Vector3 spawnPos = Vector3.zero;
+        if (SceneView.lastActiveSceneView != null && SceneView.lastActiveSceneView.camera != null)
+        {
+            Transform camT = SceneView.lastActiveSceneView.camera.transform;
+            spawnPos = camT.position + camT.forward * 4f;
+        }
+        else
+        {
+            GameObject player = GameObject.FindWithTag("Player");
+            if (player != null)
+                spawnPos = player.transform.position + player.transform.forward * 3f + Vector3.up * 1f;
+            else
+                spawnPos = new Vector3(0, 1.5f, 0);
+        }
+
+        // Root del Portellone
+        GameObject gateObj = new GameObject("Portellone_Quarantena_Uscita");
+        gateObj.transform.position = spawnPos;
+
+        int layerInteractable = LayerMask.NameToLayer("Interactable");
+        if (layerInteractable != -1) gateObj.layer = layerInteractable;
+
+        // Struttura Telaio / Portale
+        GameObject telaio = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        telaio.name = "Telaio_Portale";
+        telaio.transform.SetParent(gateObj.transform, false);
+        telaio.transform.localPosition = new Vector3(0, 0, 0);
+        telaio.transform.localScale = new Vector3(2.6f, 3.2f, 0.4f);
+
+        // Pannello Porta interna
+        GameObject anta = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        anta.name = "Pannello_Portellone";
+        anta.transform.SetParent(gateObj.transform, false);
+        anta.transform.localPosition = new Vector3(0, -0.1f, 0);
+        anta.transform.localScale = new Vector3(2.2f, 2.8f, 0.2f);
+
+        // Luce di Stato Quarantena
+        GameObject luceObj = new GameObject("Luce_Stato_Quarantena");
+        luceObj.transform.SetParent(gateObj.transform, false);
+        luceObj.transform.localPosition = new Vector3(0, 1.4f, -0.3f);
+        Light lightComp = luceObj.AddComponent<Light>();
+        lightComp.type = LightType.Point;
+        lightComp.color = Color.red;
+        lightComp.intensity = 3.5f;
+        lightComp.range = 5.0f;
+
+        // Indicatore Visivo Bloccato (Luce/Bordo Rosso)
+        GameObject lockedVis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        lockedVis.name = "Indicatore_Bloccato_Rosso";
+        lockedVis.transform.SetParent(gateObj.transform, false);
+        lockedVis.transform.localPosition = new Vector3(0, 1.4f, -0.25f);
+        lockedVis.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        Renderer rLocked = lockedVis.GetComponent<Renderer>();
+        if (rLocked != null)
+        {
+            Material m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? rLocked.sharedMaterial.shader);
+            m.color = Color.red;
+            if (m.HasProperty("_EmissionColor"))
+            {
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", Color.red * 2f);
+            }
+            rLocked.material = m;
+        }
+
+        // Indicatore Visivo Sbloccato (Luce/Bordo Verde)
+        GameObject unlockedVis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        unlockedVis.name = "Indicatore_Sbloccato_Verde";
+        unlockedVis.transform.SetParent(gateObj.transform, false);
+        unlockedVis.transform.localPosition = new Vector3(0, 1.4f, -0.25f);
+        unlockedVis.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        unlockedVis.SetActive(false);
+        Renderer rUnlocked = unlockedVis.GetComponent<Renderer>();
+        if (rUnlocked != null)
+        {
+            Material m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? rUnlocked.sharedMaterial.shader);
+            m.color = Color.green;
+            if (m.HasProperty("_EmissionColor"))
+            {
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", Color.green * 2f);
+            }
+            rUnlocked.material = m;
+        }
+
+        // Collider di interazione fisico
+        BoxCollider boxCol = gateObj.AddComponent<BoxCollider>();
+        boxCol.size = new Vector3(2.8f, 3.4f, 1.5f);
+        boxCol.center = Vector3.zero;
+
+        // Script QuarantineGate
+        QuarantineGate qGate = gateObj.AddComponent<QuarantineGate>();
+        var statusLightField = typeof(QuarantineGate).GetField("statusLight", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (statusLightField != null) statusLightField.SetValue(qGate, lightComp);
+
+        var lockedVisualField = typeof(QuarantineGate).GetField("lockedVisual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (lockedVisualField != null) lockedVisualField.SetValue(qGate, lockedVis);
+
+        var unlockedVisualField = typeof(QuarantineGate).GetField("unlockedVisual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (unlockedVisualField != null) unlockedVisualField.SetValue(qGate, unlockedVis);
+
+        Undo.RegisterCreatedObjectUndo(gateObj, "Crea Portellone Quarantena");
+        Selection.activeGameObject = gateObj;
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+        Debug.Log("<color=green>[LevelLayoutHelper]</color> Portellone di Quarantena creato con successo!");
+        EditorUtility.DisplayDialog(
+            "Portellone Quarantena Creato!",
+            "Il Portellone di Uscita/Quarantena è stato posizionato nella scena:\n\n" +
+            "• Layer impostato su 'Interactable'\n" +
+            "• Script QuarantineGate con gestione luci (Rosso=Bloccato, Verde=Sbloccato)\n" +
+            "• Per testarlo subito in Play Mode puoi premere 'F6' (sblocca) o 'F7' (completa).\n\n" +
+            "Posizionalo dove preferisci e salva la scena (Ctrl + S).",
+            "OK"
+        );
+    }
+
+    [MenuItem("Tools/Debug/Forza Sblocco Estrazione (In Play Mode)")]
+    public static void ForzaSbloccoInPlayMode()
+    {
+        if (!Application.isPlaying)
+        {
+            EditorUtility.DisplayDialog("Avviso", "Questa opzione funziona solo mentre sei in PLAY MODE!", "OK");
+            return;
+        }
+
+        QuarantineGate gate = Object.FindAnyObjectByType<QuarantineGate>();
+        if (gate != null)
+        {
+            gate.ForzaSbloccoEditor();
+        }
+        else if (MissionManager.Instance != null)
+        {
+            MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
+        }
+    }
+
+    [MenuItem("Tools/Debug/Risolvi Stato Emergenza e Completa Tutti i Task (In Play Mode)")]
+    public static void RisolviEmergenzaETaskInPlayMode()
+    {
+        if (!Application.isPlaying)
+        {
+            EditorUtility.DisplayDialog("Avviso", "Questa opzione funziona solo mentre sei in PLAY MODE!", "OK");
+            return;
+        }
+
+        if (MissionManager.Instance != null)
+        {
+            MissionManager.Instance.RisolviStatoEmergenzaETuttiTaskDebug();
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("Avviso", "MissionManager non trovato nella scena attiva!", "OK");
+        }
+    }
+
+    [MenuItem("Tools/Debug/Crea Cubo Nero Teletrasporto (Trigger Uscita Scena)")]
+    public static void CreaCuboNeroTeletrasporto()
+    {
+        Vector3 spawnPos = Vector3.zero;
+        if (SceneView.lastActiveSceneView != null && SceneView.lastActiveSceneView.camera != null)
+        {
+            Transform camT = SceneView.lastActiveSceneView.camera.transform;
+            spawnPos = camT.position + camT.forward * 3f;
+        }
+        else
+        {
+            GameObject player = GameObject.FindWithTag("Player");
+            if (player != null)
+                spawnPos = player.transform.position + player.transform.forward * 3f + Vector3.up * 1f;
+            else
+                spawnPos = new Vector3(0, 1.5f, 0);
+        }
+
+        GameObject cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "Cubo_Nero_Teletrasporto";
+        cubo.transform.position = spawnPos;
+        cubo.transform.localScale = new Vector3(2.5f, 3.0f, 2.5f);
+
+        // Imposta il BoxCollider come Trigger
+        BoxCollider col = cubo.GetComponent<BoxCollider>();
+        if (col != null)
+        {
+            col.isTrigger = true;
+        }
+
+        // Materiale Nero Lucido / Sci-Fi
+        MeshRenderer mr = cubo.GetComponent<MeshRenderer>();
+        if (mr != null)
+        {
+            Material matNero = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            matNero.name = "Mat_CuboNero_Portale";
+            Color blackColor = new Color(0.02f, 0.02f, 0.02f, 0.95f);
+            if (matNero.HasProperty("_BaseColor")) matNero.SetColor("_BaseColor", blackColor);
+            else if (matNero.HasProperty("_Color")) matNero.color = blackColor;
+            if (matNero.HasProperty("_Smoothness")) matNero.SetFloat("_Smoothness", 0.9f);
+            if (matNero.HasProperty("_Metallic")) matNero.SetFloat("_Metallic", 0.5f);
+            mr.material = matNero;
+        }
+
+        // Aggiunge lo script di transizione
+        CuboNeroTeletrasporto script = cubo.AddComponent<CuboNeroTeletrasporto>();
+
+        Undo.RegisterCreatedObjectUndo(cubo, "Crea Cubo Nero Teletrasporto");
+        Selection.activeGameObject = cubo;
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+
+        Debug.Log("<color=black><color=white>[LevelLayoutHelper]</color></color> Creato 'Cubo_Nero_Teletrasporto' con trigger attivo!");
+        EditorUtility.DisplayDialog(
+            "Cubo Nero Teletrasporto Creato!",
+            "Il Cubo Nero Triggered è stato creato nella scena:\n\n" +
+            "• BoxCollider con 'Is Trigger' attivo\n" +
+            "• Script CuboNeroTeletrasporto collegato\n" +
+            "• Quando il Player ci cammina dentro a fine crisi (o con debug attivo), viene teletrasportato alla scena successiva!\n\n" +
+            "Puoi posizionarlo dietro alle porte di uscita e salvare la scena (Ctrl + S).",
+            "OK"
+        );
+    }
 }
 #endif

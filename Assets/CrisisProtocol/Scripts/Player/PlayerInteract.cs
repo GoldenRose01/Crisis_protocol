@@ -40,32 +40,43 @@ public class PlayerInteract : MonoBehaviour
         // Se la scheda di dettaglio è aperta, blocchiamo il rilevamento per mantenere il focus sull'oggetto corrente
         if (isCardOpen) return;
 
+        // Layer mask flessibile: se non impostata o non include Default/Interactable, includi tutto ciò che è rilevante
+        int mask = interactableLayer.value;
+        if (mask == 0)
+        {
+            mask = ~0; // Everything
+        }
+
         // Rilevamento dei collisori all'interno del raggio d'azione
-        Collider[] colliders = Physics.OverlapSphere(transform.position, interactionRadius, interactableLayer);
+        Collider[] colliders = Physics.OverlapSphere(transform.position, Mathf.Max(interactionRadius, 3.5f), mask);
         
         if (colliders.Length > 0)
         {
-            // Identificazione del collisore geometricamente più vicino all'origine del Player
+            // Identificazione del collisore geometricamente più vicino alla superficie del Player
             Collider closestCollider = GetClosestCollider(colliders);
 
-            // Se il target è cambiato rispetto al frame precedente, aggiorniamo i riferimenti
-            if (closestCollider != currentCollider)
+            if (closestCollider != null)
             {
-                currentCollider = closestCollider;
-                currentInteractable = closestCollider.GetComponent<IInteractable>() ?? closestCollider.GetComponentInParent<IInteractable>();
+                IInteractable interactable = closestCollider.GetComponent<IInteractable>() 
+                                          ?? closestCollider.GetComponentInParent<IInteractable>()
+                                          ?? closestCollider.GetComponentInChildren<IInteractable>();
 
-                if (currentInteractable != null)
+                if (interactable != null)
                 {
-                    TogglePromptUI(true);
-                    Debug.Log($"<color=cyan>[PROSSIMITÀ]</color> Target valido agganciato: <b>{currentCollider.name}</b>.");
+                    if (closestCollider != currentCollider || interactable != currentInteractable)
+                    {
+                        currentCollider = closestCollider;
+                        currentInteractable = interactable;
+                        TogglePromptUI(true);
+                        Debug.Log($"<color=cyan>[PROSSIMITÀ]</color> Target interagibile agganciato: <b>{closestCollider.name}</b>");
+                    }
+                    return;
                 }
             }
         }
-        else
-        {
-            // Reset dello stato in caso di assenza di collisori nel volume di scansione
-            ResetTargetState();
-        }
+
+        // Reset dello stato in caso di assenza di collisori interagibili nel volume di scansione
+        ResetTargetState();
     }
 
     /// <summary>
@@ -95,7 +106,6 @@ public class PlayerInteract : MonoBehaviour
                 else
                 {
                     // FALLBACK DEBUG: Esecuzione diretta dell'acquisizione/interazione se manca la scheda UI
-                    Debug.LogWarning("[DEBUG-FALLBACK] Scheda dettagli non assegnata. Esecuzione diretta del metodo Interact().");
                     ExecuteDirectInteraction();
                 }
             }
@@ -106,16 +116,28 @@ public class PlayerInteract : MonoBehaviour
     {
         Collider bestTarget = null;
         float closestDistanceSqr = Mathf.Infinity;
-        Vector3 currentPosition = transform.position;
+        Vector3 playerPos = transform.position;
 
         foreach (Collider potentialTarget in colliders)
         {
-            Vector3 directionToTarget = potentialTarget.transform.position - currentPosition;
-            float dSqrToTarget = directionToTarget.sqrMagnitude; // Uso della distanza al quadrato per ottimizzare le performance (evita la radice quadrata)
+            if (potentialTarget == null) continue;
+
+            // Ignora il collider del Player stesso
+            if (potentialTarget.transform.root == transform.root) continue;
+
+            // Verifica che l'oggetto o i suoi parent/figli implementino IInteractable
+            IInteractable candidate = potentialTarget.GetComponent<IInteractable>() 
+                                   ?? potentialTarget.GetComponentInParent<IInteractable>()
+                                   ?? potentialTarget.GetComponentInChildren<IInteractable>();
+            if (candidate == null) continue;
+
+            // Calcolo della distanza reale dalla superficie del collider (ClosestPoint) invece del pivot centrale
+            Vector3 puntoSuperficie = potentialTarget.ClosestPoint(playerPos);
+            float dSqr = (puntoSuperficie - playerPos).sqrMagnitude;
             
-            if (dSqrToTarget < closestDistanceSqr)
+            if (dSqr < closestDistanceSqr)
             {
-                closestDistanceSqr = dSqrToTarget;
+                closestDistanceSqr = dSqr;
                 bestTarget = potentialTarget;
             }
         }

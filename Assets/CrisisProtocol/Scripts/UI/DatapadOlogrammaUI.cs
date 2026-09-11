@@ -256,8 +256,21 @@ public class DatapadOlogrammaUI : MonoBehaviour
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+            scaler.dynamicPixelsPerUnit = 3.0f;
 
             canvasObj.AddComponent<GraphicRaycaster>();
+        }
+        else
+        {
+            CanvasScaler scaler = canvasRoot.GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920, 1080);
+                scaler.matchWidthOrHeight = 0.5f;
+                scaler.dynamicPixelsPerUnit = 3.0f;
+            }
         }
 
         // Overlay sfondo oscurato
