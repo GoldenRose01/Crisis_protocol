@@ -12,7 +12,7 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
     [Tooltip("Velocità calma di ronda/camminata (consigliato: 1.0 - 1.5).")]
     [SerializeField] [Range(0.5f, 3f)] private float velocitaRicerca = 1.2f;
     [Tooltip("Velocità di inseguimento controllata (consigliato: 1.8 - 2.5).")]
-    [SerializeField] [Range(1f, 4f)] private float velocitaInseguimento = 2.2f;
+    [SerializeField] [Range(1f, 6f)] private float velocitaInseguimento = 2.2f;
     [Tooltip("Accelerazione dell'agente: valori bassi (1.5 - 2.5) evitano scatti e partenze a razzo.")]
     [SerializeField] [Range(0.5f, 5f)] private float accelerazione = 2.0f;
     [Tooltip("Velocità di rotazione in gradi al secondo.")]
@@ -368,16 +368,17 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
                         agente.isStopped = false;
                         agente.speed = velocitaInseguimento;
                         agente.stoppingDistance = distanzaOttimaleTiro;
-
-                        if (timerAggiornamentoPercorso >= 0.4f)
-                        {
-                            NavMeshPath path = new NavMeshPath();
-                            if (agente.CalculatePath(playerTransform.position, path) && path.status == NavMeshPathStatus.PathComplete)
-                            {
-                                agente.SetPath(path);
-                            }
-                            timerAggiornamentoPercorso = 0f;
-                        }
+                        agente.SetDestination(playerTransform.position);
+                    }
+                    else
+                    {
+                        Vector3 targetPos = playerTransform.position;
+                        targetPos.y = transform.position.y;
+                        transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
+                        Vector3 dir = (playerTransform.position - transform.position).normalized;
+                        dir.y = 0;
+                        if (dir != Vector3.zero)
+                            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 6f * Time.deltaTime);
                     }
                 }
                 break;
@@ -402,14 +403,45 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
         }
     }
 
+    private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
+    {
+        Vector3 direction = (playerChest - eyeOrigin);
+        float distance = direction.magnitude;
+        if (distance > maxDistance || distance < 0.01f) return distance <= maxDistance;
+        direction.Normalize();
+
+        RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, direction, distance, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone) || hit.collider.CompareTag(SectorContainmentTags.MaintenanceBot))
+                continue;
+
+            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player))
+                return true;
+
+            if (hit.collider.isTrigger)
+                continue;
+
+            if (hit.distance >= distance - 0.3f)
+                return true;
+
+            // Muro/ostacolo che blocca la linea di vista
+            return false;
+        }
+
+        return true;
+    }
+
     private bool RilevaBersaglio(out float distanza)
     {
         distanza = Vector3.Distance(transform.position, playerTransform.position);
         if (distanza > raggioVisione) return false;
 
-        Vector3 origineOcchi = (puntoOcchi != null && puntoOcchi != transform) ? puntoOcchi.position : transform.position + Vector3.up * 1.5f;
-        Vector3 bersaglioPlayer = playerTransform.position + Vector3.up * 1.0f;
-        Vector3 direzioneVersoPlayer = (bersaglioPlayer - origineOcchi);
+        Vector3 origineOcchi = transform.position + Vector3.up * 1.2f + transform.forward * 0.35f;
+        Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f;
+        Vector3 direzioneVersoPlayer = (playerChest - origineOcchi);
         float distEffettiva = direzioneVersoPlayer.magnitude;
         if (distEffettiva <= 0.001f) return true;
         direzioneVersoPlayer.Normalize();
@@ -430,17 +462,7 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
 
         if (!inCampoVisivo) return false;
 
-        // Esegui Raycast: se il primo oggetto colpito è il Player, la linea di vista è libera!
-        // Se colpisce un muro/ostacolo prima del player, la vista è ostruita.
-        if (Physics.Raycast(origineOcchi, direzioneVersoPlayer, out RaycastHit hit, distEffettiva + 0.5f))
-        {
-            if (hit.transform == playerTransform || hit.transform.IsChildOf(playerTransform) || hit.collider.CompareTag(SectorContainmentTags.Player))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return HaLineaDiVistaLibera(origineOcchi, playerChest, distEffettiva);
     }
 
     private void EseguiRondaCasuale()
@@ -533,28 +555,38 @@ public class ManutenzioneBot : MonoBehaviour, IDamageable
     private void SparaProiettileVirtuale()
     {
         Vector3 centroPlayer = playerTransform.position + Vector3.up * 1.0f;
-        Vector3 direzioneTraiettoria = (centroPlayer - puntoDiFuoco.position).normalized;
+        Vector3 origineSparo = transform.position + Vector3.up * 1.2f + transform.forward * 0.4f;
+        Vector3 direzioneTraiettoria = (centroPlayer - origineSparo);
+        float dist = direzioneTraiettoria.magnitude;
+        direzioneTraiettoria.Normalize();
 
         Debug.Log("<color=yellow>[BOT] Fuoco di soppressione sferrato dall'unità.</color>");
 
-        if (Physics.Raycast(puntoDiFuoco.position, direzioneTraiettoria, out RaycastHit hit, raggioVisione))
-        {
-            if (hit.transform == playerTransform || hit.transform.IsChildOf(playerTransform) || hit.collider.CompareTag(SectorContainmentTags.Player))
-            {
-                SalutePlayer vitaPlayer = hit.collider.GetComponent<SalutePlayer>() ?? hit.collider.GetComponentInParent<SalutePlayer>();
-                if (vitaPlayer == null && playerTransform != null)
-                    vitaPlayer = playerTransform.GetComponent<SalutePlayer>();
+        RaycastHit[] hits = Physics.RaycastAll(origineSparo, direzioneTraiettoria, dist + 0.5f, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone) || hit.collider.CompareTag(SectorContainmentTags.MaintenanceBot))
+                continue;
+
+            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player))
+            {
+                SalutePlayer vitaPlayer = hit.collider.GetComponent<SalutePlayer>() ?? hit.collider.GetComponentInParent<SalutePlayer>() ?? playerTransform.GetComponent<SalutePlayer>();
                 if (vitaPlayer != null)
                 {
                     vitaPlayer.SubisciDanno(dannoArma);
                     Debug.Log($"<color=red><b>[BOT]</b> Colpo a segno su {hit.collider.gameObject.name}! Inflitti {dannoArma} HP.</color>");
                 }
+                return;
             }
-            else
-            {
-                Debug.Log($"<color=gray>[BOT] Il colpo ha impattato un ostacolo ambientale: {hit.collider.gameObject.name}</color>");
-            }
+
+            if (hit.collider.isTrigger)
+                continue;
+
+            // Ostacolo ambientale
+            Debug.Log($"<color=gray>[BOT] Il colpo ha impattato un ostacolo ambientale: {hit.collider.gameObject.name}</color>");
+            return;
         }
     }
 

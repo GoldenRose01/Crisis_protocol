@@ -181,6 +181,75 @@ public class PlayerInteract : MonoBehaviour
         {
             interactionPromptUI.SetActive(state);
         }
+
+        if (CyberHUD.Instance != null)
+        {
+            if (state && currentInteractable != null)
+            {
+                OttieniDescrizioneTarget(currentInteractable, currentCollider, out string titolo, out string azione);
+                CyberHUD.Instance.MostraPrompt(titolo, azione);
+            }
+            else
+            {
+                CyberHUD.Instance.NascondiPrompt();
+            }
+        }
+    }
+
+    private void OttieniDescrizioneTarget(IInteractable interactable, Collider col, out string titolo, out string azione)
+    {
+        if (interactable is AccessCredentialPickup keycard)
+        {
+            titolo = $"AUTORIZZAZIONE: {keycard.DisplayName.ToUpper()}";
+            azione = "Premi [E] per Raccogliere Scheda di Accesso";
+            return;
+        }
+
+        if (interactable is EmergencyHotspot hotspot)
+        {
+            string nome = hotspot.name.ToLower();
+            if (nome.Contains("tank") || nome.Contains("chemic"))
+            {
+                titolo = "SERBATOIO CHIMICO // REATTORE 002";
+                azione = "Premi [E] per Sigillare Falla e Fermare Perdita Tossica";
+            }
+            else if (nome.Contains("generator") || nome.Contains("basic"))
+            {
+                titolo = "GENERATORE AUSILIARIO // SOVRACCARICO 001";
+                azione = "Premi [E] per Stabilizzare Sovraccarico Energetico";
+            }
+            else
+            {
+                titolo = $"FOCOLAIO DI EMERGENZA // {hotspot.name.ToUpper()}";
+                azione = "Premi [E] per Sigillare e Contenere Emergenza";
+            }
+            return;
+        }
+
+        if (interactable is PortaSettore porta)
+        {
+            titolo = "PORTA BLINDATA DI SETTORE";
+            azione = porta.PuoEssereAperta() ? "Premi [E] per Aprire / Chiudere" : "PORTA BLOCCATA: Richiede Autorizzazione o Bypass";
+            return;
+        }
+
+        if (interactable is TerminalePorta terminale)
+        {
+            titolo = "TERMINALE DI SICUREZZA";
+            azione = "Premi [E] per Inserire Codice o Avviare Bypass Minigioco";
+            return;
+        }
+
+        if (interactable is DatapadCodiciPorte datapad)
+        {
+            titolo = "DATAPAD SCIENTIFICO DI SETTORE";
+            azione = "Premi [E] per Leggere Informazioni e Codici Tattici";
+            return;
+        }
+
+        string rawName = col != null ? col.name.ToUpper() : "OGGETTO INTERATTIVO";
+        titolo = $"TARGET: {rawName}";
+        azione = "Premi [E] per Interagire";
     }
 
     private void ResetTargetState()

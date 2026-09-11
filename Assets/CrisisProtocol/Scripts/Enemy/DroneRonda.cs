@@ -42,20 +42,40 @@ public class DroneRonda : MonoBehaviour
     void Start()
     {
         ApplicaTagUnity();
-
-        GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);
-        if (playerObj != null)
-        {
-            playerTransform = playerObj.transform;
-            playerDamageable = playerObj.GetComponent<IDamageable>();
-        }
-
+        if (luceDrone == null)
+            luceDrone = GetComponentInChildren<Light>();
+        TrovaRiferimentoPlayer();
         AllineaLuce();
+    }
+
+    private void TrovaRiferimentoPlayer()
+    {
+        if (playerTransform == null || playerDamageable == null)
+        {
+            GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);
+            if (playerObj != null)
+            {
+                if (playerTransform == null) playerTransform = playerObj.transform;
+                if (playerDamageable == null) playerDamageable = playerObj.GetComponent<IDamageable>() ?? playerObj.GetComponentInParent<IDamageable>() ?? playerObj.GetComponentInChildren<IDamageable>();
+            }
+
+            if (playerDamageable == null)
+            {
+                SalutePlayer salute = Object.FindAnyObjectByType<SalutePlayer>();
+                if (salute != null)
+                {
+                    playerDamageable = salute;
+                    if (playerTransform == null) playerTransform = salute.transform;
+                }
+            }
+        }
     }
 
     void OnValidate()
     {
         ApplicaTagUnity();
+        if (luceDrone == null)
+            luceDrone = GetComponentInChildren<Light>();
         AllineaLuce();
     }
 
@@ -79,7 +99,7 @@ public class DroneRonda : MonoBehaviour
             {
                 luceDrone.color = coloreStandbyRisolto;
             }
-            return; // Non spara né invia allarmi quando la crisi è risolta
+            return;
         }
 
         MuoviDrone();
@@ -90,6 +110,7 @@ public class DroneRonda : MonoBehaviour
         if (playerSottoTiro && !playerGiaSegnalato)
         {
             playerGiaSegnalato = true;
+            Debug.Log("<color=red><b>[DRONE] BERSAGLIO AGGANCIATO NEL CONO OTTICO! ALLARME ROSSO ATTIVO!</b></color>");
             if (MissionManager.Instance != null)
                 MissionManager.Instance.RegistraRilevamento(gameObject.name);
         }
@@ -120,11 +141,26 @@ public class DroneRonda : MonoBehaviour
 
     private void MuoviDrone()
     {
-        if (waypoints.Length == 0) return;
+        if (waypoints == null || waypoints.Length == 0) return;
 
+        // Cerca il prossimo waypoint valido nell'array
         Transform target = waypoints[indiceWaypointAttuale];
-        Vector3 direzione = (target.position - transform.position).normalized;
+        if (target == null)
+        {
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypoints.Length;
+                if (waypoints[indiceWaypointAttuale] != null)
+                {
+                    target = waypoints[indiceWaypointAttuale];
+                    break;
+                }
+            }
+        }
 
+        if (target == null) return; // Se tutti i waypoint sono nulli, il drone rimane in hovering stazionario e scansiona
+
+        Vector3 direzione = (target.position - transform.position).normalized;
         transform.position = Vector3.MoveTowards(transform.position, target.position, velocita * Time.deltaTime);
 
         if (direzione != Vector3.zero)
@@ -133,34 +169,73 @@ public class DroneRonda : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, rotazioneTarget, 5f * Time.deltaTime);
         }
 
-        if (Vector3.Distance(transform.position, target.position) < 0.2f)
+        if (Vector3.Distance(transform.position, target.position) < 0.4f)
         {
             indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypoints.Length;
         }
     }
 
+    private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
+    {
+        Vector3 direction = (playerChest - eyeOrigin);
+        float distance = direction.magnitude;
+        if (distance > maxDistance || distance < 0.01f) return distance <= maxDistance;
+        direction.Normalize();
+
+        RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, direction, distance, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone))
+                continue;
+
+            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player))
+                return true;
+
+            if (hit.collider.isTrigger)
+                continue;
+
+            if (hit.distance >= distance - 0.3f)
+                return true;
+
+            // Muro solido che blocca il cono di luce
+            return false;
+        }
+
+        return true;
+    }
+
     private bool ControllaCampoVisivo()
     {
-        if (playerTransform == null) return false;
-
-        // ACCOPPIAMENTO RIGIDO: Usiamo i dati traslazionali e rotazionali della luce, non del corpo del drone
-        Vector3 origineCono = luceDrone != null ? luceDrone.transform.position : transform.position;
-        Vector3 direzioneCono = luceDrone != null ? luceDrone.transform.forward : transform.forward;
-
-        Vector3 direzioneVersoPlayer = (playerTransform.position - origineCono).normalized;
-        float distanzaDalPlayer = Vector3.Distance(origineCono, playerTransform.position);
-
-        if (distanzaDalPlayer < raggioVisione)
+        if (playerTransform == null)
         {
-            // Calcolo dell'angolo basato sul vettore forward locale della Spot Light
-            float angolo = Vector3.Angle(direzioneCono, direzioneVersoPlayer);
-            if (angolo < angoloVisione / 2f)
-            {
-                if (!Physics.Raycast(origineCono, direzioneVersoPlayer, out RaycastHit hit, distanzaDalPlayer, layerOstacoli))
-                {
-                    return true; 
-                }
-            }
+            TrovaRiferimentoPlayer();
+            if (playerTransform == null) return false;
+        }
+
+        if (luceDrone == null)
+            luceDrone = GetComponentInChildren<Light>();
+
+        Vector3 origineCono = (luceDrone != null ? luceDrone.transform.position : transform.position);
+        Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f;
+
+        Vector3 direzioneVersoPlayer = (playerChest - origineCono);
+        float distanzaDalPlayer = direzioneVersoPlayer.magnitude;
+        if (distanzaDalPlayer > raggioVisione) return false;
+        direzioneVersoPlayer.Normalize();
+
+        // Se il giocatore è vicinissimo (sotto il drone entro 3.5 metri), aggancia subito
+        if (distanzaDalPlayer <= 3.5f)
+        {
+            return HaLineaDiVistaLibera(origineCono, playerChest, distanzaDalPlayer);
+        }
+
+        Vector3 forwardLuce = luceDrone != null ? luceDrone.transform.forward : transform.forward;
+        float angolo = Vector3.Angle(forwardLuce, direzioneVersoPlayer);
+        if (angolo < (angoloVisione / 2f) + 10f)
+        {
+            return HaLineaDiVistaLibera(origineCono, playerChest, distanzaDalPlayer);
         }
         
         return false; 
@@ -170,14 +245,17 @@ public class DroneRonda : MonoBehaviour
     {
         Debug.Log("<color=red>[DRONE] Fuoco ingaggiato sul bersaglio!</color>");
         
+        if (playerDamageable == null)
+        {
+            TrovaRiferimentoPlayer();
+        }
+
         if (playerDamageable != null)
         {
-            SalutePlayer salute = playerTransform.GetComponent<SalutePlayer>();
-            if (salute != null)
-            {
-                float dannoCalcolato = salute.puntiVitaMassimi / 3f;
-                playerDamageable.SubisciDanno(dannoCalcolato);
-            }
+            SalutePlayer salute = playerTransform != null ? playerTransform.GetComponent<SalutePlayer>() : null;
+            float maxHp = salute != null ? salute.puntiVitaMassimi : 100f;
+            float dannoCalcolato = maxHp / 3f;
+            playerDamageable.SubisciDanno(dannoCalcolato);
         }
         
         timerSparo = 0f; 

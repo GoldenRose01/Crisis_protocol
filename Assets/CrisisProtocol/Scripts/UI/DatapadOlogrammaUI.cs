@@ -182,14 +182,14 @@ public class DatapadOlogrammaUI : MonoBehaviour
         GameObject txtNomeObj = new GameObject("TxtNome");
         txtNomeObj.transform.SetParent(infoObj.transform, false);
         RectTransform rtNome = txtNomeObj.AddComponent<RectTransform>();
-        rtNome.anchorMin = new Vector2(0, 0.55f);
+        rtNome.anchorMin = new Vector2(0, 0.52f);
         rtNome.anchorMax = new Vector2(1, 1);
         rtNome.offsetMin = Vector2.zero;
         rtNome.offsetMax = Vector2.zero;
         Text txtNome = txtNomeObj.AddComponent<Text>();
         txtNome.font = defaultFont;
         txtNome.text = $"▰ {nomePorta}";
-        txtNome.fontSize = 18;
+        txtNome.fontSize = 20;
         txtNome.fontStyle = FontStyle.Bold;
         txtNome.color = Color.white;
         txtNome.alignment = TextAnchor.MiddleLeft;
@@ -199,13 +199,13 @@ public class DatapadOlogrammaUI : MonoBehaviour
         txtNoteObj.transform.SetParent(infoObj.transform, false);
         RectTransform rtNote = txtNoteObj.AddComponent<RectTransform>();
         rtNote.anchorMin = new Vector2(0, 0);
-        rtNote.anchorMax = new Vector2(1, 0.55f);
+        rtNote.anchorMax = new Vector2(1, 0.52f);
         rtNote.offsetMin = Vector2.zero;
         rtNote.offsetMax = Vector2.zero;
         Text txtNote = txtNoteObj.AddComponent<Text>();
         txtNote.font = defaultFont;
         txtNote.text = $"{stato}  |  {note}";
-        txtNote.fontSize = 13;
+        txtNote.fontSize = 15;
         txtNote.color = new Color(0.4f, 0.85f, 0.85f);
         txtNote.alignment = TextAnchor.MiddleLeft;
 
@@ -232,7 +232,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         Text txtPin = txtPinObj.AddComponent<Text>();
         txtPin.font = defaultFont;
         txtPin.text = $"PIN: [ {codicePin} ]";
-        txtPin.fontSize = 20;
+        txtPin.fontSize = 22;
         txtPin.fontStyle = FontStyle.Bold;
         txtPin.color = ColoreAquaNeon;
         txtPin.alignment = TextAnchor.MiddleCenter;
@@ -331,7 +331,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         Text txtTag = ledTagObj.AddComponent<Text>();
         txtTag.font = defaultFont;
         txtTag.text = "◆ PROIEZIONE OLOGRAFICA LED // CANALE SICUREZZA ◆";
-        txtTag.fontSize = 11;
+        txtTag.fontSize = 13;
         txtTag.fontStyle = FontStyle.Bold;
         txtTag.color = ColoreAquaNeon;
 
@@ -345,7 +345,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         rtTitolo.offsetMax = new Vector2(-70, -30);
         txtTitolo = titoloObj.AddComponent<Text>();
         txtTitolo.font = defaultFont;
-        txtTitolo.fontSize = 20;
+        txtTitolo.fontSize = 22;
         txtTitolo.fontStyle = FontStyle.Bold;
         txtTitolo.alignment = TextAnchor.MiddleLeft;
         txtTitolo.color = ColoreAquaChiaro;
@@ -362,7 +362,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         rtSub.offsetMax = new Vector2(-70, 30);
         txtSottotitolo = subObj.AddComponent<Text>();
         txtSottotitolo.font = defaultFont;
-        txtSottotitolo.fontSize = 13;
+        txtSottotitolo.fontSize = 15;
         txtSottotitolo.alignment = TextAnchor.MiddleLeft;
         txtSottotitolo.color = new Color(0.5f, 0.85f, 0.85f);
 
@@ -463,7 +463,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         rtDiag.offsetMax = Vector2.zero;
         txtStatusDiagnostica = diagObj.AddComponent<Text>();
         txtStatusDiagnostica.font = defaultFont;
-        txtStatusDiagnostica.fontSize = 12;
+        txtStatusDiagnostica.fontSize = 14;
         txtStatusDiagnostica.color = new Color(0.3f, 0.8f, 0.75f);
         txtStatusDiagnostica.alignment = TextAnchor.MiddleLeft;
 
@@ -473,7 +473,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         RectTransform rtHoloClose = btnHoloCloseObj.AddComponent<RectTransform>();
         rtHoloClose.anchorMin = new Vector2(1, 0.5f);
         rtHoloClose.anchorMax = new Vector2(1, 0.5f);
-        rtHoloClose.sizeDelta = new Vector2(220, 42);
+        rtHoloClose.sizeDelta = new Vector2(240, 44);
         rtHoloClose.anchoredPosition = new Vector2(-20, 0);
 
         Image imgBtnHolo = btnHoloCloseObj.AddComponent<Image>();
@@ -490,7 +490,7 @@ public class DatapadOlogrammaUI : MonoBehaviour
         Text txtBtn = txtBtnObj.AddComponent<Text>();
         txtBtn.font = defaultFont;
         txtBtn.text = "[✕] CHIUDI HOLOPAD (ESC)";
-        txtBtn.fontSize = 14;
+        txtBtn.fontSize = 15;
         txtBtn.fontStyle = FontStyle.Bold;
         txtBtn.color = Color.white;
         txtBtn.alignment = TextAnchor.MiddleCenter;

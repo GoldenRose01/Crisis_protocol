@@ -107,19 +107,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             }
         }
 
-        GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);
-        if (playerObj != null)
-        {
-            playerTransform = playerObj.transform;
-            playerScript = playerObj.GetComponent<muve_pg>();
-            
-            // CORREZIONE 1: Ricerca estesa per IDamageable
-            playerDamageable = playerObj.GetComponentInChildren<IDamageable>();
-            if (playerDamageable == null)
-            {
-                playerDamageable = playerObj.GetComponentInParent<IDamageable>();
-            }
-        }
+        TrovaRiferimentoPlayer();
 
         if (eStatica)
         {
@@ -190,6 +178,11 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             return;
 
         if (statoAttuale == StatoGuardia.Morta) return;
+
+        if (playerTransform == null || playerDamageable == null)
+        {
+            TrovaRiferimentoPlayer();
+        }
 
         RilevaGiocatore();
         EseguiComportamento();
@@ -407,45 +400,10 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         }
         else
         {
-            Vector3 direzioneAlPlayer = (playerTransform.position - transform.position).normalized;
-            direzioneAlPlayer.y = 0;
-
-            if (distanzaDalGiocatore > distanzaArresto)
-            {
-                bool ostacoloDavanti = false;
-                RaycastHit hit;
-                Vector3 origineRaggio = transform.position + Vector3.up * 1f;
-
-                int mask = (layerOstacoli.value != 0) ? layerOstacoli.value : ~LayerMask.GetMask("Ignore Raycast", SectorContainmentTags.Player, SectorContainmentTags.Enemy);
-
-                if (Physics.Raycast(origineRaggio, direzioneAlPlayer, out hit, 1.5f, mask))
-                {
-                    ostacoloDavanti = true;
-                }
-
-                if (!ostacoloDavanti)
-                {
-                    Vector3 targetPos = playerTransform.position;
-                    targetPos.y = transform.position.y;
-                    transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
-                }
-                else
-                {
-                    Vector3 direzioneScivolamentoDestra = Vector3.Cross(direzioneAlPlayer, Vector3.up).normalized;
-                    if (!Physics.Raycast(origineRaggio, direzioneScivolamentoDestra, 1.5f, mask))
-                    {
-                        Vector3 targetPos = transform.position + direzioneScivolamentoDestra * (velocitaInseguimento * 0.7f * Time.deltaTime);
-                        targetPos.y = transform.position.y;
-                        transform.position = targetPos;
-                    }
-                    else if (!Physics.Raycast(origineRaggio, -direzioneScivolamentoDestra, 1.5f, mask))
-                    {
-                        Vector3 targetPos = transform.position - direzioneScivolamentoDestra * (velocitaInseguimento * 0.7f * Time.deltaTime);
-                        targetPos.y = transform.position.y;
-                        transform.position = targetPos;
-                    }
-                }
-            }
+            // Fallback diretto senza NavMesh: muoviti costantemente verso la posizione del giocatore
+            Vector3 targetPos = playerTransform.position;
+            targetPos.y = transform.position.y;
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
             RotazioneFluida(playerTransform.position);
         }
 
@@ -498,9 +456,57 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         }
     }
 
-    // CORREZIONE 3: Debug inserito per validare la presenza dell'interfaccia
+    private void TrovaRiferimentoPlayer(Transform specifico = null)
+    {
+        if (specifico != null)
+        {
+            playerTransform = specifico;
+            playerScript = specifico.GetComponent<muve_pg>() ?? specifico.GetComponentInParent<muve_pg>() ?? specifico.GetComponentInChildren<muve_pg>();
+            playerDamageable = specifico.GetComponent<IDamageable>() ?? specifico.GetComponentInParent<IDamageable>() ?? specifico.GetComponentInChildren<IDamageable>();
+            if (playerDamageable != null) return;
+        }
+
+        // 1. Ricerca tramite Tag Player
+        GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);
+        if (playerObj != null)
+        {
+            if (playerTransform == null) playerTransform = playerObj.transform;
+            if (playerScript == null) playerScript = playerObj.GetComponent<muve_pg>() ?? playerObj.GetComponentInParent<muve_pg>() ?? playerObj.GetComponentInChildren<muve_pg>();
+            if (playerDamageable == null) playerDamageable = playerObj.GetComponent<IDamageable>() ?? playerObj.GetComponentInParent<IDamageable>() ?? playerObj.GetComponentInChildren<IDamageable>();
+        }
+
+        // 2. Fallback diretto tramite SalutePlayer nella scena
+        if (playerDamageable == null)
+        {
+            SalutePlayer salute = Object.FindAnyObjectByType<SalutePlayer>();
+            if (salute != null)
+            {
+                playerDamageable = salute;
+                if (playerTransform == null) playerTransform = salute.transform;
+                if (playerScript == null) playerScript = salute.GetComponent<muve_pg>() ?? salute.GetComponentInParent<muve_pg>() ?? salute.GetComponentInChildren<muve_pg>();
+            }
+        }
+
+        // 3. Fallback tramite muve_pg
+        if (playerTransform == null)
+        {
+            muve_pg muve = Object.FindAnyObjectByType<muve_pg>();
+            if (muve != null)
+            {
+                playerTransform = muve.transform;
+                playerScript = muve;
+                if (playerDamageable == null) playerDamageable = muve.GetComponent<IDamageable>() ?? muve.GetComponentInParent<IDamageable>() ?? muve.GetComponentInChildren<IDamageable>();
+            }
+        }
+    }
+
     private void AttaccaPlayer()
     {
+        if (playerDamageable == null)
+        {
+            TrovaRiferimentoPlayer(playerTransform);
+        }
+
         if (playerDamageable != null)
         {
             Debug.Log($"<color=red>[GUARDIA] Attacco diretto! Infligge {dannoAttacco} HP di danno al giocatore.</color>");
@@ -521,9 +527,44 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         }
     }
 
+    private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
+    {
+        Vector3 direction = (playerChest - eyeOrigin);
+        float distance = direction.magnitude;
+        if (distance > maxDistance || distance < 0.01f) return distance <= maxDistance;
+        direction.Normalize();
+
+        RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, direction, distance, ~0, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone))
+                continue;
+
+            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player))
+                return true;
+
+            if (hit.collider.isTrigger)
+                continue;
+
+            if (hit.distance >= distance - 0.3f)
+                return true;
+
+            // Muro/ostacolo che blocca la linea di vista
+            return false;
+        }
+
+        return true;
+    }
+
     private void RilevaGiocatore()
     {
-        if (playerTransform == null) return;
+        if (playerTransform == null)
+        {
+            TrovaRiferimentoPlayer();
+            if (playerTransform == null) return;
+        }
 
         // Se l'emergenza è rientrata e le guardie sono state pacificate, non rilevano né attaccano
         if (disattivaOstilitAFineEmergenza && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
@@ -540,7 +581,23 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             return;
         }
 
+        Vector3 eyeOrigin = transform.position + Vector3.up * 1.5f;
+        Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f;
         float distanza = Vector3.Distance(transform.position, playerTransform.position);
+
+        // Se il giocatore è vicinissimo (entro 3 metri), ingaggia automaticamente
+        if (distanza <= 3.0f)
+        {
+            if (statoAttuale != StatoGuardia.Inseguimento)
+            {
+                statoAttuale = StatoGuardia.Inseguimento;
+                Debug.Log("<color=red>[GUARDIA] Bersaglio individuato a distanza ravvicinata! Stato: Inseguimento.</color>");
+                if (MissionManager.Instance != null)
+                    MissionManager.Instance.RegistraRilevamento(gameObject.name);
+                AllertaGuardieVicine();
+            }
+            return;
+        }
 
         if (playerScript != null)
         {
@@ -563,12 +620,13 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
         if (distanza <= raggioVisione)
         {
-            Vector3 direzioneVersoPlayer = (playerTransform.position - transform.position).normalized;
-            float angoloFrontale = Vector3.Angle(transform.forward, direzioneVersoPlayer);
+            Vector3 dirXZ = (playerTransform.position - transform.position);
+            dirXZ.y = 0;
+            float angoloFrontale = Vector3.Angle(transform.forward, dirXZ.normalized);
 
-            if (angoloFrontale < angoloVisione / 2f)
+            if (angoloFrontale < (angoloVisione / 2f) + 5f)
             {
-                if (!Physics.Raycast(transform.position + Vector3.up * 1.5f, direzioneVersoPlayer, out RaycastHit hit, distanza, layerOstacoli))
+                if (HaLineaDiVistaLibera(eyeOrigin, playerChest, distanza))
                 {
                     if (statoAttuale != StatoGuardia.Inseguimento)
                     {
@@ -581,15 +639,9 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
                     return;
                 }
             }
-            
-            float angoloPosteriore = Vector3.Angle(-transform.forward, direzioneVersoPlayer);
-            if (angoloPosteriore < angoloPuntoCiecoStealth / 2f)
-            {
-                return;
-            }
         }
         
-        if (distanza > raggioVisione + 4f && statoAttuale == StatoGuardia.Inseguimento)
+        if (distanza > raggioVisione + 6f && statoAttuale == StatoGuardia.Inseguimento)
         {
             statoAttuale = StatoGuardia.RitornoAllaBase;
             allarmeLanciato = false;
@@ -626,7 +678,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         if (statoAttuale == StatoGuardia.Morta) return;
 
         statoAttuale = StatoGuardia.Inseguimento;
-        playerTransform = targetPlayer;
+        TrovaRiferimentoPlayer(targetPlayer);
         allarmeLanciato = true; 
 
         Debug.Log($"<color=red><b>[RINFORZI]</b> {gameObject.name} ha ricevuto l'allarme radio di combattimento! Corre in supporto!</color>");

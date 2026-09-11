@@ -82,12 +82,21 @@ public class SceneDoctor : EditorWindow
 
         foreach (GameObject go in allObjects)
         {
-            // Salta entità dinamiche come Player, Bot, Drone, Luci, Telecamere
+            // Salta entità dinamiche come Player, Guardie, Bot, Droni, Luci, Telecamere, Hotspot e Card
             if (go.GetComponent<NavMeshAgent>() != null || 
                 go.GetComponent<muve_pg>() != null || 
+                go.GetComponent<SalutePlayer>() != null ||
+                go.GetComponent<GuardiaNpc>() != null ||
+                go.GetComponent<DroneRonda>() != null ||
                 go.GetComponent<ManutenzioneBot>() != null ||
+                go.GetComponent<AccessCredentialPickup>() != null ||
+                go.GetComponent<EmergencyHotspot>() != null ||
                 go.GetComponent<Camera>() != null ||
-                go.GetComponent<Light>() != null)
+                go.GetComponent<Light>() != null ||
+                go.CompareTag(SectorContainmentTags.Player) ||
+                go.CompareTag(SectorContainmentTags.Enemy) ||
+                go.CompareTag(SectorContainmentTags.Drone) ||
+                go.CompareTag(SectorContainmentTags.AccessCredential))
             {
                 continue;
             }
@@ -325,6 +334,25 @@ public class SceneDoctor : EditorWindow
         EditorUtility.DisplayDialog(
             "Calibrazione Perdite Chimiche",
             $"Completato con successo!\n\n- Focolai di emergenza configurati: {calibratedCount}\n- Emettitori calibrati su Perdita Chimica Verde Fluorescente: {psCount}\n\nLe perdite hanno ora il colore Verde Neon Radioattivo, gocciolano verticalmente verso il basso senza spruzzi e si spengono all'istante quando contieni il focolaio!",
+            "OK"
+        );
+    }
+
+    [MenuItem("Tools/Genera CyberHUD Visore Robot nella Scena")]
+    public static void GeneraCyberHUD()
+    {
+        CyberHUD hud = Object.FindAnyObjectByType<CyberHUD>();
+        if (hud == null)
+        {
+            GameObject go = new GameObject("CyberHUD_System");
+            hud = go.AddComponent<CyberHUD>();
+            Undo.RegisterCreatedObjectUndo(go, "Genera CyberHUD");
+            Debug.Log("<color=lime>[CyberHUD]</color> Generato con successo nella scena!");
+        }
+
+        EditorUtility.DisplayDialog(
+            "CyberHUD",
+            "CyberHUD Visore Robot configurato con successo!\n\n- Barra Vita LCD a celle (Stato di Carica verde)\n- Mirino Visore Robotico con Lock-On dinamico\n- Prompt di prossimità [E] trasparente con contorni verde neon\n- Notifiche olografiche di raccolta Keycard",
             "OK"
         );
     }

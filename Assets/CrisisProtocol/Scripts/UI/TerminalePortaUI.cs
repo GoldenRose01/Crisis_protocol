@@ -557,7 +557,7 @@ public class TerminalePortaUI : MonoBehaviour
         rtStatus.anchoredPosition = new Vector2(0, -75);
         testoStatoMessaggio = statusObj.AddComponent<Text>();
         testoStatoMessaggio.font = testoTitoloTerminale.font;
-        testoStatoMessaggio.fontSize = 15;
+        testoStatoMessaggio.fontSize = 17;
         testoStatoMessaggio.alignment = TextAnchor.MiddleCenter;
         testoStatoMessaggio.horizontalOverflow = HorizontalWrapMode.Wrap;
         testoStatoMessaggio.verticalOverflow = VerticalWrapMode.Overflow;
@@ -684,7 +684,7 @@ public class TerminalePortaUI : MonoBehaviour
         rtIstr.anchoredPosition = new Vector2(0, -35);
         testoIstruzioniBypass = txtIstrObj.AddComponent<Text>();
         testoIstruzioniBypass.font = testoTitoloTerminale.font;
-        testoIstruzioniBypass.fontSize = 15;
+        testoIstruzioniBypass.fontSize = 17;
         testoIstruzioniBypass.alignment = TextAnchor.MiddleCenter;
         testoIstruzioniBypass.color = new Color(0.8f, 0.85f, 0.9f);
 

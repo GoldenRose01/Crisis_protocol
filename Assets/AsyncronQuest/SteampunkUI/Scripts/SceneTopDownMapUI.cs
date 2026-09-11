@@ -59,6 +59,7 @@ namespace AsyncronQuest.SteampunkUI
         private readonly List<Transform> cachedEnemies = new List<Transform>();
 
         private readonly List<Renderer> tempDisabledFloorRenderers = new List<Renderer>();
+        private readonly List<Light> tempDisabledLights = new List<Light>();
 
         private Font terminalFont;
         private float nextScanTime = 0f;
@@ -97,6 +98,7 @@ namespace AsyncronQuest.SteampunkUI
             Camera.onPreCull -= OnPreCullMapCamera;
             Camera.onPostRender -= OnPostRenderMapCamera;
             RestoreFloorRenderers();
+            RestoreLights();
 
             if (mapCamera)
                 mapCamera.enabled = false;
@@ -109,6 +111,7 @@ namespace AsyncronQuest.SteampunkUI
             Camera.onPreCull -= OnPreCullMapCamera;
             Camera.onPostRender -= OnPostRenderMapCamera;
             RestoreFloorRenderers();
+            RestoreLights();
 
             if (mapCamera)
                 Destroy(mapCamera.gameObject);
@@ -264,6 +267,7 @@ namespace AsyncronQuest.SteampunkUI
         {
             if (cam != mapCamera) return;
 
+            // 1. Disabilita temporaneamente i pavimenti per evidenziare solo i muri perimetrali
             tempDisabledFloorRenderers.Clear();
             Renderer[] allRenderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
             foreach (Renderer r in allRenderers)
@@ -287,12 +291,25 @@ namespace AsyncronQuest.SteampunkUI
                     tempDisabledFloorRenderers.Add(r);
                 }
             }
+
+            // 2. Disabilita temporaneamente tutte le luci della scena per eliminare aloni/cerchi luminosi
+            tempDisabledLights.Clear();
+            Light[] allLights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+            foreach (Light l in allLights)
+            {
+                if (l != null && l.enabled)
+                {
+                    l.enabled = false;
+                    tempDisabledLights.Add(l);
+                }
+            }
         }
 
         private void OnPostRenderMapCamera(Camera cam)
         {
             if (cam != mapCamera) return;
             RestoreFloorRenderers();
+            RestoreLights();
         }
 
         private void RestoreFloorRenderers()
@@ -303,6 +320,16 @@ namespace AsyncronQuest.SteampunkUI
                     tempDisabledFloorRenderers[i].enabled = true;
             }
             tempDisabledFloorRenderers.Clear();
+        }
+
+        private void RestoreLights()
+        {
+            for (int i = 0; i < tempDisabledLights.Count; i++)
+            {
+                if (tempDisabledLights[i] != null)
+                    tempDisabledLights[i].enabled = true;
+            }
+            tempDisabledLights.Clear();
         }
 
         private void CreateCamera()
@@ -365,7 +392,7 @@ namespace AsyncronQuest.SteampunkUI
             playerMarkerObj = new GameObject("PlayerMarker", typeof(RectTransform));
             playerMarkerObj.transform.SetParent(overlayContainer, false);
             playerMarkerRect = playerMarkerObj.GetComponent<RectTransform>();
-            playerMarkerRect.sizeDelta = new Vector2(28, 28);
+            playerMarkerRect.sizeDelta = new Vector2(44, 44);
 
             // Alone Ciano
             GameObject haloObj = new GameObject("Halo", typeof(RectTransform), typeof(Image));
@@ -373,18 +400,18 @@ namespace AsyncronQuest.SteampunkUI
             RectTransform rtHalo = haloObj.GetComponent<RectTransform>();
             rtHalo.anchorMin = Vector2.zero;
             rtHalo.anchorMax = Vector2.one;
-            rtHalo.offsetMin = Vector2.zero;
-            rtHalo.offsetMax = Vector2.zero;
+            rtHalo.offsetMin = new Vector2(-12, -12);
+            rtHalo.offsetMax = new Vector2(12, 12);
             Image imgHalo = haloObj.GetComponent<Image>();
             imgHalo.sprite = GetGlowCircleSprite();
             imgHalo.color = new Color(0.0f, 0.95f, 1f, 0.55f);
             imgHalo.raycastTarget = false;
 
-            // Freccia Direzionale Ciano
+            // Freccia Direzionale Ciano Ingrandita
             GameObject arrowObj = new GameObject("Arrow", typeof(RectTransform), typeof(Image));
             arrowObj.transform.SetParent(playerMarkerObj.transform, false);
             RectTransform rtArrow = arrowObj.GetComponent<RectTransform>();
-            rtArrow.sizeDelta = new Vector2(16, 16);
+            rtArrow.sizeDelta = new Vector2(26, 26);
             rtArrow.anchoredPosition = Vector2.zero;
             playerArrowImg = arrowObj.GetComponent<Image>();
             playerArrowImg.sprite = GetArrowSprite();
@@ -400,11 +427,11 @@ namespace AsyncronQuest.SteampunkUI
             hudHeader.anchorMin = new Vector2(0f, 1f);
             hudHeader.anchorMax = new Vector2(1f, 1f);
             hudHeader.pivot = new Vector2(0.5f, 1f);
-            hudHeader.sizeDelta = new Vector2(0f, 26f);
+            hudHeader.sizeDelta = new Vector2(0f, 36f);
             hudHeader.anchoredPosition = new Vector2(0f, -4f);
 
             Image imgBg = headerObj.GetComponent<Image>();
-            imgBg.color = new Color(0.015f, 0.05f, 0.035f, 0.90f);
+            imgBg.color = new Color(0.015f, 0.05f, 0.035f, 0.92f);
             imgBg.raycastTarget = false;
 
             GameObject txtObj = new GameObject("LegendText", typeof(RectTransform), typeof(Text));
@@ -417,11 +444,11 @@ namespace AsyncronQuest.SteampunkUI
 
             txtLegend = txtObj.GetComponent<Text>();
             txtLegend.font = terminalFont;
-            txtLegend.fontSize = 11;
+            txtLegend.fontSize = 15;
             txtLegend.fontStyle = FontStyle.Bold;
             txtLegend.alignment = TextAnchor.MiddleCenter;
             txtLegend.color = new Color(0.85f, 1f, 0.9f);
-            txtLegend.text = "◆ RADAR: [━ VERDE: MURI]  [● GIALLO: INTERAZIONI]  [▲ ROSSO: NEMICI]  [▲ CIANO: PLAYER] ◆";
+            txtLegend.text = "◆ MAPPA TATTICA: [━ VERDE: MURI]  [● GIALLO: INTERAZIONI]  [▲ ROSSO: NEMICI]  [▲ CIANO: PLAYER] ◆";
             txtLegend.raycastTarget = false;
         }
 
@@ -654,7 +681,7 @@ namespace AsyncronQuest.SteampunkUI
             GameObject root = new GameObject("InteractableMarker", typeof(RectTransform));
             root.transform.SetParent(overlayContainer, false);
             RectTransform rect = root.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(24, 24);
+            rect.sizeDelta = new Vector2(38, 38);
 
             // Alone Giallo Soft
             GameObject haloObj = new GameObject("Halo", typeof(RectTransform), typeof(Image));
@@ -662,34 +689,34 @@ namespace AsyncronQuest.SteampunkUI
             RectTransform rtHalo = haloObj.GetComponent<RectTransform>();
             rtHalo.anchorMin = Vector2.zero;
             rtHalo.anchorMax = Vector2.one;
-            rtHalo.offsetMin = new Vector2(-6, -6);
-            rtHalo.offsetMax = new Vector2(6, 6);
+            rtHalo.offsetMin = new Vector2(-12, -12);
+            rtHalo.offsetMax = new Vector2(12, 12);
             Image imgHalo = haloObj.GetComponent<Image>();
             imgHalo.sprite = GetGlowCircleSprite();
             imgHalo.color = new Color(1f, 0.92f, 0.15f, 0.45f);
             imgHalo.raycastTarget = false;
 
-            // Punto Centrale Giallo Solido
+            // Punto Centrale Giallo Solido (Ingrandito)
             GameObject coreObj = new GameObject("Core", typeof(RectTransform), typeof(Image));
             coreObj.transform.SetParent(root.transform, false);
             RectTransform rtCore = coreObj.GetComponent<RectTransform>();
-            rtCore.sizeDelta = new Vector2(8, 8);
+            rtCore.sizeDelta = new Vector2(16, 16);
             rtCore.anchoredPosition = Vector2.zero;
             Image imgCore = coreObj.GetComponent<Image>();
             imgCore.sprite = GetSolidCircleSprite();
             imgCore.color = new Color(1f, 1f, 0.4f, 1f);
             imgCore.raycastTarget = false;
 
-            // Targhetta Nome Terminale
+            // Targhetta Nome Terminale (Ingrandita con Font ad Alta Leggibilità)
             GameObject labelBox = new GameObject("LabelBox", typeof(RectTransform), typeof(Image));
             labelBox.transform.SetParent(root.transform, false);
             RectTransform rtLabelBox = labelBox.GetComponent<RectTransform>();
             rtLabelBox.pivot = new Vector2(0.5f, 0f);
-            rtLabelBox.anchoredPosition = new Vector2(0, 14f);
-            rtLabelBox.sizeDelta = new Vector2(150, 18);
+            rtLabelBox.anchoredPosition = new Vector2(0, 22f);
+            rtLabelBox.sizeDelta = new Vector2(200, 26);
 
             Image imgBox = labelBox.GetComponent<Image>();
-            imgBox.color = new Color(0.01f, 0.05f, 0.03f, 0.88f);
+            imgBox.color = new Color(0.01f, 0.05f, 0.03f, 0.90f);
             imgBox.raycastTarget = false;
 
             GameObject txtObj = new GameObject("TxtName", typeof(RectTransform), typeof(Text));
@@ -697,12 +724,12 @@ namespace AsyncronQuest.SteampunkUI
             RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
             rtTxt.anchorMin = Vector2.zero;
             rtTxt.anchorMax = Vector2.one;
-            rtTxt.offsetMin = new Vector2(4, 0);
-            rtTxt.offsetMax = new Vector2(-4, 0);
+            rtTxt.offsetMin = new Vector2(6, 0);
+            rtTxt.offsetMax = new Vector2(-6, 0);
 
             Text txt = txtObj.GetComponent<Text>();
             txt.font = terminalFont;
-            txt.fontSize = 10;
+            txt.fontSize = 15;
             txt.fontStyle = FontStyle.Bold;
             txt.alignment = TextAnchor.MiddleCenter;
             txt.color = new Color(1f, 0.95f, 0.3f, 1f);
@@ -713,7 +740,7 @@ namespace AsyncronQuest.SteampunkUI
             csf.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             HorizontalLayoutGroup hlg = labelBox.AddComponent<HorizontalLayoutGroup>();
-            hlg.padding = new RectOffset(6, 6, 2, 2);
+            hlg.padding = new RectOffset(8, 8, 3, 3);
             hlg.childControlWidth = true;
             hlg.childControlHeight = true;
 
@@ -745,7 +772,7 @@ namespace AsyncronQuest.SteampunkUI
             GameObject root = new GameObject("EnemyMarker", typeof(RectTransform));
             root.transform.SetParent(overlayContainer, false);
             RectTransform rect = root.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(22, 22);
+            rect.sizeDelta = new Vector2(38, 38);
 
             // Alone Rosso Soft
             GameObject haloObj = new GameObject("Halo", typeof(RectTransform), typeof(Image));
@@ -753,18 +780,18 @@ namespace AsyncronQuest.SteampunkUI
             RectTransform rtHalo = haloObj.GetComponent<RectTransform>();
             rtHalo.anchorMin = Vector2.zero;
             rtHalo.anchorMax = Vector2.one;
-            rtHalo.offsetMin = new Vector2(-5, -5);
-            rtHalo.offsetMax = new Vector2(5, 5);
+            rtHalo.offsetMin = new Vector2(-10, -10);
+            rtHalo.offsetMax = new Vector2(10, 10);
             Image imgHalo = haloObj.GetComponent<Image>();
             imgHalo.sprite = GetGlowCircleSprite();
             imgHalo.color = new Color(1f, 0.15f, 0.2f, 0.45f);
             imgHalo.raycastTarget = false;
 
-            // Freccia Direzionale Rossa
+            // Freccia Direzionale Rossa (Triangolo Rosso Ingrandito)
             GameObject arrowObj = new GameObject("Arrow", typeof(RectTransform), typeof(Image));
             arrowObj.transform.SetParent(root.transform, false);
             RectTransform rtArrow = arrowObj.GetComponent<RectTransform>();
-            rtArrow.sizeDelta = new Vector2(13, 13);
+            rtArrow.sizeDelta = new Vector2(24, 24);
             rtArrow.anchoredPosition = Vector2.zero;
             Image imgArrow = arrowObj.GetComponent<Image>();
             imgArrow.sprite = GetArrowSprite();

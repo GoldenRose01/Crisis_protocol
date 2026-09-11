@@ -359,8 +359,8 @@ namespace AsyncronQuest.SteampunkUI
             rtActions.sizeDelta = new Vector2(650f, 60f);
             rtActions.anchoredPosition = new Vector2(0f, 20f);
 
-            resumeButtonRect = AddNeonButton("Btn_Resume", "[ ⏵ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-155f, 22f), new Vector2(270f, 40f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>();
-            exitButtonRect = AddNeonButton("Btn_Exit", "[ ✕ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(155f, 22f), new Vector2(270f, 40f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>();
+            resumeButtonRect = AddNeonButton("Btn_Resume", "[ ⏵ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-160f, 22f), new Vector2(290f, 46f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>();
+            exitButtonRect = AddNeonButton("Btn_Exit", "[ ✕ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(160f, 22f), new Vector2(290f, 46f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>();
 
             menuGroup = canvas.gameObject.AddComponent<CanvasGroup>();
         }
@@ -430,7 +430,7 @@ namespace AsyncronQuest.SteampunkUI
             Text txt = txtObj.GetComponent<Text>();
             txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
             txt.text = label;
-            txt.fontSize = 15;
+            txt.fontSize = 17;
             txt.fontStyle = FontStyle.Bold;
             txt.alignment = TextAnchor.MiddleCenter;
             txt.color = neonColor;

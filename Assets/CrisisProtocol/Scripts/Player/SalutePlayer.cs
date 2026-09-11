@@ -22,11 +22,19 @@ public class SalutePlayer : MonoBehaviour, IDamageable
     public static event Action<float, float> OnSaluteCambiata;
     public static event Action OnPlayerMorto;
 
-    private void Start()
+    private void Awake()
     {
         ApplicaTagUnity();
         puntiVitaCorrenti = puntiVitaMassimi;
-        scriptMovimento = GetComponent<muve_pg>();
+    }
+
+    private void Start()
+    {
+        ApplicaTagUnity();
+        if (puntiVitaCorrenti <= 0)
+            puntiVitaCorrenti = puntiVitaMassimi;
+            
+        scriptMovimento = GetComponent<muve_pg>() ?? GetComponentInParent<muve_pg>() ?? GetComponentInChildren<muve_pg>();
         rb = GetComponent<Rigidbody>();
 
         OnSaluteCambiata?.Invoke(puntiVitaCorrenti, puntiVitaMassimi);
