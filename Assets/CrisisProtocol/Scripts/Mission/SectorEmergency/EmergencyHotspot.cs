@@ -26,6 +26,16 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
 
     [SerializeField] private GameObject containedStateObject;
 
+    [Header("Audio 3D")]
+    [Tooltip("Suono continuo del guasto attivo (perdita chimica, fischio gas, ronzio elettrico).")]
+    [SerializeField] private AudioClip suonoLoopGuasto;
+
+    [Tooltip("Suono di avvenuto contenimento / riparazione del focolaio.")]
+    [SerializeField] private AudioClip suonoRiparazione;
+
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.8f;
+
+    private AudioSource loopAudioSource;
     private Renderer targetRenderer;
     private bool contenuto;
 
@@ -111,10 +121,11 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         if (containedStateObject != null)
             containedStateObject.SetActive(false);
 
-        // Se non ancora contenuto, avvia tutte le perdite di gocce/scintille
+        // Se non ancora contenuto, avvia tutte le perdite di gocce/scintille e audio 3D
         if (!contenuto)
         {
             AvviaTutteLeParticelleGuasto();
+            AvviaAudioGuasto();
         }
     }
 
@@ -322,10 +333,58 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         Debug.Log($"<color=cyan>[HOTSPOT]</color> Gocce e particelle guasto calibrate e avviate per <b>{name}</b>!");
     }
 
+    private void InizializzaAudio()
+    {
+        if (loopAudioSource == null)
+            loopAudioSource = GetComponent<AudioSource>();
+
+        if (loopAudioSource == null)
+        {
+            loopAudioSource = gameObject.AddComponent<AudioSource>();
+            loopAudioSource.playOnAwake = false;
+            loopAudioSource.spatialBlend = 1.0f; // 3D
+            loopAudioSource.loop = true;
+            loopAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            loopAudioSource.minDistance = 2.0f;
+            loopAudioSource.maxDistance = 16.0f;
+            loopAudioSource.dopplerLevel = 0f;
+        }
+    }
+
+    public void AvviaAudioGuasto()
+    {
+        if (suonoLoopGuasto == null) return;
+        InizializzaAudio();
+        if (loopAudioSource != null)
+        {
+            loopAudioSource.clip = suonoLoopGuasto;
+            loopAudioSource.volume = volumeAudio;
+            loopAudioSource.loop = true;
+            if (!loopAudioSource.isPlaying)
+                loopAudioSource.Play();
+        }
+    }
+
+    public void FermaAudioGuasto()
+    {
+        if (loopAudioSource != null && loopAudioSource.isPlaying)
+        {
+            loopAudioSource.Stop();
+        }
+
+        if (suonoRiparazione != null)
+        {
+            AudioSource.PlayClipAtPoint(suonoRiparazione, transform.position, volumeAudio);
+        }
+    }
+
     private void ApplicaRisoluzioneGrafica()
     {
         if (targetRenderer != null)
             targetRenderer.material.color = containedColor;
+
+        // Spegni l'audio del guasto e riproduci il suono di successo
+        FermaAudioGuasto();
 
         // Spegni le gocce e le scintille del guasto
         if (particelleGuasto != null)

@@ -7,8 +7,11 @@ public class AttaccoPlayer : MonoBehaviour
     [Header("Configurazione Attacco")]
     public float dannoAttaccoFrontale = 25f;
     public float raggioAttacco = 1.8f;
-    public float cadenzaAttacco = 0.6f;
+    public float cadenzaAttacco = 0.75f;
+    [Tooltip("Secondi di attesa dall'avvio dell'animazione per applicare il danno al termine dello swing/colpo.")]
+    public float ritardoDannoFineAnimazione = 0.45f;
     private float timerProssimoAttacco = 0f;
+    private Coroutine coroutineAttacco;
 
     [Header("Rilevamento Bersagli")]
     public LayerMask layerNemici;
@@ -18,6 +21,58 @@ public class AttaccoPlayer : MonoBehaviour
     [Header("Integrazione Animatore")]
     public Animator animatorePersonaggio;
     public string triggerAttacco = "Attack";
+
+    [Header("Audio")]
+    [Tooltip("Suono di fendente / swoosh durante l'attacco melee.")]
+    [SerializeField] private AudioClip suonoAttacco;
+    [Tooltip("Suono di impatto quando si colpisce un bersaglio.")]
+    [SerializeField] private AudioClip suonoColpoASegno;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
+
+    private AudioSource audioSource;
+
+    private void Awake()
+    {
+        if (animatorePersonaggio == null)
+            animatorePersonaggio = GetComponentInChildren<Animator>();
+    }
+
+    private void OnDisable()
+    {
+        if (coroutineAttacco != null)
+        {
+            StopCoroutine(coroutineAttacco);
+            coroutineAttacco = null;
+        }
+    }
+
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 18.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.95f, 1.05f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
 
     void Update()
     {
@@ -43,49 +98,63 @@ public class AttaccoPlayer : MonoBehaviour
     private void EseguiColpoMischia()
     {
         timerProssimoAttacco = cadenzaAttacco;
+        RiproduciSuono(suonoAttacco);
 
         // Attiva il trigger d'attacco nell'animatore
         if (animatorePersonaggio != null)
         {
+            animatorePersonaggio.ResetTrigger(triggerAttacco);
             animatorePersonaggio.SetTrigger(triggerAttacco);
         }
+
+        Debug.Log("<color=cyan>[ATTACCO PLAYER] Animazione avviata! Danno programmato a fine colpo.</color>");
+
+        if (coroutineAttacco != null)
+            StopCoroutine(coroutineAttacco);
+
+        coroutineAttacco = StartCoroutine(EseguiDannoAlTermineAnimazione(ritardoDannoFineAnimazione));
+    }
+
+    private System.Collections.IEnumerator EseguiDannoAlTermineAnimazione(float ritardo)
+    {
+        yield return new WaitForSeconds(ritardo);
 
         // Calcola l'origine dell'attacco (frontale rispetto al giocatore se non è assegnato un punto preciso)
         Vector3 origineAttacco = puntoAttaccoMelee != null 
             ? puntoAttaccoMelee.position 
-            : transform.position + transform.forward * 1.0f + Vector3.up * 1.0f;
-
-        Debug.Log("<color=cyan>[ATTACCO] Sferrato colpo in mischia!</color>");
+            : transform.position + transform.forward * 1.1f + Vector3.up * 1.0f;
 
         // Rileva tutti i collider entro la sfera d'attacco che appartengono al layer dei nemici
         Collider[] colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco, layerNemici);
 
-        // FALLBACK DI SICUREZZA: Se non viene rilevato alcun nemico, eseguiamo una scansione globale senza filtro layer.
-        // Questo evita problemi se l'utente si è dimenticato di configurare correttamente i Layer nell'Inspector di Unity.
+        // FALLBACK DI SICUREZZA: Se non viene rilevato alcun nemico, scansione globale
         if (colpiti.Length == 0)
         {
             colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco);
         }
 
+        bool haColpitoBersaglio = false;
+
         foreach (Collider col in colpiti)
         {
-            // Evita di colpire se stessi o qualsiasi parte (ossa, figli, mesh) del proprio personaggio
             if (col.transform.root == transform.root) continue;
 
-            // Cerca se l'entità colpita o i suoi genitori implementano IDamageable (come la Guardia o un ostacolo)
-            IDamageable bersaglio = col.GetComponent<IDamageable>();
-            if (bersaglio == null)
-            {
-                bersaglio = col.GetComponentInParent<IDamageable>();
-            }
+            IDamageable bersaglio = col.GetComponent<IDamageable>() ?? col.GetComponentInParent<IDamageable>() ?? col.GetComponentInChildren<IDamageable>();
 
             if (bersaglio != null)
             {
-                // Se colpiamo una Guardia alle spalle, il Takedown furtivo avverrà automaticamente nel metodo SubisciDanno della guardia!
                 bersaglio.SubisciDanno(dannoAttaccoFrontale);
+                haColpitoBersaglio = true;
                 Debug.Log($"<b>[COMBAT]</b> Colpito con successo: {col.gameObject.name}! Inflitti {dannoAttaccoFrontale} HP di danno.");
             }
         }
+
+        if (haColpitoBersaglio)
+        {
+            RiproduciSuono(suonoColpoASegno);
+        }
+
+        coroutineAttacco = null;
     }
 
     private void OnDrawGizmosSelected()

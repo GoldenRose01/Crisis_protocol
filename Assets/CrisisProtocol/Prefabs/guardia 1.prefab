@@ -56,7 +56,7 @@ MonoBehaviour:
   - {fileID: 0}
   velocitaRonda: 2
   velocitaInseguimento: 4.5
-  distanzaArresto: 1.8
+  distanzaArresto: 1.2
   raggioVisione: 12
   angoloVisione: 90
   angoloPuntoCiecoStealth: 30

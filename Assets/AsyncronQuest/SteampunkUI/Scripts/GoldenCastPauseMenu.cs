@@ -322,24 +322,27 @@ namespace AsyncronQuest.SteampunkUI
                 frameBg.raycastTarget = false;
             }
 
-            // 3. Schermo Radar a Pieno Schermo (posizionato SOPRA la cornice nell'area centrale)
+          // 1. Create the map group under the canvas root
             RectTransform mapGroup = CreateRect("Fullscreen_Map_Group", canvasRoot);
-            Stretch(mapGroup);
 
-            // Maschera interna posizionata per riempire l'area del monitor con margini puliti
-            Image mapMaskImage = CreateImage("Map_Square_Mask", mapGroup, new Color(0.005f, 0.015f, 0.010f, 1f));
-            mapMaskImage.raycastTarget = false;
-            RectTransform maskRect = mapMaskImage.rectTransform;
-            Stretch(maskRect);
-            maskRect.offsetMin = new Vector2(140f, 85f);
-            maskRect.offsetMax = new Vector2(-140f, -85f);
-            mapMaskImage.type = Image.Type.Simple;
+            // 2. Set anchors to the center so it doesn't automatically stretch with the screen
+            mapGroup.anchorMin = new Vector2(0.5f, 0.5f);
+            mapGroup.anchorMax = new Vector2(0.5f, 0.5f);
+            mapGroup.pivot     = new Vector2(0.5f, 0.5f);
 
-            Mask mask = mapMaskImage.gameObject.AddComponent<Mask>();
-            mask.showMaskGraphic = false;
+            // 3. Define your own custom size (Width, Height)
+            mapGroup.sizeDelta = new Vector2(1650f, 900f); 
+
+            // 4. Set the position relative to the center (0,0 is dead center)
+            mapGroup.anchoredPosition = Vector2.zero;
+            // Contenitore posizionato per riempire l'area del monitor con margini puliti
+            RectTransform mapContainer = CreateRect("Map_Display_Container", mapGroup);
+            Stretch(mapContainer);
+            mapContainer.offsetMin = new Vector2(140f, 85f);
+            mapContainer.offsetMax = new Vector2(-140f, -85f);
 
             RawImage rawMap = new GameObject("Map_TopDown_RawImage", typeof(RectTransform), typeof(RawImage), typeof(SceneTopDownMapUI)).GetComponent<RawImage>();
-            rawMap.transform.SetParent(maskRect, false);
+            rawMap.transform.SetParent(mapContainer, false);
             rawMap.color = Color.white;
             rawMap.raycastTarget = false;
             Stretch(rawMap.rectTransform);
@@ -359,8 +362,8 @@ namespace AsyncronQuest.SteampunkUI
             rtActions.sizeDelta = new Vector2(650f, 60f);
             rtActions.anchoredPosition = new Vector2(0f, 20f);
 
-            resumeButtonRect = AddNeonButton("Btn_Resume", "[ ⏵ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-160f, 22f), new Vector2(290f, 46f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>();
-            exitButtonRect = AddNeonButton("Btn_Exit", "[ ✕ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(160f, 22f), new Vector2(290f, 46f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>();
+            resumeButtonRect = AddNeonButton("Btn_Resume", "[ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-160f, 22f), new Vector2(290f, 46f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>();
+            exitButtonRect = AddNeonButton("Btn_Exit", "[ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(160f, 22f), new Vector2(290f, 46f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>();
 
             menuGroup = canvas.gameObject.AddComponent<CanvasGroup>();
         }
@@ -399,7 +402,7 @@ namespace AsyncronQuest.SteampunkUI
             rect.sizeDelta = size;
 
             Image img = btnObj.GetComponent<Image>();
-            img.color = new Color(0.015f, 0.06f, 0.045f, 0.94f);
+            img.color = new Color(0.02f, 0.09f, 0.06f, 0.96f);
             img.raycastTarget = true;
 
             // Bordo neon
@@ -410,7 +413,7 @@ namespace AsyncronQuest.SteampunkUI
             rtBorder.offsetMin = new Vector2(-2, -2);
             rtBorder.offsetMax = new Vector2(2, 2);
             Image imgBorder = borderObj.GetComponent<Image>();
-            imgBorder.color = neonColor * 0.75f;
+            imgBorder.color = neonColor;
             imgBorder.raycastTarget = false;
             borderObj.transform.SetAsFirstSibling();
 
@@ -423,17 +426,17 @@ namespace AsyncronQuest.SteampunkUI
             button.colors = colors;
             button.onClick.AddListener(action);
 
-            GameObject txtObj = new GameObject("Text", typeof(RectTransform), typeof(Text));
+            GameObject txtObj = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
             txtObj.transform.SetParent(btnObj.transform, false);
             RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
             Stretch(rtTxt);
-            Text txt = txtObj.GetComponent<Text>();
-            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
-            txt.text = label;
-            txt.fontSize = 17;
-            txt.fontStyle = FontStyle.Bold;
-            txt.alignment = TextAnchor.MiddleCenter;
-            txt.color = neonColor;
+            TextMeshProUGUI txt = txtObj.GetComponent<TextMeshProUGUI>();
+            txt.color = Color.white;
+            txt.text = $"<b><color=#{ColorUtility.ToHtmlStringRGB(neonColor)}>{label}</color></b>";
+            txt.fontSize = 18f;
+            txt.fontStyle = FontStyles.Bold;
+            txt.alignment = TextAlignmentOptions.Center;
+            txt.enableWordWrapping = false;
             txt.raycastTarget = false;
 
             return button;

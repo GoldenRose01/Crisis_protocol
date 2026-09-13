@@ -11,9 +11,18 @@ public class QuarantineGate : MonoBehaviour, IInteractable
     [SerializeField] private GameObject lockedVisual;
     [SerializeField] private GameObject unlockedVisual;
 
+    [Header("Audio")]
+    [Tooltip("Suono di avvenuto sblocco a fine crisi.")]
+    [SerializeField] private AudioClip suonoSblocco;
+    [Tooltip("Suono di interazione / apertura porta di estrazione.")]
+    [SerializeField] private AudioClip suonoInterazione;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1.0f;
+
     [Header("Debug")]
     [Tooltip("Se attivo, il portellone è sempre sbloccato e attivo all'avvio senza richiedere il contenimento dei focolai.")]
     [SerializeField] private bool sbloccaSemprePerDebug = false;
+
+    private bool eraSbloccato = false;
 
     private void OnEnable()
     {
@@ -53,6 +62,11 @@ public class QuarantineGate : MonoBehaviour, IInteractable
             MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
         }
 
+        if (suonoInterazione != null)
+        {
+            AudioSource.PlayClipAtPoint(suonoInterazione, transform.position, volumeAudio);
+        }
+
         if (MissionManager.Instance == null)
         {
             Debug.LogWarning("[QUARANTENA] MissionManager assente: carico prossimo settore dal GameManager...", this);
@@ -66,6 +80,12 @@ public class QuarantineGate : MonoBehaviour, IInteractable
 
     public void AggiornaStatoVisivo(bool unlocked)
     {
+        if (unlocked && !eraSbloccato && suonoSblocco != null)
+        {
+            AudioSource.PlayClipAtPoint(suonoSblocco, transform.position, volumeAudio);
+        }
+        eraSbloccato = unlocked;
+
         if (statusLight != null)
             statusLight.color = unlocked ? unlockedColor : lockedColor;
 

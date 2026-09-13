@@ -2415,13 +2415,26 @@ MonoBehaviour:
   m_GameObject: {fileID: 6382084366600513720}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 677e87b0d1ff4ab4cb08d7652d5b6420, type: 3}
+  m_Script: {fileID: 11500000, guid: 71d58cabc6247f243b8f5413b7cd1db0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   statoAttuale: 0
   velocitaRicerca: 1.2
   velocitaInseguimento: 2.2
-  distanzaOttimaleTiro: 6.5
+  accelerazione: 2
+  velocitaRotazione: 120
+  distanzaAttacco: 1.9
+  raggioImpattoPugno: 2.4
+  ritardoImpattoPugno: 1
+  cadenzaAttacco: 2.2
+  usaDannoPercentuale: 1
+  percentualeDanno: 0.5
+  dannoAttaccoFisso: 50
+  distanzaOttimaleTiro: 1.9
+  dannoArma: 50
+  cadenzaDiFuoco: 2.2
+  pacificaAFineEmergenza: 1
+  spegniAFineEmergenza: 0
   raggioPattugliamento: 8
   tempoPausaMin: 2
   tempoPausaMax: 4
@@ -2432,12 +2445,19 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   puntoOcchi: {fileID: 459193606451660253}
-  dannoArma: 20
-  cadenzaDiFuoco: 0.8
   puntoDiFuoco: {fileID: 459193606451660253}
+  suonoMovimentoLoop: {fileID: 0}
+  suonoAvvistamento: {fileID: 0}
+  suonoAttacco: {fileID: 0}
+  suonoImpattoPugno: {fileID: 0}
+  suonoSparo: {fileID: 0}
+  suonoDanno: {fileID: 0}
+  suonoMorte: {fileID: 0}
+  volumeAudio: 0.85
   salute: 100
   tempoDistruzioneCorpo: 3
   triggerMorte: Death
+  triggerAttacco: Attack
   triggerSparo: Shoot
 --- !u!136 &5750860426182159388
 CapsuleCollider:

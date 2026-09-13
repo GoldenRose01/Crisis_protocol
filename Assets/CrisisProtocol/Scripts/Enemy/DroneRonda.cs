@@ -35,12 +35,84 @@ public class DroneRonda : MonoBehaviour
     public float cadenzaDiFuoco = 1.5f; 
     private float timerSparo = 0f;
 
+    [Header("Audio 3D")]
+    [Tooltip("Suono continuo del motore di volo/hover del drone.")]
+    [SerializeField] private AudioClip suonoHoverLoop;
+    [Tooltip("Suono di avvistamento / allarme.")]
+    [SerializeField] private AudioClip suonoAllarme;
+    [Tooltip("Suono di sparo laser/elettrico.")]
+    [SerializeField] private AudioClip suonoSparo;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.8f;
+
+    private AudioSource audioSource;
+    private AudioSource audioHoverSource;
+
     private Transform playerTransform;
     private IDamageable playerDamageable; 
     private bool playerGiaSegnalato;
+    private bool playerPrecedentementeInVista = false;
+
+    private void InizializzaAudio()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 16.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+
+        if (audioHoverSource == null)
+        {
+            Transform tHover = transform.Find("AudioHoverDrone");
+            if (tHover != null)
+            {
+                audioHoverSource = tHover.GetComponent<AudioSource>();
+            }
+            else
+            {
+                GameObject goHover = new GameObject("AudioHoverDrone");
+                goHover.transform.SetParent(transform, false);
+                audioHoverSource = goHover.AddComponent<AudioSource>();
+            }
+
+            audioHoverSource.playOnAwake = false;
+            audioHoverSource.spatialBlend = 1.0f;
+            audioHoverSource.loop = true;
+            audioHoverSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioHoverSource.minDistance = 1.5f;
+            audioHoverSource.maxDistance = 14.0f;
+            audioHoverSource.dopplerLevel = 0f;
+            audioHoverSource.volume = volumeAudio * 0.6f;
+            if (suonoHoverLoop != null)
+            {
+                audioHoverSource.clip = suonoHoverLoop;
+                if (!audioHoverSource.isPlaying)
+                    audioHoverSource.Play();
+            }
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudio();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.95f, 1.05f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
 
     void Start()
     {
+        InizializzaAudio();
         ApplicaTagUnity();
         if (luceDrone == null)
             luceDrone = GetComponentInChildren<Light>();
@@ -91,6 +163,8 @@ public class DroneRonda : MonoBehaviour
             if (spegniAFineEmergenza)
             {
                 if (luceDrone != null) luceDrone.enabled = false;
+                if (audioHoverSource != null && audioHoverSource.isPlaying)
+                    audioHoverSource.Stop();
                 return;
             }
 
@@ -110,6 +184,7 @@ public class DroneRonda : MonoBehaviour
         if (playerSottoTiro && !playerGiaSegnalato)
         {
             playerGiaSegnalato = true;
+            RiproduciSuono(suonoAllarme);
             Debug.Log("<color=red><b>[DRONE] BERSAGLIO AGGANCIATO NEL CONO OTTICO! ALLARME ROSSO ATTIVO!</b></color>");
             if (MissionManager.Instance != null)
                 MissionManager.Instance.RegistraRilevamento(gameObject.name);
@@ -244,6 +319,7 @@ public class DroneRonda : MonoBehaviour
     private void EseguiSparo()
     {
         Debug.Log("<color=red>[DRONE] Fuoco ingaggiato sul bersaglio!</color>");
+        RiproduciSuono(suonoSparo);
         
         if (playerDamageable == null)
         {

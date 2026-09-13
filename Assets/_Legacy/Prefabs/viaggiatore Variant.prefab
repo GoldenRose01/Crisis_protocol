@@ -384,8 +384,8 @@ PrefabInstance:
       value: 1.2
       objectReference: {fileID: 0}
     - target: {fileID: 6332973678533597517, guid: 4523aa92ca5818c408a875506f7c4e72, type: 3}
-      propertyPath: distanzaOttimaleTiro
-      value: 10.18
+      propertyPath: distanzaAttacco
+      value: 1.9
       objectReference: {fileID: 0}
     - target: {fileID: 6332973678533597517, guid: 4523aa92ca5818c408a875506f7c4e72, type: 3}
       propertyPath: layerOstacoli.m_Bits

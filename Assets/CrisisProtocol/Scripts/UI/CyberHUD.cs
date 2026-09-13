@@ -88,6 +88,20 @@ public class CyberHUD : MonoBehaviour
     private CanvasGroup damageFlashGroup;
     private Coroutine damageFlashCoroutine;
 
+    // 6. Cyber Countdown Timer Panel (In alto a destra)
+    [Header("Configurazione Countdown")]
+    public float durataCountdownIniziale = 300f; // 5 minuti di default (300 secondi)
+    private RectTransform timerContainer;
+    private Text testoTimerValore;
+    private Text testoTimerStatus;
+    private float tempoRimanenteCountdown = 300f;
+    private bool timerAttivo = true;
+
+    public float TempoRimanente => tempoRimanenteCountdown;
+    public void ImpostaCountdown(float secondi) { durataCountdownIniziale = secondi; tempoRimanenteCountdown = secondi; }
+    public void ResetCountdown() => tempoRimanenteCountdown = durataCountdownIniziale;
+    public void SetTimerAttivo(bool attivo) => timerAttivo = attivo;
+
     private void Awake()
     {
         if (instance != null && instance != this)
@@ -120,6 +134,8 @@ public class CyberHUD : MonoBehaviour
 
     public void InizializzaStatoIniziale()
     {
+        tempoRimanenteCountdown = durataCountdownIniziale;
+
         SalutePlayer p = Object.FindAnyObjectByType<SalutePlayer>();
         if (p != null)
         {
@@ -147,6 +163,72 @@ public class CyberHUD : MonoBehaviour
         {
             float pulse = 1f + Mathf.Sin(Time.unscaledTime * 8f) * 0.05f;
             visorReticleContainer.localScale = new Vector3(pulse, pulse, 1f);
+        }
+
+        // Aggiornamento Countdown a schermo LCD (Conteggio all'indietro)
+        if (timerAttivo && testoTimerValore != null)
+        {
+            tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime);
+            int minuti = (int)(tempoRimanenteCountdown / 60f);
+            int secondi = (int)(tempoRimanenteCountdown % 60f);
+            int decimi = (int)((tempoRimanenteCountdown * 10f) % 10f);
+
+            testoTimerValore.text = $"{minuti:D2}:{secondi:D2}.{decimi:D1}";
+
+            // Integrazione dinamica con lo stato di emergenza e countdown
+            if (tempoRimanenteCountdown <= 0f)
+            {
+                testoTimerValore.text = "00:00.0";
+                testoTimerValore.color = warningRed;
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL";
+                    testoTimerStatus.color = warningRed;
+                }
+            }
+            else if (tempoRimanenteCountdown <= 60f)
+            {
+                // Ultimo minuto: allarme rosso lampeggiante
+                float blink = Mathf.Sin(Time.unscaledTime * 10f);
+                testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.6f, 0.6f, 1f);
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "⚠️ T-MINUS CRITICAL // EVACUATE";
+                    testoTimerStatus.color = warningRed;
+                }
+            }
+            else if (MissionManager.Instance != null && testoTimerStatus != null)
+            {
+                float collasso = MissionManager.Instance.CollassoCorrente;
+                if (collasso > 75f)
+                {
+                    float blink = Mathf.Sin(Time.unscaledTime * 8f);
+                    testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.75f, 0.2f, 1f);
+                    testoTimerStatus.text = $"⚠️ COLLAPSE: {Mathf.CeilToInt(collasso)}% [CRITICAL]";
+                    testoTimerStatus.color = warningRed;
+                }
+                else if (collasso > 40f)
+                {
+                    testoTimerValore.color = new Color(1f, 0.75f, 0.2f, 1f);
+                    testoTimerStatus.text = $"SYS_ALERT: COLLAPSE {Mathf.CeilToInt(collasso)}%";
+                    testoTimerStatus.color = new Color(1f, 0.75f, 0.2f, 1f);
+                }
+                else
+                {
+                    testoTimerValore.color = neonGreen;
+                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]";
+                    testoTimerStatus.color = textCyan;
+                }
+            }
+            else
+            {
+                testoTimerValore.color = neonGreen;
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]";
+                    testoTimerStatus.color = textCyan;
+                }
+            }
         }
     }
 
@@ -191,7 +273,10 @@ public class CyberHUD : MonoBehaviour
         // 5. Banner Notifica Acquisizione Keycard (In alto al centro)
         CostruisciBannerNotifica(solidSprite, borderSprite, defaultFont);
 
-        // 6. Flash Visivo Impatto Danno Schermo
+        // 6. Cyber Mission Timer Panel (In alto a destra, coerente con lo stile neon del visore)
+        CostruisciTimerVisore(solidSprite, borderSprite, defaultFont);
+
+        // 7. Flash Visivo Impatto Danno Schermo
         CostruisciDamageFlash(solidSprite);
     }
 
@@ -518,6 +603,84 @@ public class CyberHUD : MonoBehaviour
         nsRT.pivot = new Vector2(0.5f, 0.5f);
         nsRT.anchoredPosition = new Vector2(0f, -15f);
         nsRT.sizeDelta = new Vector2(550f, 24f);
+    }
+
+    private void CostruisciTimerVisore(Sprite solid, Sprite border, Font font)
+    {
+        GameObject panelGO = new GameObject("CyberTimer_Panel");
+        panelGO.transform.SetParent(transform, false);
+        timerContainer = panelGO.AddComponent<RectTransform>();
+        timerContainer.anchorMin = new Vector2(1f, 1f);
+        timerContainer.anchorMax = new Vector2(1f, 1f);
+        timerContainer.pivot = new Vector2(1f, 1f);
+        timerContainer.anchoredPosition = new Vector2(-60f, -40f);
+        timerContainer.sizeDelta = new Vector2(250f, 92f);
+
+        // Sfondo dark glass con contorno verde/cianotico
+        Image bg = panelGO.AddComponent<Image>();
+        bg.sprite = border;
+        bg.type = Image.Type.Sliced;
+        bg.color = darkGlass;
+        bg.raycastTarget = false;
+
+        // Intestazione Timer LCD
+        GameObject labelGO = new GameObject("Timer_Label");
+        labelGO.transform.SetParent(timerContainer, false);
+        Text lbl = labelGO.AddComponent<Text>();
+        lbl.font = font;
+        lbl.fontSize = 14;
+        lbl.fontStyle = FontStyle.Bold;
+        lbl.alignment = TextAnchor.MiddleLeft;
+        lbl.text = "⏳ COUNTDOWN // T-MINUS";
+        lbl.color = textCyan;
+        lbl.horizontalOverflow = HorizontalWrapMode.Overflow;
+        lbl.raycastTarget = false;
+
+        RectTransform lblRT = labelGO.GetComponent<RectTransform>();
+        lblRT.anchorMin = new Vector2(0f, 1f);
+        lblRT.anchorMax = new Vector2(1f, 1f);
+        lblRT.pivot = new Vector2(0f, 1f);
+        lblRT.anchoredPosition = new Vector2(16f, -10f);
+        lblRT.sizeDelta = new Vector2(220f, 20f);
+
+        // Testo Digitale Orologio Timer (Grande Verde Neon)
+        GameObject valGO = new GameObject("Timer_Value");
+        valGO.transform.SetParent(timerContainer, false);
+        testoTimerValore = valGO.AddComponent<Text>();
+        testoTimerValore.font = font;
+        testoTimerValore.fontSize = 28;
+        testoTimerValore.fontStyle = FontStyle.Bold;
+        testoTimerValore.alignment = TextAnchor.MiddleLeft;
+        testoTimerValore.text = "00:00.0";
+        testoTimerValore.color = neonGreen;
+        testoTimerValore.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoTimerValore.raycastTarget = false;
+
+        RectTransform valRT = valGO.GetComponent<RectTransform>();
+        valRT.anchorMin = new Vector2(0f, 0.5f);
+        valRT.anchorMax = new Vector2(1f, 0.5f);
+        valRT.pivot = new Vector2(0f, 0.5f);
+        valRT.anchoredPosition = new Vector2(18f, -2f);
+        valRT.sizeDelta = new Vector2(220f, 32f);
+
+        // Sottotitolo / Status Timer
+        GameObject stGO = new GameObject("Timer_Status");
+        stGO.transform.SetParent(timerContainer, false);
+        testoTimerStatus = stGO.AddComponent<Text>();
+        testoTimerStatus.font = font;
+        testoTimerStatus.fontSize = 12;
+        testoTimerStatus.alignment = TextAnchor.MiddleLeft;
+        testoTimerStatus.text = "SYS_REC // SEC_02 [ACTIVE]";
+        testoTimerStatus.color = textCyan;
+        testoTimerStatus.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoTimerStatus.raycastTarget = false;
+
+        RectTransform stRT = stGO.GetComponent<RectTransform>();
+        stRT.anchorMin = new Vector2(0f, 0f);
+        stRT.anchorMax = new Vector2(1f, 0f);
+        stRT.pivot = new Vector2(0f, 0f);
+        stRT.anchoredPosition = new Vector2(18f, 10f);
+        stRT.sizeDelta = new Vector2(220f, 18f);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

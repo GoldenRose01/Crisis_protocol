@@ -22,6 +22,43 @@ public class SparoPlayer : MonoBehaviour
     public Camera telecameraPrincipale;
     public ParticleSystem particellareSparo;
     public static event Action<int, int> OnMunizioniCambiate;
+
+    [Header("Audio")]
+    [Tooltip("Suono di sparo dell'arma.")]
+    [SerializeField] private AudioClip suonoSparo;
+    [Tooltip("Suono di caricatore vuoto (clic a vuoto).")]
+    [SerializeField] private AudioClip suonoVuoto;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1.0f;
+
+    private AudioSource audioSource;
+
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 2.0f;
+            audioSource.maxDistance = 25.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = UnityEngine.Random.Range(0.96f, 1.04f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
     
     void Update()
     {
@@ -36,38 +73,41 @@ public class SparoPlayer : MonoBehaviour
     }
 
     void Start()
-{
-    proiettiliAttuali = proiettiliMassimi;
-    
-    if (telecameraPrincipale == null) 
     {
-        telecameraPrincipale = Camera.main;
-    }
-    
-    // Inizializza l'HUD all'avvio
-    OnMunizioniCambiate?.Invoke(proiettiliAttuali, proiettiliMassimi);
-}
-
-private void TentaSparo()
-{
-    if (proiettiliAttuali > 0)
-    {
-        proiettiliAttuali--;
-        Debug.Log($"<color=cyan>[ARMA] Colpo esploso! Munizioni rimanenti: {proiettiliAttuali}/{proiettiliMassimi}</color>");
+        InizializzaAudioSource();
+        proiettiliAttuali = proiettiliMassimi;
         
-        // Aggiorna l'HUD
+        if (telecameraPrincipale == null) 
+        {
+            telecameraPrincipale = Camera.main;
+        }
+        
+        // Inizializza l'HUD all'avvio
         OnMunizioniCambiate?.Invoke(proiettiliAttuali, proiettiliMassimi);
-        
-        if (particellareSparo != null) particellareSparo.Play();
+    }
 
-        CalcolaTraiettoria();
-        GeneraRumoreSparo();
-    }
-    else
+    private void TentaSparo()
     {
-        Debug.Log("<color=red>[ARMA] Clic! Caricatore vuoto. Ricarica necessaria.</color>");
+        if (proiettiliAttuali > 0)
+        {
+            proiettiliAttuali--;
+            RiproduciSuono(suonoSparo);
+            Debug.Log($"<color=cyan>[ARMA] Colpo esploso! Munizioni rimanenti: {proiettiliAttuali}/{proiettiliMassimi}</color>");
+            
+            // Aggiorna l'HUD
+            OnMunizioniCambiate?.Invoke(proiettiliAttuali, proiettiliMassimi);
+            
+            if (particellareSparo != null) particellareSparo.Play();
+
+            CalcolaTraiettoria();
+            GeneraRumoreSparo();
+        }
+        else
+        {
+            RiproduciSuono(suonoVuoto);
+            Debug.Log("<color=red>[ARMA] Clic! Caricatore vuoto. Ricarica necessaria.</color>");
+        }
     }
-}
 
     private void CalcolaTraiettoria()
     {

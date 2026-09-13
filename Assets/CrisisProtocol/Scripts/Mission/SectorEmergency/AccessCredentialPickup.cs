@@ -17,6 +17,11 @@ public class AccessCredentialPickup : MonoBehaviour, IInteractable
     [Header("Feedback")]
     [SerializeField] private bool disattivaDopoRaccolta = true;
 
+    [Header("Audio")]
+    [Tooltip("Suono di raccolta chiavi / credenziale.")]
+    [SerializeField] private AudioClip suonoRaccolta;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1.0f;
+
     private Light contourLight;
     private bool raccolta;
 
@@ -162,6 +167,11 @@ public class AccessCredentialPickup : MonoBehaviour, IInteractable
         raccolta = MissionManager.Instance.RegistraCredenziale(credentialId);
         if (!raccolta)
             return;
+
+        if (suonoRaccolta != null)
+        {
+            AudioSource.PlayClipAtPoint(suonoRaccolta, transform.position, volumeAudio);
+        }
 
         Debug.Log($"<color=cyan>[CREDENZIALE]</color> {DisplayName} acquisita: {credentialId}");
 

@@ -17,8 +17,8 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     public Transform[] waypointRonda;
     public float velocitaRonda = 2f;
     public float velocitaInseguimento = 4.5f;
-    [Tooltip("Distanza minima di arresto dal giocatore per evitare collisioni fisiche.")]
-    public float distanzaArresto = 1.8f;
+    [Tooltip("Distanza ravvicinata corpo a corpo per sferrare il pugno al giocatore.")]
+    public float distanzaArresto = 1.9f;
     private int indiceWaypointAttuale = 0;
 
     [Header("Comportamento Post-Emergenza (Fine Crisi)")]
@@ -53,12 +53,30 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     public float raggioScattoAllarme = 15f;
     private bool allarmeLanciato = false;
 
-    [Header("Statistiche e Combattimento")]
+    [Header("Statistiche e Combattimento (Corpo a Corpo / Pugno)")]
     public float saluteMassima = 100f;
     private float saluteCorrente;
     public float dannoAttacco = 25f;
-    public float cadenzaAttacco = 1.2f;
+    public float cadenzaAttacco = 1.3f;
     private float timerProssimoAttacco = 0f;
+
+    [Header("Sincronizzazione Impatto Pugno")]
+    [Tooltip("Ritardo in secondi dall'avvio dell'animazione al momento esatto in cui il colpo/pugno completa l'estensione e impatta sul bersaglio.")]
+    [SerializeField] public float ritardoImpattoPugno = 0.45f;
+    [Tooltip("Raggio di portata entro cui il pugno infligge danno all'impatto.")]
+    [SerializeField] private float raggioImpattoPugno = 2.4f;
+    private Coroutine coroutineAttacco;
+
+    [Header("Audio 3D")]
+    [SerializeField] private AudioClip suonoPassi;
+    [SerializeField] private AudioClip suonoCorsa;
+    [SerializeField] private AudioClip suonoAllarme;
+    [SerializeField] private AudioClip suonoAttacco;
+    [SerializeField] private AudioClip suonoDanno;
+    [SerializeField] private AudioClip suonoMorte;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
+    [SerializeField] private float intervalloPassiCamminata = 0.55f;
+    [SerializeField] private float intervalloPassiCorsa = 0.35f;
 
     [Header("Integrazione Animazioni")]
     public Animator animatore;
@@ -74,16 +92,86 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     private Transform playerTransform;
     private muve_pg playerScript;
     private IDamageable playerDamageable;
+    private AudioSource audioSource;
+    private AudioSource audioSourcePassi;
+    private float timerPassi = 0f;
+
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 18.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+
+        if (audioSourcePassi == null)
+        {
+            Transform childPassi = transform.Find("AudioPassiSource");
+            if (childPassi != null)
+            {
+                audioSourcePassi = childPassi.GetComponent<AudioSource>();
+            }
+
+            if (audioSourcePassi == null)
+            {
+                GameObject goPassi = new GameObject("AudioPassiSource");
+                goPassi.transform.SetParent(transform, false);
+                audioSourcePassi = goPassi.AddComponent<AudioSource>();
+            }
+
+            audioSourcePassi.playOnAwake = false;
+            audioSourcePassi.spatialBlend = 1.0f; // 3D
+            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSourcePassi.minDistance = 1.5f;
+            audioSourcePassi.maxDistance = 18.0f;
+            audioSourcePassi.dopplerLevel = 0f;
+        }
+    }
+
+    public void FermaAudioPassi()
+    {
+        if (audioSourcePassi != null && audioSourcePassi.isPlaying)
+        {
+            audioSourcePassi.Stop();
+        }
+        timerPassi = 0f;
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.95f, 1.05f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
 
     void Start()
     {
+        InizializzaAudioSource();
         ApplicaTagUnity();
         saluteCorrente = saluteMassima;
         posizioneIniziale = transform.position;
 
+        if (distanzaArresto < 1.5f || distanzaArresto > 2.5f)
+        {
+            distanzaArresto = 1.9f; // Calibrazione ottimale pugno corpo a corpo
+        }
+
         agente = GetComponent<NavMeshAgent>();
         if (agente != null)
         {
+            agente.stoppingDistance = 1.3f;
             NavMeshHit hitMesh;
             // Raggio 8 m: copre NPC posizionati poco sopra/sotto la NavMesh
             if (NavMesh.SamplePosition(transform.position, out hitMesh, 8.0f, NavMesh.AllAreas))
@@ -103,7 +191,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             if (agente.enabled)
             {
                 agente.updateRotation = true;
-                agente.stoppingDistance = distanzaArresto;
+                agente.stoppingDistance = 0.8f;
             }
         }
 
@@ -116,11 +204,21 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         else
         {
             statoAttuale = StatoGuardia.Ronda;
-            if (agente != null && agente.isOnNavMesh && waypointRonda != null && waypointRonda.Length > 0 && waypointRonda[0] != null)
+            if (agente != null && agente.isOnNavMesh)
             {
-                agente.isStopped = false;
-                agente.speed = velocitaRonda;
-                agente.SetDestination(waypointRonda[0].position);
+                if (HaWaypointValidi())
+                {
+                    agente.isStopped = false;
+                    agente.speed = velocitaRonda;
+                    Transform wp = OttieniProssimoWaypointValido();
+                    if (wp != null) agente.SetDestination(wp.position);
+                }
+                else
+                {
+                    destinazioneRandomValida = false;
+                    inAttesaRandom = false;
+                    ScegliPuntoRandom();
+                }
             }
         }
 
@@ -135,6 +233,31 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         }
     }
 
+    private bool HaWaypointValidi()
+    {
+        if (waypointRonda == null || waypointRonda.Length == 0) return false;
+        for (int i = 0; i < waypointRonda.Length; i++)
+        {
+            if (waypointRonda[i] != null) return true;
+        }
+        return false;
+    }
+
+    private Transform OttieniProssimoWaypointValido()
+    {
+        if (waypointRonda == null || waypointRonda.Length == 0) return null;
+        for (int i = 0; i < waypointRonda.Length; i++)
+        {
+            int idx = (indiceWaypointAttuale + i) % waypointRonda.Length;
+            if (waypointRonda[idx] != null)
+            {
+                indiceWaypointAttuale = idx;
+                return waypointRonda[idx];
+            }
+        }
+        return null;
+    }
+
     private void OnEnable()
     {
         MissionManager.OnEstrazioneSbloccata += OnStatoEmergenzaCambiato;
@@ -142,6 +265,12 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void OnDisable()
     {
+        if (coroutineAttacco != null)
+        {
+            StopCoroutine(coroutineAttacco);
+            coroutineAttacco = null;
+        }
+        FermaAudioPassi();
         MissionManager.OnEstrazioneSbloccata -= OnStatoEmergenzaCambiato;
     }
 
@@ -175,9 +304,16 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     void Update()
     {
         if (ModalUIState.IsModalOpen)
+        {
+            FermaAudioPassi();
             return;
+        }
 
-        if (statoAttuale == StatoGuardia.Morta) return;
+        if (statoAttuale == StatoGuardia.Morta)
+        {
+            FermaAudioPassi();
+            return;
+        }
 
         if (playerTransform == null || playerDamageable == null)
         {
@@ -187,6 +323,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         RilevaGiocatore();
         EseguiComportamento();
         AggiornaAnimazioni();
+        GestisciAudioPassi();
 
         if (timerProssimoAttacco > 0)
         {
@@ -194,28 +331,120 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         }
     }
 
-    // CORREZIONE 2: Logica di aggiornamento delle animazioni perfezionata
-    private void AggiornaAnimazioni()
-{
-    if (animatore == null) return;
-
-    float valoreVelocita = 0f;
-
-    if (agente != null && agente.isOnNavMesh)
+    private void GestisciAudioPassi()
     {
-        // CORREZIONE: remainingDistance viene letto direttamente da agente, non da agente.velocity
-        if (agente.remainingDistance > agente.stoppingDistance && agente.velocity.magnitude > 0.1f)
+        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva)
         {
-            valoreVelocita = (statoAttuale == StatoGuardia.Inseguimento) ? 2f : 1f;
+            FermaAudioPassi();
+            return;
+        }
+
+        bool staMuovendo = false;
+        if (agente != null && agente.isOnNavMesh)
+        {
+            staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.05f || agente.desiredVelocity.sqrMagnitude > 0.05f);
+        }
+
+        if (staMuovendo)
+        {
+            InizializzaAudioSource();
+            bool inCorsa = statoAttuale == StatoGuardia.Inseguimento;
+            AudioClip clipPasso = inCorsa ? (suonoCorsa ?? suonoPassi) : suonoPassi;
+            if (clipPasso != null && audioSourcePassi != null)
+            {
+                float targetVolume = volumeAudio * (inCorsa ? 0.85f : 0.65f);
+
+                if (clipPasso.length > 0.8f)
+                {
+                    audioSourcePassi.loop = true;
+                    audioSourcePassi.volume = targetVolume;
+                    audioSourcePassi.pitch = inCorsa ? 1.05f : 1.0f;
+
+                    if (audioSourcePassi.clip != clipPasso)
+                    {
+                        audioSourcePassi.clip = clipPasso;
+                        audioSourcePassi.Play();
+                    }
+                    else if (!audioSourcePassi.isPlaying)
+                    {
+                        audioSourcePassi.Play();
+                    }
+                }
+                else
+                {
+                    audioSourcePassi.loop = false;
+                    timerPassi -= Time.deltaTime;
+                    if (timerPassi <= 0f)
+                    {
+                        audioSourcePassi.pitch = Random.Range(0.95f, 1.05f);
+                        audioSourcePassi.PlayOneShot(clipPasso, targetVolume);
+                        timerPassi = inCorsa ? intervalloPassiCorsa : intervalloPassiCamminata;
+                    }
+                }
+            }
+            else
+            {
+                FermaAudioPassi();
+            }
         }
         else
         {
-            valoreVelocita = 0f;
+            FermaAudioPassi();
         }
     }
 
-    animatore.SetFloat(parametroVelocita, valoreVelocita);
-}
+    private void AggiornaAnimazioni()
+    {
+        if (animatore == null) return;
+
+        float valoreVelocita = 0f;
+
+        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva || statoAttuale == StatoGuardia.Sospettosa)
+        {
+            valoreVelocita = 0f;
+        }
+        else if (statoAttuale == StatoGuardia.Inseguimento)
+        {
+            bool staEseguendoPugno = animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") || 
+                                    (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca"));
+
+            if (staEseguendoPugno)
+            {
+                valoreVelocita = 0f;
+            }
+            else
+            {
+                bool staMuovendo = false;
+                if (agente != null && agente.isOnNavMesh)
+                {
+                    staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f);
+                }
+                else
+                {
+                    staMuovendo = playerTransform != null && Vector3.Distance(transform.position, playerTransform.position) > distanzaArresto;
+                }
+
+                valoreVelocita = staMuovendo ? 3.0f : 0f;
+            }
+        }
+        else // Ronda o RitornoAllaBase
+        {
+            // In ronda: se non in pausa e si muove, valore 1.2 attiva 'camina' (richiede Speed > 0.1 e < 2.5)
+            bool staMuovendo = false;
+            if (agente != null && agente.isOnNavMesh)
+            {
+                staMuovendo = !agente.isStopped && !inAttesaRandom && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f || agente.hasPath);
+            }
+            else
+            {
+                staMuovendo = true;
+            }
+
+            valoreVelocita = staMuovendo ? 1.2f : 0f;
+        }
+
+        animatore.SetFloat(parametroVelocita, valoreVelocita);
+    }
 
     private void EseguiComportamento()
     {
@@ -252,27 +481,20 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
     private void MuoviInRonda()
     {
         // ── MODALITÀ WAYPOINT FISSI ────────────────────────────────────────────
-        if (waypointRonda != null && waypointRonda.Length > 0)
+        if (HaWaypointValidi())
         {
-            // Salta eventuali elementi nulli nell'array
-            if (waypointRonda[indiceWaypointAttuale] == null)
-            {
-                for (int i = 0; i < waypointRonda.Length; i++)
-                {
-                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
-                    if (waypointRonda[indiceWaypointAttuale] != null) break;
-                }
-                if (waypointRonda[indiceWaypointAttuale] == null) return;
-            }
-
             Transform target = waypointRonda[indiceWaypointAttuale];
+            if (target == null)
+            {
+                target = OttieniProssimoWaypointValido();
+                if (target == null) return;
+            }
 
             if (agente != null && agente.isOnNavMesh)
             {
                 agente.isStopped = false;
                 agente.speed = velocitaRonda;
 
-                // Calcolo distanza planare XZ (ignora dislivelli Y se il waypoint è in aria o sul soffitto)
                 Vector2 posAgenteXZ = new Vector2(transform.position.x, transform.position.z);
                 Vector2 posTargetXZ = new Vector2(target.position.x, target.position.z);
                 float distanzaXZ = Vector2.Distance(posAgenteXZ, posTargetXZ);
@@ -282,11 +504,10 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
                     agente.SetDestination(target.position);
                 }
 
-                // Quando l'agente è vicino alla coordinata orizzontale del waypoint, passa al prossimo
                 if (distanzaXZ <= distanzaArresto + 0.8f || (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.8f))
                 {
                     indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
-                    Transform nextTarget = waypointRonda[indiceWaypointAttuale];
+                    Transform nextTarget = OttieniProssimoWaypointValido();
                     if (nextTarget != null)
                     {
                         agente.SetDestination(nextTarget.position);
@@ -295,7 +516,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             }
             else
             {
-                // Fallback senza NavMesh: movimento diretto
+                // Fallback senza NavMesh
                 Vector3 direzione = (target.position - transform.position).normalized;
                 direzione.y = 0;
                 Vector3 targetPos = target.position;
@@ -304,7 +525,10 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
                 if (direzione != Vector3.zero)
                     transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime);
                 if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(target.position.x, target.position.z)) < 1.0f)
+                {
                     indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
+                    OttieniProssimoWaypointValido();
+                }
             }
             return;
         }
@@ -322,7 +546,8 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
             if (timerAttesaRandom <= 0f)
             {
                 inAttesaRandom = false;
-                destinazioneRandomValida = false; // forza scelta nuovo punto
+                destinazioneRandomValida = false;
+                ScegliPuntoRandom();
             }
             return;
         }
@@ -332,43 +557,55 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         {
             destinazioneRandomValida = ScegliPuntoRandom();
             if (!destinazioneRandomValida)
-                return; // NavMesh non ha trovato un punto valido, riprova al frame successivo
+                return;
         }
 
-        // Muoviti verso la destinazione random
-        agente.isStopped = false;
-        agente.speed = velocitaRonda;
-        agente.SetDestination(destinazioneRandom);
-
         // Controlla se siamo arrivati
-        if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.4f)
+        if (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.4f)
         {
             destinazioneRandomValida = false;
             inAttesaRandom = true;
             timerAttesaRandom = attesaTraPuntiRandom;
             Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: punto raggiunto. Pausa {attesaTraPuntiRandom}s.");
         }
+        else if (!agente.pathPending && !agente.hasPath)
+        {
+            destinazioneRandomValida = false;
+            ScegliPuntoRandom();
+        }
     }
 
-    /// <summary>
-    /// Sceglie un punto casuale sulla NavMesh entro <see cref="raggioRondaRandom"/> dalla posizione iniziale.
-    /// Tenta fino a 8 volte per trovare un punto valido.
-    /// </summary>
     private bool ScegliPuntoRandom()
     {
-        for (int tentativi = 0; tentativi < 8; tentativi++)
-        {
-            Vector3 puntoCandiato = posizioneIniziale + Random.insideUnitSphere * raggioRondaRandom;
-            puntoCandiato.y = posizioneIniziale.y;
+        if (agente == null || !agente.isOnNavMesh) return false;
 
-            if (NavMesh.SamplePosition(puntoCandiato, out NavMeshHit hit, raggioRondaRandom * 0.5f, NavMesh.AllAreas))
+        Vector3 centroRonda = (posizioneIniziale != Vector3.zero) ? posizioneIniziale : transform.position;
+
+        for (int tentativi = 0; tentativi < 10; tentativi++)
+        {
+            Vector2 offset2D = Random.insideUnitCircle * raggioRondaRandom;
+            Vector3 puntoCandidato = centroRonda + new Vector3(offset2D.x, 0f, offset2D.y);
+
+            if (NavMesh.SamplePosition(puntoCandidato, out NavMeshHit hit, raggioRondaRandom, NavMesh.AllAreas))
             {
-                destinazioneRandom = hit.position;
-                Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: nuovo punto → {destinazioneRandom}");
-                return true;
+                if (Vector3.Distance(transform.position, hit.position) > 2.0f)
+                {
+                    NavMeshPath path = new NavMeshPath();
+                    if (agente.CalculatePath(hit.position, path) && path.status == NavMeshPathStatus.PathComplete)
+                    {
+                        destinazioneRandom = hit.position;
+                        agente.isStopped = false;
+                        agente.speed = velocitaRonda;
+                        agente.SetPath(path);
+                        destinazioneRandomValida = true;
+                        inAttesaRandom = false;
+                        Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: nuovo punto → {destinazioneRandom}");
+                        return true;
+                    }
+                }
             }
         }
-        Debug.LogWarning($"[GUARDIA RANDOM] {gameObject.name}: nessun punto NavMesh valido trovato entro {raggioRondaRandom}m.");
+        destinazioneRandomValida = false;
         return false;
     }
 
@@ -377,12 +614,17 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         if (playerTransform == null) return;
 
         float distanzaDalGiocatore = Vector3.Distance(transform.position, playerTransform.position);
+        float sogliaPugno = Mathf.Clamp(distanzaArresto, 1.6f, 2.2f);
+
+        bool staEseguendoPugno = animatore != null && 
+            (animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") || 
+             (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca")));
 
         if (agente != null && agente.isOnNavMesh)
         {
             agente.speed = velocitaInseguimento;
 
-            if (distanzaDalGiocatore <= distanzaArresto)
+            if (distanzaDalGiocatore <= sogliaPugno || staEseguendoPugno)
             {
                 agente.isStopped = true;
                 agente.velocity = Vector3.zero;
@@ -393,21 +635,24 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
                 agente.SetDestination(playerTransform.position);
             }
 
-            if (distanzaDalGiocatore < distanzaArresto + 2f)
+            if (distanzaDalGiocatore < sogliaPugno + 3.0f)
             {
                 RotazioneFluida(playerTransform.position);
             }
         }
         else
         {
-            // Fallback diretto senza NavMesh: muoviti costantemente verso la posizione del giocatore
-            Vector3 targetPos = playerTransform.position;
-            targetPos.y = transform.position.y;
-            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
+            if (distanzaDalGiocatore > sogliaPugno && !staEseguendoPugno)
+            {
+                Vector3 targetPos = playerTransform.position;
+                targetPos.y = transform.position.y;
+                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
+            }
             RotazioneFluida(playerTransform.position);
         }
 
-        if (distanzaDalGiocatore <= distanzaArresto + 0.4f && timerProssimoAttacco <= 0)
+        // Sferra il pugno non appena raggiunge la portata di ingaggio corpo a corpo
+        if (distanzaDalGiocatore <= sogliaPugno && timerProssimoAttacco <= 0 && !staEseguendoPugno)
         {
             AttaccaPlayer();
         }
@@ -502,29 +747,52 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void AttaccaPlayer()
     {
-        if (playerDamageable == null)
+        timerProssimoAttacco = cadenzaAttacco;
+
+        if (animatore != null)
+        {
+            animatore.ResetTrigger(triggerAttacco);
+            animatore.SetTrigger(triggerAttacco);
+        }
+
+        RiproduciSuono(suonoAttacco);
+
+        if (coroutineAttacco != null)
+            StopCoroutine(coroutineAttacco);
+
+        coroutineAttacco = StartCoroutine(EseguiImpattoPugno(ritardoImpattoPugno));
+    }
+
+    private System.Collections.IEnumerator EseguiImpattoPugno(float ritardo)
+    {
+        yield return new WaitForSeconds(ritardo);
+
+        if (statoAttuale == StatoGuardia.Morta) yield break;
+
+        if (playerDamageable == null || playerTransform == null)
         {
             TrovaRiferimentoPlayer(playerTransform);
         }
 
-        if (playerDamageable != null)
+        if (playerTransform != null && playerDamageable != null)
         {
-            Debug.Log($"<color=red>[GUARDIA] Attacco diretto! Infligge {dannoAttacco} HP di danno al giocatore.</color>");
-            
-            if (animatore != null)
+            float distanza = Vector3.Distance(transform.position, playerTransform.position);
+            if (distanza <= raggioImpattoPugno)
             {
-                animatore.SetTrigger(triggerAttacco);
+                Debug.Log($"<color=red>[GUARDIA] Impatto Pugno a segno! Infligge {dannoAttacco} HP al giocatore.</color>");
+                playerDamageable.SubisciDanno(dannoAttacco);
             }
-
-            playerDamageable.SubisciDanno(dannoAttacco);
-            timerProssimoAttacco = cadenzaAttacco;
+            else
+            {
+                Debug.Log("<color=yellow>[GUARDIA] Pugno a vuoto: bersaglio fuori portata all'impatto.</color>");
+            }
         }
         else
         {
-            Debug.LogError("[SISTEMA COMBATTIMENTO] ATTENZIONE: La guardia sta cercando di attaccare, ma lo script della salute del giocatore (che usa IDamageable) non è stato trovato!");
-            // Resetta comunque il timer per evitare chiamate multiple in un frame
-            timerProssimoAttacco = cadenzaAttacco; 
+            Debug.LogError("[SISTEMA COMBATTIMENTO] ATTENZIONE: La guardia ha sferrato il pugno, ma lo script della salute del giocatore non è stato trovato!");
         }
+
+        coroutineAttacco = null;
     }
 
     private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
@@ -585,13 +853,14 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f;
         float distanza = Vector3.Distance(transform.position, playerTransform.position);
 
-        // Se il giocatore è vicinissimo (entro 3 metri), ingaggia automaticamente
-        if (distanza <= 3.0f)
+        // Se il giocatore è vicinissimo (entro 3.5 metri), ingaggia e si prepara al pugno immediatamente
+        if (distanza <= 3.5f)
         {
             if (statoAttuale != StatoGuardia.Inseguimento)
             {
                 statoAttuale = StatoGuardia.Inseguimento;
-                Debug.Log("<color=red>[GUARDIA] Bersaglio individuato a distanza ravvicinata! Stato: Inseguimento.</color>");
+                timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno
+                Debug.Log("<color=red>[GUARDIA] Bersaglio individuato a distanza ravvicinata! Inseguimento e pugno corpo a corpo.</color>");
                 if (MissionManager.Instance != null)
                     MissionManager.Instance.RegistraRilevamento(gameObject.name);
                 AllertaGuardieVicine();
@@ -631,7 +900,8 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
                     if (statoAttuale != StatoGuardia.Inseguimento)
                     {
                         statoAttuale = StatoGuardia.Inseguimento;
-                        Debug.Log("<color=red>[GUARDIA] Bersaglio individuato! Stato: Inseguimento.</color>");
+                        timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno
+                        Debug.Log("<color=red>[GUARDIA] Bersaglio individuato! Inseguimento e pugno corpo a corpo.</color>");
                         if (MissionManager.Instance != null)
                             MissionManager.Instance.RegistraRilevamento(gameObject.name);
                         AllertaGuardieVicine();
@@ -654,6 +924,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         if (allarmeLanciato) return;
 
         allarmeLanciato = true;
+        RiproduciSuono(suonoAllarme);
         Debug.Log($"<color=orange>[ALLARME RADIO] Guardia in combattimento! Invio segnale alle unità entro {raggioScattoAllarme} metri!</color>");
 
         GuardiaNpc[] tutteLeGuardie = Object.FindObjectsByType<GuardiaNpc>(FindObjectsSortMode.None);
@@ -679,7 +950,8 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
         statoAttuale = StatoGuardia.Inseguimento;
         TrovaRiferimentoPlayer(targetPlayer);
-        allarmeLanciato = true; 
+        allarmeLanciato = true;
+        RiproduciSuono(suonoAllarme);
 
         Debug.Log($"<color=red><b>[RINFORZI]</b> {gameObject.name} ha ricevuto l'allarme radio di combattimento! Corre in supporto!</color>");
     }
@@ -698,6 +970,7 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
         else
         {
             saluteCorrente -= quantitaDanno;
+            RiproduciSuono(suonoDanno);
             Debug.Log($"<color=orange>[GUARDIA] Colpito! Subito {quantitaDanno} HP di danno frontale. Salute rimanente: {saluteCorrente}</color>");
             
             if (statoAttuale != StatoGuardia.Inseguimento)
@@ -725,6 +998,11 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void MorteFurtiva()
     {
+        if (coroutineAttacco != null)
+        {
+            StopCoroutine(coroutineAttacco);
+            coroutineAttacco = null;
+        }
         statoAttuale = StatoGuardia.Morta;
         Debug.Log("<color=green><b>[STEALTH SUCCESS]</b> Guardia eliminata sul colpo con un'azione furtiva silenziosa!</color>");
         EseguiDissolvenzaMorte();
@@ -732,6 +1010,11 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void MorteStandard()
     {
+        if (coroutineAttacco != null)
+        {
+            StopCoroutine(coroutineAttacco);
+            coroutineAttacco = null;
+        }
         statoAttuale = StatoGuardia.Morta;
         Debug.Log("<color=white>[GUARDIA] Eliminata in combattimento frontale.</color>");
         EseguiDissolvenzaMorte();
@@ -739,7 +1022,9 @@ public class GuardiaNpc : MonoBehaviour, IDamageable
 
     private void EseguiDissolvenzaMorte()
     {
+        FermaAudioPassi();
         GetComponent<Collider>().enabled = false;
+        RiproduciSuono(suonoMorte);
         
         if (agente != null)
         {

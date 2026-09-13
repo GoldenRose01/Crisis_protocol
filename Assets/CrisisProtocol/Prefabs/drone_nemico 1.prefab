@@ -68,6 +68,10 @@ MonoBehaviour:
   spegniAFineEmergenza: 0
   coloreStandbyRisolto: {r: 0, g: 1, b: 0, a: 1}
   cadenzaDiFuoco: 1.5
+  suonoHoverLoop: {fileID: 0}
+  suonoAllarme: {fileID: 0}
+  suonoSparo: {fileID: 0}
+  volumeAudio: 0.8
 --- !u!82 &-749033698137498020
 AudioSource:
   m_ObjectHideFlags: 0

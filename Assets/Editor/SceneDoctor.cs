@@ -76,13 +76,63 @@ public class SceneDoctor : EditorWindow
             }
         }
         if (hotspotColliderFix > 0)
-            Debug.Log($"<color=green>[SceneDoctor] Generati/Verificati {hotspotColliderFix} collider fisici solidi su focolai ed emergenze.</color>");
+            Debug.Log($"<color=green>[SceneDoctor] Generati/Verificati {hotspotColliderFix} collider fisici solidi su focolai ed emergenze.</color>");        // 3c. Rimozione radicale di tutti i NavMeshObstacle errati da muri statici, pavimenti, soffitti e strutture
+        int ostacoliRimossi = 0;
+        int ostacoliPorteCalibrati = 0;
+        NavMeshObstacle[] tuttiGliOstacoli = Object.FindObjectsByType<NavMeshObstacle>(FindObjectsSortMode.None);
+        foreach (NavMeshObstacle obs in tuttiGliOstacoli)
+        {
+            if (obs == null) continue;
+            GameObject go = obs.gameObject;
+
+            // Mantieni NavMeshObstacle ESCLUSIVAMENTE sulle porte dinamiche (PortaSettore, QuarantineGate)
+            bool isPorta = go.GetComponent<PortaSettore>() != null || 
+                           go.GetComponent<QuarantineGate>() != null || 
+                           go.GetComponentInParent<PortaSettore>() != null ||
+                           go.GetComponentInParent<QuarantineGate>() != null;
+
+            if (isPorta)
+            {
+                obs.shape = NavMeshObstacleShape.Box;
+                obs.carving = true;
+                obs.carveOnlyStationary = false;
+                obs.carvingMoveThreshold = 0.1f;
+
+                Collider col = go.GetComponent<Collider>();
+                if (col is BoxCollider bc)
+                {
+                    obs.center = bc.center;
+                    obs.size = new Vector3(Mathf.Min(bc.size.x, 4f), Mathf.Min(bc.size.y, 4f), Mathf.Min(bc.size.z, 4f));
+                }
+                else
+                {
+                    obs.center = Vector3.zero;
+                    obs.size = new Vector3(2.5f, 3f, 0.5f);
+                }
+                EditorUtility.SetDirty(go);
+                ostacoliPorteCalibrati++;
+            }
+            else
+            {
+                // Muri, soffitti, pavimenti e strutture fisse NON devono avere NavMeshObstacle:
+                // la loro fisica e blocco navigazione sono gestiti nativamente dalla geometria statica!
+                DestroyImmediate(obs);
+                EditorUtility.SetDirty(go);
+                ostacoliRimossi++;
+            }
+        }
+        if (ostacoliRimossi > 0)
+            Debug.Log($"<color=green>[SceneDoctor] Rimossi {ostacoliRimossi} NavMeshObstacle giganti/errati da muri e strutture.</color>");
+
+        // 3d. Classificazione accurata di Pavimenti e Muri
         int pavimentiCount = 0;
         int muriCount = 0;
 
         foreach (GameObject go in allObjects)
         {
-            // Salta entità dinamiche come Player, Guardie, Bot, Droni, Luci, Telecamere, Hotspot e Card
+            if (go == null) continue;
+
+            // Salta entità dinamiche
             if (go.GetComponent<NavMeshAgent>() != null || 
                 go.GetComponent<muve_pg>() != null || 
                 go.GetComponent<SalutePlayer>() != null ||
@@ -91,6 +141,8 @@ public class SceneDoctor : EditorWindow
                 go.GetComponent<ManutenzioneBot>() != null ||
                 go.GetComponent<AccessCredentialPickup>() != null ||
                 go.GetComponent<EmergencyHotspot>() != null ||
+                go.GetComponent<PortaSettore>() != null ||
+                go.GetComponent<QuarantineGate>() != null ||
                 go.GetComponent<Camera>() != null ||
                 go.GetComponent<Light>() != null ||
                 go.CompareTag(SectorContainmentTags.Player) ||
@@ -98,6 +150,9 @@ public class SceneDoctor : EditorWindow
                 go.CompareTag(SectorContainmentTags.Drone) ||
                 go.CompareTag(SectorContainmentTags.AccessCredential))
             {
+                StaticEditorFlags f = GameObjectUtility.GetStaticEditorFlags(go);
+                f &= ~StaticEditorFlags.NavigationStatic;
+                GameObjectUtility.SetStaticEditorFlags(go, f);
                 continue;
             }
 
@@ -107,147 +162,74 @@ public class SceneDoctor : EditorWindow
             if (col == null && mr == null)
                 continue;
 
-            // Salta trigger che non sono porte
-            if (col != null && col.isTrigger && go.GetComponent<PortaSettore>() == null && go.GetComponent<QuarantineGate>() == null)
-                continue;
-
             string n = go.name.ToLower();
 
-            // Rilevamento semantico parole chiave
-            bool hasExplicitWallKeyword = n.Contains("muro") || n.Contains("muri") || n.Contains("wall") ||
-                                          n.Contains("ostacolo") || n.Contains("pillar") || n.Contains("colonna") ||
-                                          n.Contains("door") || n.Contains("porta") || n.Contains("gate") ||
-                                          n.Contains("barrier") || n.Contains("barriera") || n.Contains("building") ||
-                                          n.Contains("structure") || n.Contains("edificio") || n.Contains("roman") ||
-                                          n.Contains("prop") || n.Contains("box") || n.Contains("crate") ||
-                                          n.Contains("cassa") || n.Contains("container") || n.Contains("fence") ||
-                                          n.Contains("recinto") || n.Contains("soffitto") || n.Contains("ceiling") ||
-                                          n.Contains("roof") || n.Contains("tetto");
-
-            bool hasExplicitFloorKeyword = n.Contains("floor") || n.Contains("pavimento") || n.Contains("ground") ||
-                                           n.Contains("terrain") || n.Contains("plane") || n.Contains("suolo") ||
-                                           n.Contains("base") || n.Contains("walkway") || n.Contains("strada") ||
-                                           n.Contains("road") || n.Contains("platform") || n.Contains("piattaforma");
-
-            // Controllo gerarchico dei genitori (es. cubi dentro contenitore "muri" o "floor")
-            Transform curr = go.transform.parent;
-            while (curr != null)
+            // Soffitti e tetti: escludi da NavigationStatic per evitare ostruzioni verticali
+            if (n.Contains("soffitto") || n.Contains("ceiling") || n.Contains("roof") || n.Contains("tetto"))
             {
-                string pName = curr.name.ToLower();
-                if (pName.Contains("muro") || pName.Contains("muri") || pName.Contains("wall") ||
-                    pName.Contains("ostacolo") || pName.Contains("pillar") || pName.Contains("building") ||
-                    pName.Contains("structure") || pName.Contains("box") || pName.Contains("recinto") ||
-                    pName.Contains("ceiling") || pName.Contains("soffitto") || pName.Contains("tetto"))
-                {
-                    hasExplicitWallKeyword = true;
-                    break;
-                }
-                if (pName.Contains("floor") || pName.Contains("pavimento") || pName.Contains("ground") ||
-                    pName.Contains("terrain") || pName.Contains("plane") || pName.Contains("suolo"))
-                {
-                    hasExplicitFloorKeyword = true;
-                    break;
-                }
-                curr = curr.parent;
+                StaticEditorFlags f = GameObjectUtility.GetStaticEditorFlags(go);
+                f &= ~StaticEditorFlags.NavigationStatic;
+                GameObjectUtility.SetStaticEditorFlags(go, f);
+                EditorUtility.SetDirty(go);
+                continue;
             }
 
-            // Calcolo dimensioni geometriche in World Space
-            Vector3 size = Vector3.zero;
-            if (col != null)
-                size = col.bounds.size;
-            else if (mr != null)
-                size = mr.bounds.size;
+            Vector3 size = (col != null) ? col.bounds.size : mr.bounds.size;
+            Vector3 center = (col != null) ? col.bounds.center : mr.bounds.center;
 
-            // Un pavimento è piatto (spessore Y <= 0.6m) e largo orizzontalmente
-            bool isGeometricallyFloor = (size.y <= 0.6f && (size.x >= 1.5f || size.z >= 1.5f));
-            // Un muro è sviluppato in altezza (spessore Y >= 0.8m)
-            bool isGeometricallyWall = (size.y >= 0.8f);
+            bool isExplicitFloor = n.Contains("floor") || n.Contains("pavimento") || n.Contains("ground") ||
+                                   n.Contains("terrain") || n.Contains("plane") || n.Contains("suolo") ||
+                                   n.Contains("base") || n.Contains("walkway") || n.Contains("strada") ||
+                                   n.Contains("road") || n.Contains("platform") || n.Contains("piattaforma");
 
-            bool isMuro = false;
-            bool isPavimento = false;
-
-            if (hasExplicitWallKeyword)
-            {
-                isMuro = true;
-            }
-            else if (hasExplicitFloorKeyword)
-            {
-                isPavimento = true;
-            }
-            else if (isGeometricallyWall)
-            {
-                // Se è alto almeno 0.8 metri, è indiscutibilmente un MURO/OSTACOLO
-                isMuro = true;
-            }
-            else if (isGeometricallyFloor)
-            {
-                isPavimento = true;
-            }
-            else
-            {
-                // In caso di dubbio, non è un pavimento
-                isMuro = true;
-            }
+            // È un pavimento se ha il nome esplicito o è geometricamente orizzontale e sottile a quota pavimento (Y <= 1.2m)
+            bool isPavimento = isExplicitFloor || (size.y <= 0.6f && (size.x >= 1.5f || size.z >= 1.5f) && center.y <= 1.2f);
 
             StaticEditorFlags flags = GameObjectUtility.GetStaticEditorFlags(go);
 
-            if (isMuro)
-            {
-                flags |= StaticEditorFlags.NavigationStatic;
-                GameObjectUtility.SetStaticEditorFlags(go, flags);
-                GameObjectUtility.SetNavMeshArea(go, 1); // 1 = NOT WALKABLE (Area bloccata)
-
-                // Aggiungi e configura NavMeshObstacle con Carving attivo per tagliare fisicamente la NavMesh
-                NavMeshObstacle obs = go.GetComponent<NavMeshObstacle>();
-                if (obs == null)
-                {
-                    obs = go.AddComponent<NavMeshObstacle>();
-                }
-                obs.carving = true;
-                obs.carveOnlyStationary = false;
-                obs.carvingMoveThreshold = 0.1f;
-                
-                if (col is BoxCollider bc)
-                {
-                    obs.shape = NavMeshObstacleShape.Box;
-                    obs.center = bc.center;
-                    obs.size = bc.size;
-                }
-
-                EditorUtility.SetDirty(go);
-                muriCount++;
-            }
-            else if (isPavimento)
+            if (isPavimento)
             {
                 flags |= StaticEditorFlags.NavigationStatic;
                 GameObjectUtility.SetStaticEditorFlags(go, flags);
                 GameObjectUtility.SetNavMeshArea(go, 0); // 0 = WALKABLE (Calpestabile)
-
-                // Rimuovi eventuali NavMeshObstacle erroneamente presenti sul pavimento
-                NavMeshObstacle obs = go.GetComponent<NavMeshObstacle>();
-                if (obs != null)
-                {
-                    DestroyImmediate(obs);
-                }
-
                 EditorUtility.SetDirty(go);
                 pavimentiCount++;
             }
+            else
+            {
+                // Muro o ostacolo statico
+                flags |= StaticEditorFlags.NavigationStatic;
+                GameObjectUtility.SetStaticEditorFlags(go, flags);
+                GameObjectUtility.SetNavMeshArea(go, 1); // 1 = NOT WALKABLE
+                EditorUtility.SetDirty(go);
+                muriCount++;
+            }
         }
 
-        Debug.Log($"<color=green>[SceneDoctor] Classificazione completata: {pavimentiCount} Pavimenti (Walkable) e {muriCount} Muri con Carving (Not Walkable).</color>");
+        Debug.Log($"<color=green>[SceneDoctor] Classificazione completata: {pavimentiCount} Pavimenti (Walkable), {muriCount} Muri (Not Walkable), {ostacoliPorteCalibrati} Porte con Obstacle.</color>");
 
-        // 4. Pulisci la vecchia NavMesh e Rigenerala con parametri precisi
-        Debug.Log("[SceneDoctor] Pulizia vecchia NavMesh e rigenerazione...");
+        // 4. Pulizia e Rigenerazione NavMesh Completa
+        Debug.Log("<color=cyan>[SceneDoctor] Pulizia vecchia NavMesh e rigenerazione totale...</color>");
         UnityEditor.AI.NavMeshBuilder.ClearAllNavMeshes();
         UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
-        Debug.Log("<color=cyan>[SceneDoctor] Generazione NavMesh COMPLETATA con successo!</color>");
+        Debug.Log("<color=green><b>[SceneDoctor] GENERAZIONE NAVMESH COMPLETATA CON SUCCESSO! Tutta la mappa è ora calpestabile.</b></color>");
 
         EditorUtility.DisplayDialog(
-            "Scene Doctor", 
-            $"Configurazione completata con successo!\n\n- Muri e ostacoli protetti con Carving (Not Walkable): {muriCount}\n- Pavimenti calpestabili (Walkable): {pavimentiCount}\n- Bot calibrati con velocità regolari: {botCount}\n- Script fantasma rimossi: {missingCount}\n\nTutti i muri hanno ora il Carving attivo: è fisicamente impossibile per i bot attraversarli!", 
+            "Scene Doctor - NavMesh Riparata", 
+            $"NavMesh rigenerata con successo!\n\n" +
+            $"- Rimossi {ostacoliRimossi} NavMeshObstacle errati/giganti che cancellavano il pavimento\n" +
+            $"- Pavimenti calpestabili (Walkable): {pavimentiCount}\n" +
+            $"- Muri e ostacoli geometrici (Not Walkable): {muriCount}\n" +
+            $"- Porte di sicurezza con Carving calibrato: {ostacoliPorteCalibrati}\n\n" +
+            $"Tutti i corridoi e le stanze hanno ora la NavMesh calpestabile attiva!", 
             "OK"
         );
+    }
+
+    [MenuItem("CrisisProtocol/Ripara e Rigenera NavMesh Scena")]
+    public static void RiparaNavMeshMenu()
+    {
+        FixScene();
     }
 
     [MenuItem("Tools/Fix All Animations (Bake Into Pose / No Snapping)")]
@@ -355,6 +337,12 @@ public class SceneDoctor : EditorWindow
             "CyberHUD Visore Robot configurato con successo!\n\n- Barra Vita LCD a celle (Stato di Carica verde)\n- Mirino Visore Robotico con Lock-On dinamico\n- Prompt di prossimità [E] trasparente con contorni verde neon\n- Notifiche olografiche di raccolta Keycard",
             "OK"
         );
+    }
+
+    [MenuItem("CrisisProtocol/Configura Tutti i Suoni Scena ed Emettitori 3D")]
+    public static void ConfiguraSuoniMenu()
+    {
+        SceneAudioPopulator.ApplicaTuttiISuoni();
     }
 }
 #endif

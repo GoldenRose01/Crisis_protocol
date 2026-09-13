@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using TMPro;
 
 namespace AsyncronQuest.SteampunkUI
 {
@@ -26,7 +27,7 @@ namespace AsyncronQuest.SteampunkUI
         [SerializeField, Min(64)] private int textureSize = 1024;
         [SerializeField] private LayerMask cullingMask = ~((1 << 1) | (1 << 2) | (1 << 5));
         [SerializeField] private Color cameraClearColor = new Color(0.005f, 0.015f, 0.010f, 1f);
-        [SerializeField] private bool centerOnLevel = true;
+        [SerializeField] private bool centerOnLevel = false;
 
         [Header("Stile Tattico Neon")]
         [SerializeField] private Color neonWallColor = new Color(0.0f, 1.0f, 0.4f, 1.0f); // Verde Neon
@@ -42,7 +43,7 @@ namespace AsyncronQuest.SteampunkUI
         // Contenitore UI Overlay sopra la mappa
         private RectTransform overlayContainer;
         private RectTransform hudHeader;
-        private Text txtLegend;
+        private TextMeshProUGUI txtLegend;
 
         // Tracciamento entità
         private Transform playerTransform;
@@ -58,10 +59,6 @@ namespace AsyncronQuest.SteampunkUI
         private readonly List<string> cachedInteractableNames = new List<string>();
         private readonly List<Transform> cachedEnemies = new List<Transform>();
 
-        private readonly List<Renderer> tempDisabledFloorRenderers = new List<Renderer>();
-        private readonly List<Light> tempDisabledLights = new List<Light>();
-
-        private Font terminalFont;
         private float nextScanTime = 0f;
         private float currentZoom = 65f;
         private Vector3 calculatedLevelCenter = Vector3.zero;
@@ -72,7 +69,6 @@ namespace AsyncronQuest.SteampunkUI
         {
             rawImage = GetComponent<RawImage>();
             currentZoom = orthographicSize;
-            terminalFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
 
             SetupTacticalMaterial();
             CreateCamera();
@@ -82,11 +78,17 @@ namespace AsyncronQuest.SteampunkUI
 
         private void OnEnable()
         {
-            Camera.onPreCull += OnPreCullMapCamera;
-            Camera.onPostRender += OnPostRenderMapCamera;
+            if (!rawImage)
+                rawImage = GetComponent<RawImage>();
+
+            SetupTacticalMaterial();
+            CreateCamera();
 
             if (mapCamera)
                 mapCamera.enabled = true;
+
+            if (rawImage != null && renderTexture != null)
+                rawImage.texture = renderTexture;
 
             RecalculateLevelBoundsAndFraming();
             ScanSceneEntities();
@@ -95,11 +97,6 @@ namespace AsyncronQuest.SteampunkUI
 
         private void OnDisable()
         {
-            Camera.onPreCull -= OnPreCullMapCamera;
-            Camera.onPostRender -= OnPostRenderMapCamera;
-            RestoreFloorRenderers();
-            RestoreLights();
-
             if (mapCamera)
                 mapCamera.enabled = false;
 
@@ -108,11 +105,6 @@ namespace AsyncronQuest.SteampunkUI
 
         private void OnDestroy()
         {
-            Camera.onPreCull -= OnPreCullMapCamera;
-            Camera.onPostRender -= OnPostRenderMapCamera;
-            RestoreFloorRenderers();
-            RestoreLights();
-
             if (mapCamera)
                 Destroy(mapCamera.gameObject);
 
@@ -145,11 +137,11 @@ namespace AsyncronQuest.SteampunkUI
             mapCamera.orthographicSize = currentZoom;
             mapCamera.cullingMask = cullingMask;
 
-            // Scansione periodica entità ogni 1.5s
+            // Scansione periodica entità ogni 1.2s
             if (Time.unscaledTime >= nextScanTime)
             {
                 ScanSceneEntities();
-                nextScanTime = Time.unscaledTime + 1.5f;
+                nextScanTime = Time.unscaledTime + 1.2f;
             }
 
             UpdateOverlayPositions();
@@ -196,8 +188,9 @@ namespace AsyncronQuest.SteampunkUI
                 tacticalNeonMaterial.name = "Mat_TacticalNeonMap";
                 tacticalNeonMaterial.SetColor("_EdgeColor", neonWallColor);
                 tacticalNeonMaterial.SetColor("_BackgroundColor", cameraClearColor);
-                tacticalNeonMaterial.SetFloat("_EdgeThreshold", 0.18f);
-                tacticalNeonMaterial.SetFloat("_EdgeGlow", 2.4f);
+                tacticalNeonMaterial.SetFloat("_EdgeThreshold", 0.08f);
+                tacticalNeonMaterial.SetFloat("_EdgeGlow", 2.6f);
+                tacticalNeonMaterial.SetFloat("_BlueprintStrength", 0.35f);
 
                 if (rawImage != null)
                     rawImage.material = tacticalNeonMaterial;
@@ -213,8 +206,8 @@ namespace AsyncronQuest.SteampunkUI
             float maxExtent = Mathf.Max(calculatedLevelBounds.size.x, calculatedLevelBounds.size.z);
             if (maxExtent > 8f)
             {
-                // Margine del 30% per non toccare in alcun modo i bordi della cornice del monitor
-                float optimalZoom = Mathf.Clamp(maxExtent * 0.65f, 40f, 95f);
+                // Inquadra il livello con margine confortevole all'interno della cornice del monitor
+                float optimalZoom = Mathf.Clamp(maxExtent * 0.55f, 35f, 85f);
                 orthographicSize = optimalZoom;
                 currentZoom = optimalZoom;
             }
@@ -224,6 +217,7 @@ namespace AsyncronQuest.SteampunkUI
         {
             Bounds b = new Bounds(Vector3.zero, Vector3.zero);
             bool initialized = false;
+            Vector3 playerPos = followTarget ? followTarget.position : Vector3.zero;
 
             Collider[] colliders = FindObjectsByType<Collider>(FindObjectsSortMode.None);
             foreach (Collider col in colliders)
@@ -235,12 +229,16 @@ namespace AsyncronQuest.SteampunkUI
                 if (go.CompareTag("Player") || go.CompareTag("Enemy") || go.GetComponent<muve_pg>() != null || go.GetComponent<Camera>() != null)
                     continue;
 
+                // Escludi oggetti troppo distanti dal player (es. collider di sfondo o skybox)
+                if (followTarget != null && Vector3.Distance(col.bounds.center, playerPos) > 300f)
+                    continue;
+
                 string n = go.name.ToLower();
                 if (n.Contains("pavimento") || n.Contains("floor") || n.Contains("terrain") || n.Contains("ground") || n.Contains("plane"))
                     continue;
 
                 Vector3 size = col.bounds.size;
-                if (size.y >= 0.7f || n.Contains("muro") || n.Contains("wall") || n.Contains("porte") || n.Contains("door") || n.Contains("porta") || n.Contains("cube"))
+                if (size.y >= 0.6f || n.Contains("muro") || n.Contains("wall") || n.Contains("porte") || n.Contains("door") || n.Contains("porta") || n.Contains("cube") || n.Contains("panel") || n.Contains("box") || n.Contains("pipe") || n.Contains("container"))
                 {
                     if (!initialized)
                     {
@@ -256,113 +254,44 @@ namespace AsyncronQuest.SteampunkUI
 
             if (!initialized)
             {
-                Vector3 fallbackPos = followTarget ? followTarget.position : Vector3.zero;
-                return new Bounds(fallbackPos, new Vector3(80f, 10f, 80f));
+                return new Bounds(playerPos, new Vector3(60f, 10f, 60f));
             }
 
             return b;
         }
 
-        private void OnPreCullMapCamera(Camera cam)
-        {
-            if (cam != mapCamera) return;
-
-            // 1. Disabilita temporaneamente i pavimenti per evidenziare solo i muri perimetrali
-            tempDisabledFloorRenderers.Clear();
-            Renderer[] allRenderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
-            foreach (Renderer r in allRenderers)
-            {
-                if (r == null || !r.enabled) continue;
-                string n = r.gameObject.name.ToLower();
-                string pName = r.transform.parent != null ? r.transform.parent.name.ToLower() : "";
-
-                bool isFloor = n.Contains("pavimento") || n.Contains("floor") || n.Contains("ground") ||
-                               n.Contains("terrain") || n.Contains("plane") || n.Contains("piastrella") ||
-                               n.Contains("tile") || pName.Contains("pavimento") || pName.Contains("floor");
-
-                if (!isFloor && r.bounds.size.y < 0.35f && (r.bounds.size.x > 3f || r.bounds.size.z > 3f))
-                {
-                    isFloor = true;
-                }
-
-                if (isFloor)
-                {
-                    r.enabled = false;
-                    tempDisabledFloorRenderers.Add(r);
-                }
-            }
-
-            // 2. Disabilita temporaneamente tutte le luci della scena per eliminare aloni/cerchi luminosi
-            tempDisabledLights.Clear();
-            Light[] allLights = FindObjectsByType<Light>(FindObjectsSortMode.None);
-            foreach (Light l in allLights)
-            {
-                if (l != null && l.enabled)
-                {
-                    l.enabled = false;
-                    tempDisabledLights.Add(l);
-                }
-            }
-        }
-
-        private void OnPostRenderMapCamera(Camera cam)
-        {
-            if (cam != mapCamera) return;
-            RestoreFloorRenderers();
-            RestoreLights();
-        }
-
-        private void RestoreFloorRenderers()
-        {
-            for (int i = 0; i < tempDisabledFloorRenderers.Count; i++)
-            {
-                if (tempDisabledFloorRenderers[i] != null)
-                    tempDisabledFloorRenderers[i].enabled = true;
-            }
-            tempDisabledFloorRenderers.Clear();
-        }
-
-        private void RestoreLights()
-        {
-            for (int i = 0; i < tempDisabledLights.Count; i++)
-            {
-                if (tempDisabledLights[i] != null)
-                    tempDisabledLights[i].enabled = true;
-            }
-            tempDisabledLights.Clear();
-        }
-
         private void CreateCamera()
         {
-            if (renderTexture && renderTexture.width == textureSize && renderTexture.height == textureSize)
-                return;
-
-            if (renderTexture)
-                renderTexture.Release();
-
-            renderTexture = new RenderTexture(textureSize, textureSize, 16, RenderTextureFormat.ARGB32)
+            if (renderTexture == null || renderTexture.width != textureSize || renderTexture.height != textureSize)
             {
-                name = "Scene Top Down Map Texture"
-            };
-            renderTexture.Create();
+                if (renderTexture != null)
+                    renderTexture.Release();
+
+                renderTexture = new RenderTexture(textureSize, textureSize, 16, RenderTextureFormat.ARGB32)
+                {
+                    name = "Scene Top Down Map Texture",
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+                renderTexture.Create();
+            }
 
             if (!mapCamera)
             {
                 GameObject cameraObject = new GameObject("Scene Top Down Map Camera");
                 cameraObject.hideFlags = HideFlags.DontSave;
                 mapCamera = cameraObject.AddComponent<Camera>();
-                mapCamera.transform.SetParent(transform, false);
             }
 
             mapCamera.clearFlags = CameraClearFlags.SolidColor;
-            mapCamera.backgroundColor = Color.black;
+            mapCamera.backgroundColor = cameraClearColor;
             mapCamera.orthographic = true;
             mapCamera.nearClipPlane = 0.1f;
-            mapCamera.farClipPlane = cameraHeight + 350f;
+            mapCamera.farClipPlane = cameraHeight + 400f;
             mapCamera.depth = -100f;
             mapCamera.targetTexture = renderTexture;
-            mapCamera.enabled = isActiveAndEnabled;
             mapCamera.cullingMask = cullingMask;
+            mapCamera.enabled = isActiveAndEnabled;
 
             if (rawImage != null)
                 rawImage.texture = renderTexture;
@@ -424,31 +353,44 @@ namespace AsyncronQuest.SteampunkUI
             GameObject headerObj = new GameObject("TacticalLegendBar", typeof(RectTransform), typeof(Image));
             headerObj.transform.SetParent(overlayContainer, false);
             hudHeader = headerObj.GetComponent<RectTransform>();
-            hudHeader.anchorMin = new Vector2(0f, 1f);
-            hudHeader.anchorMax = new Vector2(1f, 1f);
+            hudHeader.anchorMin = new Vector2(0.5f, 1f);
+            hudHeader.anchorMax = new Vector2(0.5f, 1f);
             hudHeader.pivot = new Vector2(0.5f, 1f);
-            hudHeader.sizeDelta = new Vector2(0f, 36f);
-            hudHeader.anchoredPosition = new Vector2(0f, -4f);
+            hudHeader.sizeDelta = new Vector2(920f, 38f);
+            hudHeader.anchoredPosition = new Vector2(0f, -14f);
 
             Image imgBg = headerObj.GetComponent<Image>();
-            imgBg.color = new Color(0.015f, 0.05f, 0.035f, 0.92f);
+            imgBg.color = new Color(0.015f, 0.04f, 0.03f, 0.98f); // Sfondo scuro per massimo contrasto
             imgBg.raycastTarget = false;
 
-            GameObject txtObj = new GameObject("LegendText", typeof(RectTransform), typeof(Text));
+            // Sottile linea inferiore d'accento neon verde (spessore 2px)
+            GameObject bottomLine = new GameObject("BottomLine", typeof(RectTransform), typeof(Image));
+            bottomLine.transform.SetParent(headerObj.transform, false);
+            RectTransform rtLine = bottomLine.GetComponent<RectTransform>();
+            rtLine.anchorMin = new Vector2(0f, 0f);
+            rtLine.anchorMax = new Vector2(1f, 0f);
+            rtLine.pivot = new Vector2(0.5f, 0f);
+            rtLine.sizeDelta = new Vector2(0f, 2f);
+            rtLine.anchoredPosition = Vector2.zero;
+            Image imgLine = bottomLine.GetComponent<Image>();
+            imgLine.color = new Color(0.0f, 1.0f, 0.5f, 0.85f);
+            imgLine.raycastTarget = false;
+
+            GameObject txtObj = new GameObject("LegendText", typeof(RectTransform), typeof(TextMeshProUGUI));
             txtObj.transform.SetParent(headerObj.transform, false);
             RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
             rtTxt.anchorMin = Vector2.zero;
             rtTxt.anchorMax = Vector2.one;
-            rtTxt.offsetMin = new Vector2(8, 0);
-            rtTxt.offsetMax = new Vector2(-8, 0);
+            rtTxt.offsetMin = new Vector2(14, 2);
+            rtTxt.offsetMax = new Vector2(-14, 0);
 
-            txtLegend = txtObj.GetComponent<Text>();
-            txtLegend.font = terminalFont;
-            txtLegend.fontSize = 15;
-            txtLegend.fontStyle = FontStyle.Bold;
-            txtLegend.alignment = TextAnchor.MiddleCenter;
-            txtLegend.color = new Color(0.85f, 1f, 0.9f);
-            txtLegend.text = "◆ MAPPA TATTICA: [━ VERDE: MURI]  [● GIALLO: INTERAZIONI]  [▲ ROSSO: NEMICI]  [▲ CIANO: PLAYER] ◆";
+            txtLegend = txtObj.GetComponent<TextMeshProUGUI>();
+            txtLegend.color = Color.white;
+            txtLegend.fontSize = 15f;
+            txtLegend.fontStyle = FontStyles.Bold;
+            txtLegend.alignment = TextAlignmentOptions.Center;
+            txtLegend.enableWordWrapping = false;
+            txtLegend.text = "<b><color=#00F0FF>[ MAPPA TATTICA ]</color></b>   <color=#447755>|</color>   <color=#00FFA0>-- MURI</color>   <color=#447755>|</color>   <color=#FFE600>● INTERAZIONI</color>   <color=#447755>|</color>   <color=#FF3344>▲ NEMICI</color>   <color=#447755>|</color>   <color=#00F0FF>▲ GIOCATORE</color>";
             txtLegend.raycastTarget = false;
         }
 
@@ -476,11 +418,38 @@ namespace AsyncronQuest.SteampunkUI
                 if (mb.CompareTag("Player") || t == playerTransform || mb is Camera || mb is Canvas || mb is GraphicRaycaster)
                     continue;
 
-                // Verifica se è un vero oggetto interagibile di gioco
                 bool isInteractable = false;
                 string nomeTattico = "";
 
-                if (mb is TerminalePorta term)
+                if (mb is AccessCredentialPickup keycard)
+                {
+                    isInteractable = true;
+                    nomeTattico = string.IsNullOrEmpty(keycard.DisplayName) ? "SCHEDA ACCESSO" : keycard.DisplayName;
+                }
+                else if (mb is EmergencyHotspot hotspot)
+                {
+                    isInteractable = true;
+                    string hName = hotspot.name.ToLower();
+                    if (hName.Contains("tank") || hName.Contains("chemic"))
+                        nomeTattico = "SERBATOIO CHIMICO";
+                    else if (hName.Contains("generator") || hName.Contains("basic"))
+                        nomeTattico = "GENERATORE AUSILIARIO";
+                    else if (hName.Contains("reactor"))
+                        nomeTattico = "REATTORE";
+                    else
+                        nomeTattico = CleanObjectName(hotspot.name);
+                }
+                else if (mb is PortaSettore porta)
+                {
+                    isInteractable = true;
+                    nomeTattico = CleanDoorName(porta.gameObject.name);
+                }
+                else if (mb is QuarantineGate)
+                {
+                    isInteractable = true;
+                    nomeTattico = "CANCELLO QUARANTENA";
+                }
+                else if (mb is TerminalePorta term)
                 {
                     isInteractable = true;
                     nomeTattico = string.IsNullOrEmpty(term.nomeTerminale) ? "TERMINALE PORTA" : term.nomeTerminale;
@@ -490,37 +459,48 @@ namespace AsyncronQuest.SteampunkUI
                     isInteractable = true;
                     nomeTattico = string.IsNullOrEmpty(datapad.titoloDatapad) ? "DATAPAD SICUREZZA" : datapad.titoloDatapad;
                 }
-                else if (mb is PortaSettore porta)
+                else if (mb is CuboNeroTeletrasporto)
                 {
                     isInteractable = true;
-                    nomeTattico = "PORTA " + porta.gameObject.name.Replace("(Clone)", "").Trim();
+                    nomeTattico = "TELETRASPORTO";
                 }
                 else if (mb is IInteractable)
                 {
-                    string rawName = t.gameObject.name.ToLower();
-                    // Ignora collider o mesh generici che non hanno un nome interattivo valido
-                    if (!rawName.StartsWith("plane") && !rawName.StartsWith("cube") && !rawName.StartsWith("root") && !rawName.StartsWith("cylinder"))
+                    string rawLower = t.gameObject.name.ToLower();
+                    if (!rawLower.Contains("light") && !rawLower.Contains("cam") && !rawLower.Contains("audio") && !rawLower.Contains("sound") && !rawLower.Contains("volume") && !rawLower.Contains("vfx"))
                     {
                         isInteractable = true;
-                        nomeTattico = t.gameObject.name.Replace("(Clone)", "").Replace("_", " ").Trim();
+                        nomeTattico = CleanObjectName(t.gameObject.name);
                     }
                 }
-                else if (t.gameObject.layer == LayerMask.NameToLayer("Interactable") || t.CompareTag("Interactable"))
+                else if (t.CompareTag("Interactable") || t.gameObject.layer == LayerMask.NameToLayer("Interactable"))
                 {
-                    string rawName = t.gameObject.name.ToLower();
-                    if (!rawName.StartsWith("plane") && !rawName.StartsWith("cube") && !rawName.StartsWith("root"))
-                    {
-                        isInteractable = true;
-                        nomeTattico = t.gameObject.name.Replace("(Clone)", "").Replace("_", " ").Trim();
-                    }
+                    isInteractable = true;
+                    nomeTattico = CleanObjectName(t.gameObject.name);
                 }
 
                 if (isInteractable)
                 {
-                    processedRoots.Add(t);
-                    cachedInteractables.Add(t);
-                    if (nomeTattico.Length > 22) nomeTattico = nomeTattico.Substring(0, 22);
-                    cachedInteractableNames.Add(nomeTattico.ToUpper());
+                    nomeTattico = CleanObjectName(nomeTattico);
+
+                    // Deduplicazione per vicinanza (se c'è già un'interazione entro 2.2m, evita etichette sovrapposte)
+                    bool isDuplicate = false;
+                    for (int k = 0; k < cachedInteractables.Count; k++)
+                    {
+                        if (Vector3.Distance(t.position, cachedInteractables[k].position) < 2.2f)
+                        {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (!isDuplicate)
+                    {
+                        processedRoots.Add(t);
+                        cachedInteractables.Add(t);
+                        if (nomeTattico.Length > 24) nomeTattico = nomeTattico.Substring(0, 24);
+                        cachedInteractableNames.Add(nomeTattico.ToUpper());
+                    }
                 }
             }
 
@@ -532,17 +512,14 @@ namespace AsyncronQuest.SteampunkUI
             {
                 if (mb == null) continue;
 
-                string typeName = mb.GetType().Name.ToLower();
                 Transform t = mb.transform;
                 if (processedEnemies.Contains(t)) continue;
 
-                bool isEnemy = typeName.Contains("guardia") ||
-                               typeName.Contains("drone") ||
-                               typeName.Contains("bot") ||
-                               typeName.Contains("nemico") ||
-                               typeName.Contains("npc") ||
-                               t.CompareTag("Enemy") ||
-                               t.gameObject.layer == LayerMask.NameToLayer("Enemy");
+                string typeName = mb.GetType().Name.ToLower();
+                bool isEnemy = mb is DroneRonda || mb is GuardiaNpc || mb is ManutenzioneBot || mb is NPC ||
+                               typeName.Contains("drone") || typeName.Contains("guardia") || typeName.Contains("bot") ||
+                               typeName.Contains("nemico") || typeName.Contains("enemy") || typeName.Contains("npc") ||
+                               t.CompareTag("Enemy") || t.gameObject.layer == LayerMask.NameToLayer("Enemy");
 
                 if (isEnemy && t != playerTransform && !processedRoots.Contains(t))
                 {
@@ -550,6 +527,26 @@ namespace AsyncronQuest.SteampunkUI
                     cachedEnemies.Add(t);
                 }
             }
+        }
+
+        private static string CleanDoorName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return "PORTA";
+            string n = raw.ToUpper().Replace("(CLONE)", "").Replace("_", " ").Trim();
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"(?i)(DEFAULTMATERIAL|MATERIAL|MESH|PREFAB|LOD\d*|\(\d+\))", "").Trim();
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"\s+", " ").Trim();
+            if (n.Contains("PORTA") || n.Contains("DOOR") || n.Contains("GATE") || n.Contains("SETTORE")) return n;
+            return "PORTA " + n;
+        }
+
+        private static string CleanObjectName(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return "INTERAGIBILE";
+            string n = raw.ToUpper().Replace("(CLONE)", "").Replace("_", " ").Trim();
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"(?i)(DEFAULTMATERIAL|MATERIAL|MESH|PREFAB|LOD\d*|\(\d+\))", "").Trim();
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"\s+", " ").Trim();
+            if (string.IsNullOrWhiteSpace(n)) return "INTERAGIBILE";
+            return n;
         }
 
         #endregion
@@ -604,9 +601,14 @@ namespace AsyncronQuest.SteampunkUI
                     haloC.a = 0.40f * pulse;
                     item.imgHalo.color = haloC;
 
-                    // Testo nome font terminale
+                    // Testo nome font terminale ad alta luminosità e contrasto
                     string nome = cachedInteractableNames[i];
-                    item.txtLabel.text = $"[E] {nome}";
+                    item.txtLabel.color = Color.white;
+                    item.txtLabel.text = $"<color=#FFE600><b>[E]</b></color> <color=#FFFFFF><b>{nome}</b></color>";
+
+                    // Dimensionamento dinamico badge al pixel perfetto
+                    float textW = item.txtLabel.preferredWidth;
+                    item.badgeRect.sizeDelta = new Vector2(textW + 24f, 30f);
                 }
                 else
                 {
@@ -683,7 +685,7 @@ namespace AsyncronQuest.SteampunkUI
             RectTransform rect = root.GetComponent<RectTransform>();
             rect.sizeDelta = new Vector2(38, 38);
 
-            // Alone Giallo Soft
+            // 1. Alone Giallo Soft
             GameObject haloObj = new GameObject("Halo", typeof(RectTransform), typeof(Image));
             haloObj.transform.SetParent(root.transform, false);
             RectTransform rtHalo = haloObj.GetComponent<RectTransform>();
@@ -696,7 +698,7 @@ namespace AsyncronQuest.SteampunkUI
             imgHalo.color = new Color(1f, 0.92f, 0.15f, 0.45f);
             imgHalo.raycastTarget = false;
 
-            // Punto Centrale Giallo Solido (Ingrandito)
+            // 2. Punto Centrale Giallo Solido
             GameObject coreObj = new GameObject("Core", typeof(RectTransform), typeof(Image));
             coreObj.transform.SetParent(root.transform, false);
             RectTransform rtCore = coreObj.GetComponent<RectTransform>();
@@ -707,47 +709,60 @@ namespace AsyncronQuest.SteampunkUI
             imgCore.color = new Color(1f, 1f, 0.4f, 1f);
             imgCore.raycastTarget = false;
 
-            // Targhetta Nome Terminale (Ingrandita con Font ad Alta Leggibilità)
-            GameObject labelBox = new GameObject("LabelBox", typeof(RectTransform), typeof(Image));
-            labelBox.transform.SetParent(root.transform, false);
-            RectTransform rtLabelBox = labelBox.GetComponent<RectTransform>();
-            rtLabelBox.pivot = new Vector2(0.5f, 0f);
-            rtLabelBox.anchoredPosition = new Vector2(0, 22f);
-            rtLabelBox.sizeDelta = new Vector2(200, 26);
+            // 3. Badge Box Contenitore (Posizionato sopra il punto)
+            GameObject badgeBox = new GameObject("BadgeBox", typeof(RectTransform));
+            badgeBox.transform.SetParent(root.transform, false);
+            RectTransform rtBadge = badgeBox.GetComponent<RectTransform>();
+            rtBadge.pivot = new Vector2(0.5f, 0f);
+            rtBadge.anchoredPosition = new Vector2(0, 22f);
+            rtBadge.sizeDelta = new Vector2(140, 28);
 
-            Image imgBox = labelBox.GetComponent<Image>();
-            imgBox.color = new Color(0.01f, 0.05f, 0.03f, 0.90f);
-            imgBox.raycastTarget = false;
+            // 3a. Bordo neon giallo
+            GameObject borderObj = new GameObject("Border", typeof(RectTransform), typeof(Image));
+            borderObj.transform.SetParent(badgeBox.transform, false);
+            RectTransform rtBorder = borderObj.GetComponent<RectTransform>();
+            rtBorder.anchorMin = Vector2.zero;
+            rtBorder.anchorMax = Vector2.one;
+            rtBorder.offsetMin = new Vector2(-1.5f, -1.5f);
+            rtBorder.offsetMax = new Vector2(1.5f, 1.5f);
+            Image imgBorder = borderObj.GetComponent<Image>();
+            imgBorder.color = new Color(1f, 0.88f, 0.2f, 1f);
+            imgBorder.raycastTarget = false;
 
-            GameObject txtObj = new GameObject("TxtName", typeof(RectTransform), typeof(Text));
-            txtObj.transform.SetParent(labelBox.transform, false);
+            // 3b. Sfondo solido scuro ad alto contrasto
+            GameObject bgObj = new GameObject("Background", typeof(RectTransform), typeof(Image));
+            bgObj.transform.SetParent(badgeBox.transform, false);
+            RectTransform rtBg = bgObj.GetComponent<RectTransform>();
+            rtBg.anchorMin = Vector2.zero;
+            rtBg.anchorMax = Vector2.one;
+            rtBg.offsetMin = Vector2.zero;
+            rtBg.offsetMax = Vector2.zero;
+            Image imgBg = bgObj.GetComponent<Image>();
+            imgBg.color = new Color(0.01f, 0.05f, 0.03f, 0.98f);
+            imgBg.raycastTarget = false;
+
+            // 3c. Testo TextMeshPro chiaro e definito
+            GameObject txtObj = new GameObject("TxtName", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtObj.transform.SetParent(badgeBox.transform, false);
             RectTransform rtTxt = txtObj.GetComponent<RectTransform>();
             rtTxt.anchorMin = Vector2.zero;
             rtTxt.anchorMax = Vector2.one;
-            rtTxt.offsetMin = new Vector2(6, 0);
-            rtTxt.offsetMax = new Vector2(-6, 0);
+            rtTxt.offsetMin = new Vector2(8, 0);
+            rtTxt.offsetMax = new Vector2(-8, 0);
 
-            Text txt = txtObj.GetComponent<Text>();
-            txt.font = terminalFont;
-            txt.fontSize = 15;
-            txt.fontStyle = FontStyle.Bold;
-            txt.alignment = TextAnchor.MiddleCenter;
-            txt.color = new Color(1f, 0.95f, 0.3f, 1f);
+            TextMeshProUGUI txt = txtObj.GetComponent<TextMeshProUGUI>();
+            txt.color = Color.white;
+            txt.fontSize = 15f;
+            txt.fontStyle = FontStyles.Bold;
+            txt.alignment = TextAlignmentOptions.Center;
+            txt.enableWordWrapping = false;
             txt.raycastTarget = false;
-
-            ContentSizeFitter csf = labelBox.AddComponent<ContentSizeFitter>();
-            csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            csf.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
-
-            HorizontalLayoutGroup hlg = labelBox.AddComponent<HorizontalLayoutGroup>();
-            hlg.padding = new RectOffset(8, 8, 3, 3);
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
 
             return new InteractableMarkerItem
             {
                 root = root,
                 rect = rect,
+                badgeRect = rtBadge,
                 imgHalo = imgHalo,
                 imgCore = imgCore,
                 txtLabel = txt
@@ -947,9 +962,10 @@ namespace AsyncronQuest.SteampunkUI
         {
             public GameObject root;
             public RectTransform rect;
+            public RectTransform badgeRect;
             public Image imgHalo;
             public Image imgCore;
-            public Text txtLabel;
+            public TextMeshProUGUI txtLabel;
         }
 
         private class EnemyMarkerItem

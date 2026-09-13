@@ -58,11 +58,16 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable
     [Tooltip("Renderer della mesh dello schermo/datapad per il materiale emissivo.")]
     public Renderer meshSchermo;
 
-    [Tooltip("Colore del LED/Ologramma dell'oggetto nel mondo 3D.")]
-    public Color coloreOlogramma = new Color(0.0f, 0.95f, 0.85f); // Verde Acqua / Ciano brillante
+    [Tooltip("Colore luce ed emissione dello schermo (Cyan/Verde Acqua).")]
+    public Color coloreOlogramma = new Color(0.1f, 0.95f, 0.85f, 1f);
 
-    [Tooltip("Attiva una lieve pulsazione luminosa sul proiettore olografico.")]
+    [Tooltip("Se true, la luce del datapad pulsa dolcemente per attirare l'attenzione.")]
     public bool animaPulsazioneLuce = true;
+
+    [Header("Audio")]
+    [Tooltip("Suono di accensione / battitura all'apertura del datapad.")]
+    [SerializeField] private AudioClip suonoApertura;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
 
     private float intensitaLuceBase = 2.0f;
 
@@ -127,6 +132,11 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable
 
     public void ApriSchermataOlogramma()
     {
+        if (suonoApertura != null)
+        {
+            AudioSource.PlayClipAtPoint(suonoApertura, transform.position, volumeAudio);
+        }
+
         if (DatapadOlogrammaUI.Instance != null)
         {
             DatapadOlogrammaUI.Instance.ApriOlogramma(this);

@@ -35,10 +35,49 @@ public class TerminalePorta : MonoBehaviour, IInteractable
     [Tooltip("Luce dello schermo per feedback ambientale.")]
     public Light luceMonitor;
 
+    [Header("Audio")]
+    [Tooltip("Suono di interazione / battitura tastiera quando si usa il terminale.")]
+    [SerializeField] private AudioClip suonoInterazione;
+    [Tooltip("Suono di codice corretto / bypass completato con successo.")]
+    [SerializeField] private AudioClip suonoAccessoGarantito;
+    [Tooltip("Suono di codice errato / errore.")]
+    [SerializeField] private AudioClip suonoAccessoNegato;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
+
     [Header("Stato")]
     [SerializeField] private bool giaSbloccato = false;
 
+    private AudioSource audioSource;
+
     public bool IsSbloccato => giaSbloccato;
+
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f;
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 15.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.97f, 1.03f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
 
     void Start()
     {
@@ -61,6 +100,8 @@ public class TerminalePorta : MonoBehaviour, IInteractable
 
     public void Interact()
     {
+        RiproduciSuono(suonoInterazione);
+
         if (giaSbloccato)
         {
             if (portaCollegata != null)
@@ -91,12 +132,21 @@ public class TerminalePorta : MonoBehaviour, IInteractable
     {
         giaSbloccato = true;
         AggiornaGraficaMonitor();
+        RiproduciSuono(suonoAccessoGarantito);
 
         if (portaCollegata != null)
         {
             portaCollegata.SbloccaEDApri();
             Debug.Log($"<color=green>[TERMINALE] Accesso autorizzato su '{nomeTerminale}'. Porta aperta con successo!</color>");
         }
+    }
+
+    /// <summary>
+    /// Chiamato quando il codice inserito è errato.
+    /// </summary>
+    public void OnAccessoNegato()
+    {
+        RiproduciSuono(suonoAccessoNegato);
     }
 
     private void AggiornaGraficaMonitor()

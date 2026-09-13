@@ -20,20 +20,88 @@ public class muve_pg : MonoBehaviour
     [Header("Configurazione Animazione")]
     public Animator animatorePersonaggio;
 
+    [Header("Audio")]
+    [Tooltip("Suono dei passi durante la camminata standard.")]
+    [SerializeField] private AudioClip suonoPassi;
+    [Tooltip("Suono dei passi durante la corsa (Shift).")]
+    [SerializeField] private AudioClip suonoCorsa;
+    [Tooltip("Suono di stacco del primo salto.")]
+    [SerializeField] private AudioClip suonoPrimoSalto;
+    [Tooltip("Suono di stacco del secondo salto / double jump.")]
+    [SerializeField] private AudioClip suonoSecondoSalto;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.85f;
+    [SerializeField] private float intervalloPassiCamminata = 0.48f;
+    [SerializeField] private float intervalloPassiCorsa = 0.30f;
+
     private int countJump = 0;
     private bool richiediSalto = false;
     private bool isGrounded = true;
 
     private Rigidbody rb;
     private BoxCollider bx;
+    private AudioSource audioSource;
+    private AudioSource audioSourcePassi;
+    private float timerPassi = 0f;
 
     private bool AnimatorePronto =>
         animatorePersonaggio != null &&
         animatorePersonaggio.isActiveAndEnabled &&
         animatorePersonaggio.runtimeAnimatorController != null;
 
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 1.5f;
+            audioSource.maxDistance = 20.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+
+        if (audioSourcePassi == null)
+        {
+            Transform childPassi = transform.Find("AudioPassiSource");
+            if (childPassi != null)
+            {
+                audioSourcePassi = childPassi.GetComponent<AudioSource>();
+            }
+
+            if (audioSourcePassi == null)
+            {
+                GameObject goPassi = new GameObject("AudioPassiSource");
+                goPassi.transform.SetParent(transform, false);
+                audioSourcePassi = goPassi.AddComponent<AudioSource>();
+            }
+
+            audioSourcePassi.playOnAwake = false;
+            audioSourcePassi.spatialBlend = 1.0f;
+            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSourcePassi.minDistance = 1.5f;
+            audioSourcePassi.maxDistance = 20.0f;
+            audioSourcePassi.dopplerLevel = 0f;
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.95f, 1.05f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
+
     void Start()
     {
+        InizializzaAudioSource();
         bx = GetComponent<BoxCollider>();
         rb = GetComponent<Rigidbody>();
 
@@ -46,10 +114,27 @@ public class muve_pg : MonoBehaviour
         velocitaCorrente = velocitaCamminata;
     }
 
+    private void OnDisable()
+    {
+        FermaAudioPassi();
+    }
+
+    public void FermaAudioPassi()
+    {
+        if (audioSourcePassi != null && audioSourcePassi.isPlaying)
+        {
+            audioSourcePassi.Stop();
+        }
+        timerPassi = 0f;
+    }
+
     void Update()
     {
         if (ModalUIState.IsModalOpen)
+        {
+            FermaAudioPassi();
             return;
+        }
 
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
         {
@@ -61,6 +146,8 @@ public class muve_pg : MonoBehaviour
     {
         if (ModalUIState.IsModalOpen)
         {
+            FermaAudioPassi();
+
             if (rb != null)
                 rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
 
@@ -103,12 +190,16 @@ public class muve_pg : MonoBehaviour
                 velocitaY = forzaPrimoSalto;
                 countJump++;
                 isGrounded = false;
+                FermaAudioPassi();
+                RiproduciSuono(suonoPrimoSalto);
                 Debug.Log("Primo Salto eseguito.");
             }
             else if (countJump == 1)
             {
                 velocitaY = forzaSecondoSalto;
                 countJump++;
+                FermaAudioPassi();
+                RiproduciSuono(suonoSecondoSalto ?? suonoPrimoSalto);
 
                 if (AnimatorePronto)
                 {
@@ -118,6 +209,9 @@ public class muve_pg : MonoBehaviour
             }
             richiediSalto = false;
         }
+
+        // GESTIONE SUONO PASSI
+        GestisciAudioPassi(magnitudineMovimento, staCorrendo);
 
         Vector3 movimentoFinale = Vector3.zero;
 
@@ -163,6 +257,57 @@ public class muve_pg : MonoBehaviour
         }
     }
 
+    private void GestisciAudioPassi(float magnitudineMovimento, bool staCorrendo)
+    {
+        InizializzaAudioSource();
+
+        bool staMuovendo = isGrounded && magnitudineMovimento > 0.1f;
+        if (!staMuovendo)
+        {
+            FermaAudioPassi();
+            return;
+        }
+
+        AudioClip clipPasso = staCorrendo ? (suonoCorsa ?? suonoPassi) : suonoPassi;
+        if (clipPasso == null || audioSourcePassi == null)
+        {
+            FermaAudioPassi();
+            return;
+        }
+
+        float volumeTarget = volumeAudio * (staCorrendo ? 0.9f : 0.7f);
+
+        // Se la traccia audio è una registrazione continua/multi-passo (es. durata > 0.8s come Footsteps_ running.wav o Footsteps_walking.wav)
+        if (clipPasso.length > 0.8f)
+        {
+            audioSourcePassi.loop = true;
+            audioSourcePassi.volume = volumeTarget;
+            audioSourcePassi.pitch = staCorrendo ? 1.05f : 1.0f;
+
+            if (audioSourcePassi.clip != clipPasso)
+            {
+                audioSourcePassi.clip = clipPasso;
+                audioSourcePassi.Play();
+            }
+            else if (!audioSourcePassi.isPlaying)
+            {
+                audioSourcePassi.Play();
+            }
+        }
+        else
+        {
+            // Se la clip è un singolo impatto di passo (singolo step < 0.8s)
+            audioSourcePassi.loop = false;
+            timerPassi -= Time.fixedDeltaTime;
+            if (timerPassi <= 0f)
+            {
+                audioSourcePassi.pitch = Random.Range(0.95f, 1.05f);
+                audioSourcePassi.PlayOneShot(clipPasso, volumeTarget);
+                timerPassi = staCorrendo ? intervalloPassiCorsa : intervalloPassiCamminata;
+            }
+        }
+    }
+
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Terrain"))
@@ -180,6 +325,7 @@ public class muve_pg : MonoBehaviour
             if (rb.linearVelocity.y < -0.1f)
             {
                 isGrounded = false;
+                FermaAudioPassi();
             }
         }
     }

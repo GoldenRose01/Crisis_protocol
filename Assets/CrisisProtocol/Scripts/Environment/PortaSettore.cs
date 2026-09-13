@@ -69,6 +69,17 @@ public class PortaSettore : MonoBehaviour, IInteractable
     [Tooltip("Se true la porta parte gia' aperta all'avvio della scena.")]
     [SerializeField] private bool apertaAllInizio = false;
 
+    [Header("Audio")]
+    [Tooltip("Suono di apertura porta/portellone.")]
+    [SerializeField] private AudioClip suonoApertura;
+    [Tooltip("Suono di chiusura porta/portellone.")]
+    [SerializeField] private AudioClip suonoChiusura;
+    [Tooltip("Suono di porta bloccata / maniglia forzata quando non si possiede l'accesso.")]
+    [SerializeField] private AudioClip suonoBloccata;
+    [Tooltip("Suono di sblocco elettronico da terminale o autorizzazione.")]
+    [SerializeField] private AudioClip suonoSblocco;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1f;
+
     // Stato interno
     private bool aperta = false;
     private bool inAnimazione = false;
@@ -81,6 +92,7 @@ public class PortaSettore : MonoBehaviour, IInteractable
 
     private Collider colliderFisico;
     private NavMeshObstacle ostacolo;
+    private AudioSource audioSource;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -122,6 +134,8 @@ public class PortaSettore : MonoBehaviour, IInteractable
         ostacolo = GetComponent<NavMeshObstacle>();
         if (ostacolo == null)
             ostacolo = GetComponentInChildren<NavMeshObstacle>();
+
+        InizializzaAudioSource();
 
         if (targetTransform.gameObject.isStatic)
         {
@@ -228,6 +242,34 @@ public class PortaSettore : MonoBehaviour, IInteractable
         return true;
     }
 
+    private void InizializzaAudioSource()
+    {
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D Audio
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 2.0f;
+            audioSource.maxDistance = 18.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+    }
+
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.96f, 1.04f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
+
     /// <summary>
     /// Sblocca la porta elettronicamente (da terminale con codice o minigioco di bypass) e la apre.
     /// </summary>
@@ -235,6 +277,8 @@ public class PortaSettore : MonoBehaviour, IInteractable
     {
         bloccataElettronicamente = false;
         credenzialeRichiesta = "";
+
+        RiproduciSuono(suonoSblocco, 1.0f);
 
         if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId))
             GameManager.Instance.SetCausalState(portaId, true);
@@ -256,6 +300,7 @@ public class PortaSettore : MonoBehaviour, IInteractable
     {
         bloccataElettronicamente = false;
         credenzialeRichiesta = "";
+        RiproduciSuono(suonoSblocco, 1.0f);
         AggiornaFeedbackVisivo();
     }
 
@@ -279,6 +324,8 @@ public class PortaSettore : MonoBehaviour, IInteractable
         // Controlla se si può aprire
         if (!PuoEssereAperta())
         {
+            RiproduciSuono(suonoBloccata, 1.0f);
+
             if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato)
             {
                 Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: Porta bloccata dal terminale di sicurezza! Interagisci con il terminale a fianco per inserire il codice o eseguire il bypass.");
@@ -302,6 +349,11 @@ public class PortaSettore : MonoBehaviour, IInteractable
     private IEnumerator AnimaPorta(bool versoAperta)
     {
         inAnimazione = true;
+
+        if (versoAperta)
+            RiproduciSuono(suonoApertura, 1.0f);
+        else
+            RiproduciSuono(suonoChiusura, 1.0f);
 
         Vector3 posStart = targetTransform.position;
         Vector3 posFine  = versoAperta ? posizioneApertaWorld : posizioneChiusaWorld;
