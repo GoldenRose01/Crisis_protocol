@@ -13,6 +13,14 @@ public class MissionManager : MonoBehaviour
     [Header("Obiettivi Missione")]
     [SerializeField] private SectorObjectiveSettings obiettivi = new SectorObjectiveSettings();
 
+    [Header("Timer Missione & Sconfitta (Countdown)")]
+    [Tooltip("Se abilitato, impone un tempo limite di evacuazione con countdown a schermo.")]
+    [SerializeField] private bool usaTempoLimite = true;
+    [Tooltip("Durata del countdown in MINUTI (es. 5 = 5:00, 2.5 = 2:30, 10 = 10:00).")]
+    [SerializeField] [Range(0.5f, 60f)] private float tempoLimiteMinuti = 5.0f;
+    [Tooltip("Se abilitato, allo scadere del tempo (00:00.0) scatta immediatamente il Game Over (Sconfitta).")]
+    [SerializeField] private bool sconfittaAScadenzaTimer = true;
+
     [Header("Collasso Strutturale")]
     [SerializeField] private StructuralCollapseSettings collassoStrutturale = new StructuralCollapseSettings();
 
@@ -36,6 +44,7 @@ public class MissionManager : MonoBehaviour
     public static event Action<int, int> OnFocolaiCambiati;
     public static event Action<int> OnFrequenzeCambiate;
     public static event Action<int> OnCredenzialiCambiate;
+    public static event Action<string, int> OnNuovaCredenzialeRaccolta;
     public static event Action<int> OnPunteggioCambiato;
     public static event Action<bool> OnEstrazioneSbloccata;
     public static event Action<MissionOutcome, int, string> OnMissioneTerminata;
@@ -49,6 +58,10 @@ public class MissionManager : MonoBehaviour
     public int TotaleFocolai => obiettivi.TotaleFocolaiDaContenere;
     public bool EstrazioneSbloccata => estrazioneSbloccata;
     public bool MissioneTerminata => missioneTerminata;
+    public bool UsaTempoLimite => usaTempoLimite;
+    public float TempoLimiteMinuti => tempoLimiteMinuti;
+    public float TempoLimiteSecondi => tempoLimiteMinuti * 60f;
+    public bool SconfittaAScadenzaTimer => sconfittaAScadenzaTimer;
 
     private void Awake()
     {
@@ -117,6 +130,7 @@ public class MissionManager : MonoBehaviour
             return false;
 
         punteggioBase += scoreSettings.PuntiPerCredenziale;
+        OnNuovaCredenzialeRaccolta?.Invoke(credentialId, credenzialiRaccolte.Count);
         OnCredenzialiCambiate?.Invoke(credenzialiRaccolte.Count);
         OnFrequenzeCambiate?.Invoke(credenzialiRaccolte.Count);
         OnPunteggioCambiato?.Invoke(CalcolaPunteggioProvvisorio());
@@ -132,6 +146,15 @@ public class MissionManager : MonoBehaviour
     public bool PossiedeCredenziale(string credentialId)
     {
         return string.IsNullOrWhiteSpace(credentialId) || credenzialiRaccolte.Contains(credentialId);
+    }
+
+    /// <summary>
+    /// Restituisce true solo se la credenziale specifica è stata fisicamente raccolta nella sessione corrente di missione.
+    /// </summary>
+    public bool HaRaccoltoCredenzialeSpecifica(string credentialId)
+    {
+        if (string.IsNullOrWhiteSpace(credentialId)) return false;
+        return credenzialiRaccolte.Contains(credentialId);
     }
 
     public bool PossiedeFrequenza(string frequencyId)
@@ -347,6 +370,23 @@ public class MissionManager : MonoBehaviour
     private void GestisciMortePlayer()
     {
         TerminaMissione(MissionOutcome.Defeat, "Operatore neutralizzato.");
+    }
+
+    public void TerminaPerTempoScaduto()
+    {
+        if (missioneTerminata)
+            return;
+
+        Debug.Log("<color=red><b>[TEMPO SCADUTO]</b> Il countdown di emergenza è terminato a 00:00.0! Attivazione Game Over immediato.</color>");
+
+        SalutePlayer player = UnityEngine.Object.FindAnyObjectByType<SalutePlayer>();
+        if (player != null && player.SaluteAttuale > 0)
+        {
+            player.SubisciDanno(99999f);
+        }
+
+        TerminaMissione(MissionOutcome.Defeat, "Tempo limite scaduto! Evacuazione fallita.");
+        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA");
     }
 
     private void TerminaMissione(MissionOutcome outcome, string reason)

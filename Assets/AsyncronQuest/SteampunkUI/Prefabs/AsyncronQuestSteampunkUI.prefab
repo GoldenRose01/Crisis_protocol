@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6420b5cbc25359046b7f5ab407518c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  newGameSceneName: locale
+  newGameSceneName: settore 0
   onNewGame:
     m_PersistentCalls:
       m_Calls:
@@ -63,7 +63,8 @@ MonoBehaviour:
   onResume:
     m_PersistentCalls:
       m_Calls: []
-  mainMenuBackgroundSprite: {fileID: 21300000, guid: 7a4e105a7774c5f4dafca242022b742f, type: 3}
+  backgroundVideoClip: {fileID: 32900000, guid: 0970c79044890d54b9386a3a435ee435, type: 3}
+  mainMenuBackgroundSprite: {fileID: 0}
   backgroundImageAlpha: 1
   backgroundTintAlpha: 0
   backgroundPreserveAspect: 0

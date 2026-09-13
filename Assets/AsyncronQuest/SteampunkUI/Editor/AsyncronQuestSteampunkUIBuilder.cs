@@ -22,7 +22,7 @@ namespace AsyncronQuest.SteampunkUI.Editor
 
             GameObject root = new GameObject("AsyncronQuestSteampunkUI");
             AsyncronQuestSteampunkUI ui = root.AddComponent<AsyncronQuestSteampunkUI>();
-            AssignSprite(ui, "mainMenuBackgroundSprite", StartMenuBackgroundPath);
+            AssignVideoClip(ui, "backgroundVideoClip", "Assets/AsyncronQuest/SteampunkUI/UI_Style/DEVE_ESSERE_SOLO_IL_NEON_NENTE.mp4");
             ui.RebuildMainMenu();
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             Object.DestroyImmediate(root);
@@ -63,7 +63,7 @@ namespace AsyncronQuest.SteampunkUI.Editor
 
             GameObject root = new GameObject("AsyncronQuestSteampunkUI");
             AsyncronQuestSteampunkUI ui = root.AddComponent<AsyncronQuestSteampunkUI>();
-            AssignSprite(ui, "mainMenuBackgroundSprite", StartMenuBackgroundPath);
+            AssignVideoClip(ui, "backgroundVideoClip", "Assets/AsyncronQuest/SteampunkUI/UI_Style/DEVE_ESSERE_SOLO_IL_NEON_NENTE.mp4");
             ui.RebuildMainMenu();
             Undo.RegisterCreatedObjectUndo(root, "Add Asyncron Quest Steampunk UI");
             Selection.activeGameObject = root;
@@ -149,6 +149,21 @@ namespace AsyncronQuest.SteampunkUI.Editor
             }
 
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        private static void AssignVideoClip(Component component, string propertyName, string path)
+        {
+            UnityEngine.Video.VideoClip clip = AssetDatabase.LoadAssetAtPath<UnityEngine.Video.VideoClip>(path);
+            if (!clip)
+                return;
+
+            SerializedObject serialized = new SerializedObject(component);
+            SerializedProperty property = serialized.FindProperty(propertyName);
+            if (property == null)
+                return;
+
+            property.objectReferenceValue = clip;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
     }
 }

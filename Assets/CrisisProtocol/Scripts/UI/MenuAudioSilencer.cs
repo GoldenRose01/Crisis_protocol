@@ -61,7 +61,11 @@ namespace GoldenCast.UI
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             MarkMenuAndVideoAudioSources();
-            AudioListener.pause = ModalUIState.IsModalOpen || scene.name == MainMenuSceneName;
+            AudioListener.pause = ModalUIState.IsModalOpen;
+            if (PlayerPrefs.HasKey("MasterVolume"))
+            {
+                AudioListener.volume = PlayerPrefs.GetFloat("MasterVolume", 1f);
+            }
         }
 
         private void Update()

@@ -61,8 +61,12 @@ public class PortaSettore : MonoBehaviour, IInteractable
     [Tooltip("Intensità del bagliore (emissione) sul materiale del Cubo.")]
     [SerializeField] private float intensitaEmissione = 2f;
 
+    [Header("Modalità Apertura")]
+    [Tooltip("Se true, la porta si apre ESCLUSIVAMENTE quando il giocatore interagisce con essa (premendo E). Se false, si apre automaticamente quando richiesto.")]
+    [SerializeField] private bool aperturaAInterazione = true;
+
     [Header("Sblocco Automatico Fine Crisi")]
-    [Tooltip("Se true, la porta si sblocca e si apre automaticamente quando tutti i focolai sono contenuti e finisce la crisi (estrazione sbloccata).")]
+    [Tooltip("Se true (e Apertura a Interazione è disattivato), la porta si sblocca e si apre automaticamente quando tutti i focolai sono contenuti e finisce la crisi.")]
     [SerializeField] private bool apriAlTermineCrisi = false;
 
     [Header("Stato Iniziale")]
@@ -116,10 +120,22 @@ public class PortaSettore : MonoBehaviour, IInteractable
 
     private void OnEstrazioneModificata(bool sbloccata)
     {
-        if (apriAlTermineCrisi && sbloccata)
+        if (sbloccata)
         {
-            Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>");
-            SbloccaEDApri();
+            if (aperturaAInterazione)
+            {
+                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata. Porta sbloccata per apertura a interazione: <b>{name}</b>");
+                Sblocca();
+            }
+            else if (apriAlTermineCrisi)
+            {
+                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>");
+                SbloccaEDApri();
+            }
+            else
+            {
+                Sblocca();
+            }
         }
     }
 
@@ -167,17 +183,15 @@ public class PortaSettore : MonoBehaviour, IInteractable
 
     private void Start()
     {
-        // Ripristina lo stato se la porta era gia' stata aperta in precedenza (tra sessioni)
-        if (GameManager.Instance != null &&
-            !string.IsNullOrEmpty(portaId) &&
-            GameManager.Instance.GetCausalState(portaId))
+        // Se apertura a interazione è disattivata, ripristina lo stato se la porta era gia' stata aperta in precedenza
+        if (!aperturaAInterazione && GameManager.Instance != null && !string.IsNullOrEmpty(portaId) && GameManager.Instance.GetCausalState(portaId))
         {
             ApplicaStatoIstantaneo(true);
             return;
         }
 
-        // Se la crisi è già risolta all'avvio e la porta deve aprirsi a fine crisi
-        if (apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
+        // Se apertura a interazione è disattivata e la crisi è già risolta all'avvio
+        if (!aperturaAInterazione && apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
         {
             ApplicaStatoIstantaneo(true);
             return;

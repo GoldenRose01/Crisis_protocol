@@ -276,8 +276,8 @@ Camera:
   m_GameObject: {fileID: 1433545519}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.015, g: 0.03, b: 0.055, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -387,6 +387,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1987654322}
   - component: {fileID: 1987654323}
+  - component: {fileID: 1987654324}
   m_Layer: 0
   m_Name: AsyncronQuestSteampunkUI
   m_TagString: Untagged
@@ -421,7 +422,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6420b5cbc25359046b7f5ab407518c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  newGameSceneName: locale
+  newGameSceneName: settore 0
   onNewGame:
     m_PersistentCalls:
       m_Calls: []
@@ -429,78 +430,117 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   languageCode: It
-  newGameIntroVideo: {fileID: 0}
-  resumeLoadingVideo: {fileID: 32900000, guid: dc7264853afb15b4698926d6e3af0112, type: 3}
-  videoSortingOrder: 1000
   canvasSortingOrder: 50
   canvasReferenceResolution: {x: 1920, y: 1080}
-  safePadding: {x: 48, y: 36, z: 48, w: 36}
-  allowUpscale: 1
-  mainMenuBackgroundSprite: {fileID: 21300000, guid: 7a4e105a7774c5f4dafca242022b742f, type: 3}
+  neonGreen: {r: 0, g: 1, b: 0.45, a: 1}
+  neonGreenGlow: {r: 0, g: 1, b: 0.45, a: 0.25}
+  neonYellow: {r: 1, g: 0.95, b: 0.05, a: 1}
+  neonYellowGlow: {r: 1, g: 0.95, b: 0.05, a: 0.25}
+  neonRed: {r: 1, g: 0.08, b: 0.28, a: 1}
+  neonRedGlow: {r: 1, g: 0.08, b: 0.28, a: 0.25}
+  cyberCyan: {r: 0.25, g: 0.9, b: 1, a: 1}
+  darkChassis: {r: 0.02, g: 0.045, b: 0.08, a: 0.94}
+  darkGlassPanel: {r: 0.015, g: 0.03, b: 0.06, a: 0.88}
+  backgroundVideoClip: {fileID: 32900000, guid: 35e47a86febfe334b8f7a91f7b535842, type: 3}
+  mainMenuBackgroundSprite: {fileID: 0}
   backgroundImageAlpha: 1
-  backgroundTintAlpha: 0.18
-  backgroundPreserveAspect: 0
-  panelAlpha: 0.68
-  buttonAlpha: 0.88
-  buttonHighlightAlpha: 0.95
-  buttonPressedAlpha: 1
-  frameAlpha: 0.82
-  decorativeLinesAlpha: 0.18
-  titleAlpha: 0.92
-  mainPanel:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: 0}
-    size: {x: 520, y: 620}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
-  titleLayout:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: 116}
-    size: {x: 400, y: 38}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
-  buttonGroupLayout:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: -58}
-    size: {x: 380, y: 180}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
-  newGameButtonLayout:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: 46}
-    size: {x: 360, y: 68}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
-  resumeButtonLayout:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: -46}
-    size: {x: 360, y: 68}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
-  buttonTextLayout:
-    anchorMin: {x: 0.5, y: 0.5}
-    anchorMax: {x: 0.5, y: 0.5}
-    pivot: {x: 0.5, y: 0.5}
-    position: {x: 0, y: 0}
-    size: {x: 330, y: 50}
-    stretchToAnchors: 0
-    offsetMin: {x: 0, y: 0}
-    offsetMax: {x: 0, y: 0}
+--- !u!82 &1987654324
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 6e2fce5f77e459e43bf8f738f732a22b, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -168,6 +168,11 @@ public class AccessCredentialPickup : MonoBehaviour, IInteractable
         if (!raccolta)
             return;
 
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RegisterSecuritySignature(credentialId);
+        }
+
         if (suonoRaccolta != null)
         {
             AudioSource.PlayClipAtPoint(suonoRaccolta, transform.position, volumeAudio);

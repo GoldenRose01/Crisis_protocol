@@ -89,18 +89,35 @@ public class CyberHUD : MonoBehaviour
     private Coroutine damageFlashCoroutine;
 
     // 6. Cyber Countdown Timer Panel (In alto a destra)
-    [Header("Configurazione Countdown")]
-    public float durataCountdownIniziale = 300f; // 5 minuti di default (300 secondi)
+    [Header("Configurazione Countdown (Inspector)")]
+    [Tooltip("Durata del timer di missione in MINUTI (regolabile da qui: es. 5 = 5:00, 3 = 3:00, 10 = 10:00).")]
+    [SerializeField] [Range(0.5f, 60f)] private float durataInMinuti = 5f;
+    [Tooltip("Secondi totali calcolati per il countdown.")]
+    public float durataCountdownIniziale = 300f;
+    [Tooltip("Abilita o disabilita il conteggio all'indietro del timer.")]
+    [SerializeField] private bool timerAttivo = true;
+    [Tooltip("Se true, provoca la sconfitta immediata allo scadere del timer (00:00.0).")]
+    [SerializeField] private bool sconfittaATempoScaduto = true;
+    [Tooltip("Se true, usa le impostazioni specificate qui su CyberHUD invece di ereditare quelle di MissionManager.")]
+    [SerializeField] private bool forzaImpostazioniLocaliHUD = false;
+
     private RectTransform timerContainer;
     private Text testoTimerValore;
     private Text testoTimerStatus;
     private float tempoRimanenteCountdown = 300f;
-    private bool timerAttivo = true;
 
     public float TempoRimanente => tempoRimanenteCountdown;
-    public void ImpostaCountdown(float secondi) { durataCountdownIniziale = secondi; tempoRimanenteCountdown = secondi; }
+    public void ImpostaCountdown(float secondi) { durataCountdownIniziale = secondi; durataInMinuti = secondi / 60f; tempoRimanenteCountdown = secondi; }
     public void ResetCountdown() => tempoRimanenteCountdown = durataCountdownIniziale;
     public void SetTimerAttivo(bool attivo) => timerAttivo = attivo;
+
+    private void OnValidate()
+    {
+        if (durataInMinuti > 0f)
+        {
+            durataCountdownIniziale = durataInMinuti * 60f;
+        }
+    }
 
     private void Awake()
     {
@@ -134,6 +151,32 @@ public class CyberHUD : MonoBehaviour
 
     public void InizializzaStatoIniziale()
     {
+        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (currentScene == "MainMenu-Scene")
+        {
+            if (hudCanvas != null) hudCanvas.enabled = false;
+            return;
+        }
+        else
+        {
+            if (hudCanvas != null) hudCanvas.enabled = true;
+        }
+
+        if (MissionManager.Instance != null && !forzaImpostazioniLocaliHUD)
+        {
+            timerAttivo = MissionManager.Instance.UsaTempoLimite;
+            durataInMinuti = MissionManager.Instance.TempoLimiteMinuti;
+            durataCountdownIniziale = MissionManager.Instance.TempoLimiteSecondi;
+            sconfittaATempoScaduto = MissionManager.Instance.SconfittaAScadenzaTimer;
+        }
+        else
+        {
+            if (durataInMinuti > 0f)
+            {
+                durataCountdownIniziale = durataInMinuti * 60f;
+            }
+        }
+
         tempoRimanenteCountdown = durataCountdownIniziale;
 
         SalutePlayer p = Object.FindAnyObjectByType<SalutePlayer>();
@@ -168,6 +211,11 @@ public class CyberHUD : MonoBehaviour
         // Aggiornamento Countdown a schermo LCD (Conteggio all'indietro)
         if (timerAttivo && testoTimerValore != null)
         {
+            if (MissionManager.Instance != null && MissionManager.Instance.MissioneTerminata)
+            {
+                return;
+            }
+
             tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime);
             int minuti = (int)(tempoRimanenteCountdown / 60f);
             int secondi = (int)(tempoRimanenteCountdown % 60f);
@@ -182,8 +230,25 @@ public class CyberHUD : MonoBehaviour
                 testoTimerValore.color = warningRed;
                 if (testoTimerStatus != null)
                 {
-                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL";
+                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL DEFEAT";
                     testoTimerStatus.color = warningRed;
+                }
+
+                if (sconfittaATempoScaduto)
+                {
+                    if (MissionManager.Instance != null && !MissionManager.Instance.MissioneTerminata)
+                    {
+                        MissionManager.Instance.TerminaPerTempoScaduto();
+                    }
+                    else
+                    {
+                        SalutePlayer player = Object.FindAnyObjectByType<SalutePlayer>();
+                        if (player != null && player.SaluteAttuale > 0)
+                        {
+                            player.SubisciDanno(99999f);
+                        }
+                        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA");
+                    }
                 }
             }
             else if (tempoRimanenteCountdown <= 60f)

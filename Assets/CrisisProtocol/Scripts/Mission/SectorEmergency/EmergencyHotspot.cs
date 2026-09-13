@@ -273,6 +273,8 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
 
     public event System.Action OnFocolaioContenuto;
     public bool Contenuto => contenuto;
+    public string RequiredCredentialId => requiredCredentialId;
+    public string HotspotId => hotspotId;
 
     public void Interact()
     {
