@@ -126,6 +126,7 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     private RectTransform tutorialPanel; // roba pub // riga-ok
     private CanvasGroup tutorialPanelGroup; // roba pub // riga-ok
     private bool tutorialAperto = false; // roba pub // riga-ok
+    [SerializeField] private KeyCode tastoTutorial = KeyCode.F1; // setta // riga-ok
 
     public float TempoRimanente => tempoRimanenteCountdown; // roba pub // riga-ok
     // blocco: funzione fa cose
@@ -244,6 +245,8 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     private void Update() // roba pub // riga-ok
     { // apre // riga-ok
+        GestisciInputTutorial(); // chiama // riga-ok
+
         // Rotazione continua dell'anello del visore robotico
         // blocco: controlla se va
         if (reticleRing != null) // se ok // riga-ok
@@ -445,8 +448,8 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         iconGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
         Text iconText = iconGO.AddComponent<Text>(); // setta // riga-ok
         iconText.font = font; // setta // riga-ok
-        iconText.text = "⚙"; // setta // riga-ok
-        iconText.fontSize = 32; // setta // riga-ok
+        iconText.text = "⚙\nF1"; // setta // riga-ok
+        iconText.fontSize = 24; // setta // riga-ok
         iconText.fontStyle = FontStyle.Bold; // setta // riga-ok
         iconText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
         iconText.color = textCyan; // setta // riga-ok
@@ -507,7 +510,7 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
             "4. PERICOLO\\n" +
             "   Tieni d'occhio batteria/vita e countdown. Se subisci danni la HUD lampeggia, quindi cerca riparo o cambia percorso.\\n\\n" +
             "5. COMANDI RAPIDI\\n" +
-            "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | ESC/M: pausa"; // setta // riga-ok
+            "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | F1: tutorial | ESC: chiudi/pause"; // setta // riga-ok
         bodyText.fontSize = 20; // setta // riga-ok
         bodyText.lineSpacing = 1.12f; // setta // riga-ok
         bodyText.alignment = TextAnchor.UpperLeft; // setta // riga-ok
@@ -551,6 +554,20 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         closeLabelRect.anchorMax = Vector2.one; // setta // riga-ok
         closeLabelRect.offsetMin = Vector2.zero; // setta // riga-ok
         closeLabelRect.offsetMax = Vector2.zero; // setta // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: legge tastiera tutorial
+    private void GestisciInputTutorial() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (Input.GetKeyDown(tastoTutorial)) // se ok // riga-ok
+        { // apre // riga-ok
+            ToggleTutorialPanel(); // chiama // riga-ok
+        } // chiude // riga-ok
+
+        if (tutorialAperto && Input.GetKeyDown(KeyCode.Escape)) // se ok // riga-ok
+        { // apre // riga-ok
+            ChiudiTutorialPanel(); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: apre/chiude tutorial
