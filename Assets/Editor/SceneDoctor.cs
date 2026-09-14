@@ -339,6 +339,249 @@ public class SceneDoctor : EditorWindow
         );
     }
 
+    [MenuItem("CrisisProtocol/Configura Perdita Gas Focolaio 2 (Scena 1)")]
+    [MenuItem("Tools/Configura Perdita Gas Focolaio 2 (Scena 1)")]
+    public static void ConfiguraPerditaGasFocolaio2()
+    {
+        // 1. Trova il Focolaio 2 (EMERGENZA (1) o hotspotId REACTOR_FAULT_002)
+        EmergencyHotspot[] hotspots = Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
+        EmergencyHotspot hotspot2 = null;
+
+        foreach (var h in hotspots)
+        {
+            if (h != null && (h.HotspotId == "REACTOR_FAULT_002" || h.name.Contains("(1)") || h.RequiredCredentialId == "KEYCARD_A02"))
+            {
+                hotspot2 = h;
+                break;
+            }
+        }
+
+        if (hotspot2 == null && hotspots.Length > 1)
+        {
+            hotspot2 = hotspots[1];
+        }
+        else if (hotspot2 == null && hotspots.Length > 0)
+        {
+            hotspot2 = hotspots[0];
+        }
+
+        if (hotspot2 == null)
+        {
+            EditorUtility.DisplayDialog("Errore", "Nessun EmergencyHotspot trovato nella scena attiva!", "OK");
+            return;
+        }
+
+        Undo.RegisterFullObjectHierarchyUndo(hotspot2.gameObject, "Configura Perdita Gas Focolaio 2");
+
+        // 2. Materiale particelle
+        Material particleMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Blockout/Materials/Blockout_Particle_Mat.mat");
+        if (particleMat == null)
+        {
+            particleMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Blockout/Materials/Blockout_Particle_Mat 1.mat");
+        }
+
+        // 3. Audio Clips
+        AudioClip clipGasHiss = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/House & Office/Gas funace_running.wav") ??
+                                AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/House & Office/Gas Stove_running.wav") ??
+                                AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/Liquids/Spray.wav") ??
+                                AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/Monsters & Ghosts/robotic_hiss.wav");
+
+        AudioClip clipRepaired = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/notification-process-complete-slava-pogorelsky-1-00-03.mp3") ??
+                                 AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/Stingers and Spooky Triggers/Harmonized Tone_Pleasant but Spooky.wav");
+
+        // 4. Crea o recupera il root delle particelle di gas
+        Transform gasRoot = hotspot2.transform.Find("VFX_Gas_Leak_Emitter");
+        if (gasRoot == null)
+        {
+            GameObject gasGo = new GameObject("VFX_Gas_Leak_Emitter");
+            gasGo.transform.SetParent(hotspot2.transform, false);
+            gasGo.transform.localPosition = new Vector3(0f, 0.6f, 0.4f);
+            gasGo.transform.localRotation = Quaternion.Euler(-30f, 0f, 0f);
+            gasRoot = gasGo.transform;
+        }
+
+        // 5. Jet Stream Particellare Principale (Getto di Gas ad alta pressione)
+        ParticleSystem psJet = gasRoot.GetComponent<ParticleSystem>();
+        if (psJet == null)
+            psJet = gasRoot.gameObject.AddComponent<ParticleSystem>();
+
+        var mainJet = psJet.main;
+        mainJet.playOnAwake = true;
+        mainJet.loop = true;
+        mainJet.duration = 2.0f;
+        mainJet.startLifetime = new ParticleSystem.MinMaxCurve(1.6f, 2.8f);
+        mainJet.startSpeed = new ParticleSystem.MinMaxCurve(2.2f, 4.0f);
+        mainJet.startSize = new ParticleSystem.MinMaxCurve(0.2f, 0.55f);
+        mainJet.startColor = new ParticleSystem.MinMaxGradient(new Color(0.35f, 1f, 0.3f, 0.65f), new Color(0.75f, 1f, 0.25f, 0.50f));
+        mainJet.gravityModifier = -0.04f;
+        mainJet.simulationSpace = ParticleSystemSimulationSpace.World;
+        mainJet.maxParticles = 200;
+
+        var emissionJet = psJet.emission;
+        emissionJet.enabled = true;
+        emissionJet.rateOverTime = 32f;
+
+        var shapeJet = psJet.shape;
+        shapeJet.enabled = true;
+        shapeJet.shapeType = ParticleSystemShapeType.Cone;
+        shapeJet.angle = 15f;
+        shapeJet.radius = 0.06f;
+
+        var solJet = psJet.sizeOverLifetime;
+        solJet.enabled = true;
+        AnimationCurve curveJet = new AnimationCurve();
+        curveJet.AddKey(0f, 0.3f);
+        curveJet.AddKey(0.3f, 0.95f);
+        curveJet.AddKey(1f, 2.2f);
+        solJet.size = new ParticleSystem.MinMaxCurve(1f, curveJet);
+
+        var colJet = psJet.colorOverLifetime;
+        colJet.enabled = true;
+        Gradient gradJet = new Gradient();
+        gradJet.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(new Color(0.35f, 1f, 0.3f), 0f), new GradientColorKey(new Color(0.85f, 1f, 0.35f), 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.65f, 0.12f), new GradientAlphaKey(0.45f, 0.65f), new GradientAlphaKey(0f, 1f) }
+        );
+        colJet.color = gradJet;
+
+        var noiseJet = psJet.noise;
+        noiseJet.enabled = true;
+        noiseJet.strength = 0.25f;
+        noiseJet.frequency = 0.45f;
+        noiseJet.scrollSpeed = 0.35f;
+
+        ParticleSystemRenderer rendJet = gasRoot.GetComponent<ParticleSystemRenderer>();
+        if (rendJet != null && particleMat != null)
+        {
+            rendJet.material = particleMat;
+            rendJet.renderMode = ParticleSystemRenderMode.Billboard;
+            rendJet.alignment = ParticleSystemRenderSpace.View;
+        }
+
+        // 6. Nube di Gas Tossico secondaria / Haze espanso
+        Transform cloudTransform = gasRoot.Find("Gas_Cloud_Billowing");
+        if (cloudTransform == null)
+        {
+            GameObject cloudGo = new GameObject("Gas_Cloud_Billowing");
+            cloudGo.transform.SetParent(gasRoot, false);
+            cloudGo.transform.localPosition = new Vector3(0f, 0.3f, 0.6f);
+            cloudTransform = cloudGo.transform;
+        }
+
+        ParticleSystem psCloud = cloudTransform.GetComponent<ParticleSystem>();
+        if (psCloud == null)
+            psCloud = cloudTransform.gameObject.AddComponent<ParticleSystem>();
+
+        var mainCloud = psCloud.main;
+        mainCloud.playOnAwake = true;
+        mainCloud.loop = true;
+        mainCloud.duration = 4.0f;
+        mainCloud.startLifetime = new ParticleSystem.MinMaxCurve(2.5f, 4.2f);
+        mainCloud.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 0.9f);
+        mainCloud.startSize = new ParticleSystem.MinMaxCurve(0.7f, 1.6f);
+        mainCloud.startColor = new ParticleSystem.MinMaxGradient(new Color(0.3f, 0.95f, 0.25f, 0.35f), new Color(0.6f, 0.95f, 0.2f, 0.25f));
+        mainCloud.gravityModifier = -0.02f;
+        mainCloud.simulationSpace = ParticleSystemSimulationSpace.World;
+        mainCloud.maxParticles = 100;
+
+        var emissionCloud = psCloud.emission;
+        emissionCloud.enabled = true;
+        emissionCloud.rateOverTime = 10f;
+
+        var shapeCloud = psCloud.shape;
+        shapeCloud.enabled = true;
+        shapeCloud.shapeType = ParticleSystemShapeType.Sphere;
+        shapeCloud.radius = 0.45f;
+
+        var solCloud = psCloud.sizeOverLifetime;
+        solCloud.enabled = true;
+        AnimationCurve curveCloud = new AnimationCurve();
+        curveCloud.AddKey(0f, 0.5f);
+        curveCloud.AddKey(0.4f, 1.4f);
+        curveCloud.AddKey(1f, 2.6f);
+        solCloud.size = new ParticleSystem.MinMaxCurve(1f, curveCloud);
+
+        var colCloud = psCloud.colorOverLifetime;
+        colCloud.enabled = true;
+        Gradient gradCloud = new Gradient();
+        gradCloud.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(new Color(0.3f, 0.95f, 0.25f), 0f), new GradientColorKey(new Color(0.7f, 1f, 0.3f), 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.35f, 0.25f), new GradientAlphaKey(0.25f, 0.75f), new GradientAlphaKey(0f, 1f) }
+        );
+        colCloud.color = gradCloud;
+
+        ParticleSystemRenderer rendCloud = cloudTransform.GetComponent<ParticleSystemRenderer>();
+        if (rendCloud != null && particleMat != null)
+        {
+            rendCloud.material = particleMat;
+            rendCloud.renderMode = ParticleSystemRenderMode.Billboard;
+        }
+
+        // 7. Configura StructuralHazard (Pericolo Gas Tossico)
+        StructuralHazard hazard = gasRoot.GetComponent<StructuralHazard>();
+        if (hazard == null)
+            hazard = gasRoot.gameObject.AddComponent<StructuralHazard>();
+
+        SerializedObject soHazard = new SerializedObject(hazard);
+        SerializedProperty propHazardType = soHazard.FindProperty("hazardType");
+        if (propHazardType != null)
+            propHazardType.enumValueIndex = (int)StructuralHazard.HazardType.GasLeak;
+        SerializedProperty propDanno = soHazard.FindProperty("dannoAlSecondo");
+        if (propDanno != null)
+            propDanno.floatValue = 12f;
+        soHazard.ApplyModifiedProperties();
+
+        SphereCollider hazardCollider = gasRoot.GetComponent<SphereCollider>();
+        if (hazardCollider == null)
+            hazardCollider = gasRoot.gameObject.AddComponent<SphereCollider>();
+        hazardCollider.isTrigger = true;
+        hazardCollider.radius = 2.2f;
+
+        // 8. Configura SerializedProperties di EmergencyHotspot
+        SerializedObject soHotspot = new SerializedObject(hotspot2);
+        SerializedProperty propParticelle = soHotspot.FindProperty("particelleGuasto");
+        if (propParticelle != null)
+        {
+            propParticelle.arraySize = 2;
+            propParticelle.GetArrayElementAtIndex(0).objectReferenceValue = psJet;
+            propParticelle.GetArrayElementAtIndex(1).objectReferenceValue = psCloud;
+        }
+
+        SerializedProperty propSuonoLoop = soHotspot.FindProperty("suonoLoopGuasto");
+        if (propSuonoLoop != null && clipGasHiss != null)
+            propSuonoLoop.objectReferenceValue = clipGasHiss;
+
+        SerializedProperty propSuonoRip = soHotspot.FindProperty("suonoRiparazione");
+        if (propSuonoRip != null && clipRepaired != null)
+            propSuonoRip.objectReferenceValue = clipRepaired;
+
+        SerializedProperty propAutoDisattiva = soHotspot.FindProperty("autoDisattivaParticelleGuasto");
+        if (propAutoDisattiva != null)
+            propAutoDisattiva.boolValue = true;
+
+        soHotspot.ApplyModifiedProperties();
+
+        EditorUtility.SetDirty(hotspot2.gameObject);
+        EditorUtility.SetDirty(gasRoot.gameObject);
+        EditorUtility.SetDirty(cloudTransform.gameObject);
+
+        // Salva la scena
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(hotspot2.gameObject.scene);
+
+        Debug.Log($"<color=lime>[GAS LEAK]</color> Perdita di gas simulata con successo su <b>{hotspot2.name}</b> (Focolaio 2)! Particelle e audio 3D configurati.");
+
+        EditorUtility.DisplayDialog(
+            "Simulazione Perdita di Gas (Focolaio 2)",
+            $"Configurazione completata con successo sul Focolaio 2 ('{hotspot2.name}')!\n\n" +
+            $"• Emettitore Getto Gas in Pressione: Attivo\n" +
+            $"• Nube Volumetrica Espansa di Vapore: Attiva\n" +
+            $"• Audio 3D Loop Fischio/Gas: {clipGasHiss?.name ?? "Assegnato"}\n" +
+            $"• Pericolo Ambientale (StructuralHazard GasLeak): Configurato (Raggio: 2.2m)\n" +
+            $"• Spegnimento automatico al contenimento con Keycard '{hotspot2.RequiredCredentialId}': Abilitato",
+            "OK"
+        );
+    }
+
     [MenuItem("CrisisProtocol/Configura Tutti i Suoni Scena ed Emettitori 3D")]
     public static void ConfiguraSuoniMenu()
     {

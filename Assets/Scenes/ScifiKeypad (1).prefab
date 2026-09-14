@@ -1,0 +1,152 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &5881230734166198342
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.030000001
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.030000001
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.030000001
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 450.46
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.13
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 384.09
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_Name
+      value: ScifiKeypad (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_NavMeshLayer
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1951180155371387218, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f41c694b6f3bed54e9965d1f45096ddb, type: 2}
+    - target: {fileID: 8727600987499672966, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_NavMeshLayer
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8727600987499672966, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 8
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5792637734620244735}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1354384235284616342}
+  m_SourcePrefab: {fileID: 100100000, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+--- !u!1 &6728164403618460951 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 713ca415679661d488ac5cf8b4f7fedc, type: 3}
+  m_PrefabInstance: {fileID: 5881230734166198342}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &5792637734620244735
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6728164403618460951}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 21.249384, y: 45.331715, z: 75.594055}
+  m_Center: {x: 4.637841, y: -0.07296403, z: 1.2550751}
+--- !u!114 &1354384235284616342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6728164403618460951}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 449579ef3b364874f8ac01ab3a31a37b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  portaCollegata: {fileID: 0}
+  nomeTerminale: PANNELLO DI SICUREZZA
+  codiceSegreto: 5489
+  consentiCodicePin: 1
+  consentiBypassElettronico: 1
+  pinGuastoRichiedeBypass: 0
+  monitorRenderer: {fileID: 0}
+  luceMonitor: {fileID: 0}
+  suonoInterazione: {fileID: 8300000, guid: d1326504d5fdfc749864f83a595f48cf, type: 3}
+  suonoAccessoGarantito: {fileID: 8300000, guid: 3d1ad83a18612dc4c9438843543241ec, type: 3}
+  suonoAccessoNegato: {fileID: 8300000, guid: 2e84e6778ea6ad646a6d2a14b4265eb3, type: 3}
+  volumeAudio: 0.9
+  giaSbloccato: 0

@@ -216,7 +216,7 @@ public class PortaSettore : MonoBehaviour, IInteractable
             TerminalePorta[] tuttiITerminali = Object.FindObjectsByType<TerminalePorta>(FindObjectsSortMode.None);
             foreach (TerminalePorta t in tuttiITerminali)
             {
-                if (t != null && t.portaCollegata == this)
+                if (t != null && t.porteCollegate.Contains(this))
                 {
                     terminaleSicurezza = t;
                     break;

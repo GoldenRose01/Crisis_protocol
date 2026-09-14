@@ -79,6 +79,13 @@ public class GameManager : MonoBehaviour
 
         saveFilePath = Path.Combine(Application.persistentDataPath, SaveFileName);
         LoadGameState();
+
+        // Sincronizza l'indice con la scena attualmente aperta (utile se si avvia il gioco direttamente da un settore nell'Editor Unity)
+        string nomeScenaAttuale = SceneManager.GetActiveScene().name;
+        if (livelliInOrdine != null && livelliInOrdine.Contains(nomeScenaAttuale))
+        {
+            indiceSettoreCorrente = livelliInOrdine.IndexOf(nomeScenaAttuale);
+        }
     }
 
     private void Update()
@@ -236,11 +243,18 @@ public class GameManager : MonoBehaviour
         unlockedSecurityHistory.Clear();
         currentCredentialID = "KEYCARD_A01";
         SaveGameState();
-        CaricaSettore(0);
+        
+        // Avvia il briefing invece di caricare direttamente la scena
+        StoryBriefingController.ShowBriefingAndLoadGame();
     }
 
     /// <summary>
-    /// Carica il settore per indice. Se l'indice supera la lista, torna al MainMenu (fine gioco).
+    /// Restituisce true se il settore corrente è l'ultimo della campagna (Settore 2).
+    /// </summary>
+    public bool IsUltimoSettore => indiceSettoreCorrente >= (livelliInOrdine != null && livelliInOrdine.Count > 0 ? livelliInOrdine.Count - 1 : 2);
+
+    /// <summary>
+    /// Carica il settore per indice. Se l'indice supera la lista, mostra i titoli di coda e fine gioco.
     /// </summary>
     public void CaricaSettore(int indice)
     {
@@ -252,8 +266,8 @@ public class GameManager : MonoBehaviour
 
         if (indice >= livelliInOrdine.Count)
         {
-            Debug.Log("[GAMEMANAGER] Tutti i settori completati. Ritorno al MainMenu.");
-            SceneManager.LoadScene(scenaMainMenu);
+            Debug.Log("[GAMEMANAGER] Tutti i settori completati! Visualizzazione schermata di fine gioco e crediti.");
+            EndGameCreditsController.ShowVictoryAndCredits(punteggioTotale);
             return;
         }
 

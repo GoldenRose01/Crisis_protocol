@@ -400,8 +400,27 @@ public class MissionManager : MonoBehaviour
         OnMissioneTerminata?.Invoke(outcome, punteggioFinale, reason);
         Debug.Log($"<color=gold>[MISSIONE TERMINATA]</color> Esito: {outcome}. Score: {punteggioFinale}. Motivo: {reason}");
 
-        if (outcome == MissionOutcome.Victory && GameManager.Instance != null)
-            StartCoroutine(DelayCaricaProssimoSettore(2f));
+        if (outcome == MissionOutcome.Victory)
+        {
+            bool isUltimoLivello = (GameManager.Instance != null && GameManager.Instance.IsUltimoSettore) ||
+                                   SceneManager.GetActiveScene().name.ToLower().Contains("settore 2");
+
+            if (isUltimoLivello)
+            {
+                Debug.Log("<color=lime><b>[VITTORIA FINALE]</b> Settore 2 completato! Avvio schermata finale e titoli di coda...</color>");
+                StartCoroutine(DelayMostraTitoliDiCoda(2f, punteggioFinale));
+            }
+            else if (GameManager.Instance != null)
+            {
+                StartCoroutine(DelayCaricaProssimoSettore(2f));
+            }
+        }
+    }
+
+    private IEnumerator DelayMostraTitoliDiCoda(float delay, int score)
+    {
+        yield return new WaitForSeconds(delay);
+        EndGameCreditsController.ShowVictoryAndCredits(score);
     }
 
     /// <summary>

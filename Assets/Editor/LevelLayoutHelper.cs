@@ -283,7 +283,7 @@ public class LevelLayoutHelper : EditorWindow
 
         // Componente TerminalePorta
         TerminalePorta terminaleScript = terminaleObj.AddComponent<TerminalePorta>();
-        terminaleScript.portaCollegata = porta;
+        terminaleScript.porteCollegate.Add(porta);
         terminaleScript.nomeTerminale = "PANNELLO DI ACCESSO // " + porta.gameObject.name.ToUpper();
         terminaleScript.codiceSegreto = "4281";
         terminaleScript.consentiCodicePin = true;

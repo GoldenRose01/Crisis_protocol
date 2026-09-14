@@ -7,9 +7,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class TerminalePorta : MonoBehaviour, IInteractable
 {
-    [Header("Porta Collegata")]
-    [Tooltip("Trascina qui la PortaSettore da sbloccare ed aprire con questo terminale.")]
-    public PortaSettore portaCollegata;
+    [Header("Porte Collegate")]
+    [Tooltip("Trascina qui le PortaSettore (anche più di una) da sbloccare ed aprire con questo terminale.")]
+    public System.Collections.Generic.List<PortaSettore> porteCollegate = new System.Collections.Generic.List<PortaSettore>();
 
     [Header("Configurazione Sicurezza")]
     [Tooltip("Nome descrittivo visualizzato sull'interfaccia (es. 'TERMINALE SETTORE REATTORE').")]
@@ -89,10 +89,16 @@ public class TerminalePorta : MonoBehaviour, IInteractable
                 gameObject.layer = interactableLayer;
         }
 
-        if (portaCollegata != null)
+        if (porteCollegate != null && porteCollegate.Count > 0)
         {
-            portaCollegata.terminaleSicurezza = this;
-            portaCollegata.AggiornaFeedbackVisivo();
+            foreach (var p in porteCollegate)
+            {
+                if (p != null)
+                {
+                    p.terminaleSicurezza = this;
+                    p.AggiornaFeedbackVisivo();
+                }
+            }
         }
 
         AggiornaGraficaMonitor();
@@ -104,9 +110,13 @@ public class TerminalePorta : MonoBehaviour, IInteractable
 
         if (giaSbloccato)
         {
-            if (portaCollegata != null)
+            if (porteCollegate != null && porteCollegate.Count > 0)
             {
-                portaCollegata.Interact();
+                foreach (var p in porteCollegate)
+                {
+                    if (p != null)
+                        p.Interact();
+                }
             }
             return;
         }
@@ -134,10 +144,14 @@ public class TerminalePorta : MonoBehaviour, IInteractable
         AggiornaGraficaMonitor();
         RiproduciSuono(suonoAccessoGarantito);
 
-        if (portaCollegata != null)
+        if (porteCollegate != null && porteCollegate.Count > 0)
         {
-            portaCollegata.SbloccaEDApri();
-            Debug.Log($"<color=green>[TERMINALE] Accesso autorizzato su '{nomeTerminale}'. Porta aperta con successo!</color>");
+            foreach (var p in porteCollegate)
+            {
+                if (p != null)
+                    p.SbloccaEDApri();
+            }
+            Debug.Log($"<color=green>[TERMINALE] Accesso autorizzato su '{nomeTerminale}'. Porte aperte con successo!</color>");
         }
     }
 

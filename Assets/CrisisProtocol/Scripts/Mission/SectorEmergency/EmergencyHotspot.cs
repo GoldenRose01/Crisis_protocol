@@ -3,10 +3,13 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class EmergencyHotspot : MonoBehaviour, IInteractable
 {
+    public enum HotspotVisualType { AutoDetect, WaterChemicalLeak, ElectricSparks, ToxicGasLeak }
+
     [Header("Dati Focolaio")]
     [SerializeField] private string hotspotId = "REACTOR_FAULT_001";
     [SerializeField] private string requiredCredentialId = "KEYCARD_A01";
     [SerializeField] private bool applicaTagAutomatico = true;
+    [SerializeField] private HotspotVisualType modalitaVisiva = HotspotVisualType.AutoDetect;
 
     [Header("Feedback Visivo e Particelle")]
     [SerializeField] private Color criticalColor = new Color(1f, 0.12f, 0.05f);
@@ -23,6 +26,14 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
     
     [Tooltip("Se true, aumenta automaticamente la luminosità e dimensione delle gocce/scintille per renderle chiaramente visibili nel buio.")]
     [SerializeField] private bool potenziaVisibilitaParticelle = true;
+
+    [Tooltip("Scala globale applicata a tutte le particelle generate (getto gas, nube, scintille). " +
+             "Valore 1 = dimensioni standard. Usa 0.2-0.4 per hotspot piccoli come container o cavi.")]
+    [Range(0.05f, 3.0f)]
+    [SerializeField] private float moltiplicatoreParticelle = 1.0f;
+
+    [Tooltip("Se assegnato, le particelle generate automaticamente partiranno da questo punto esatto (usa un GameObject vuoto). Se vuoto, partono dal centro del collider.")]
+    [SerializeField] private Transform puntoEmissioneCustom;
 
     [SerializeField] private GameObject containedStateObject;
 
@@ -57,7 +68,155 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
             }
         }
 
+        // Se configurato come perdita di gas o focolaio 2, assicura la presenza del sistema di particelle di gas
+        if (modalitaVisiva == HotspotVisualType.ToxicGasLeak || hotspotId == "REACTOR_FAULT_002" || name.Contains("(1)"))
+        {
+            GeneraPerditaGasSeAssente();
+        }
+
         AutoTrovaParticelleGuastoSeVuoto();
+    }
+
+    /// <summary>
+    /// Genera a runtime o in editor il sistema particellare duale di getto in pressione + nube volumetrica di gas tossico.
+    /// </summary>
+    public void GeneraPerditaGasSeAssente()
+    {
+        Transform existing = transform.Find("VFX_Gas_Leak_Emitter");
+        if (existing != null && existing.GetComponent<ParticleSystem>() != null)
+            return;
+
+        float sc = moltiplicatoreParticelle; // alias breve per leggibilità
+
+        // 1. Root Emettitore Getto Gas — usa il punto custom se definito, altrimenti posiziona calcolata
+        GameObject gasRoot = new GameObject("VFX_Gas_Leak_Emitter");
+        if (puntoEmissioneCustom != null)
+        {
+            gasRoot.transform.SetParent(puntoEmissioneCustom, false);
+            gasRoot.transform.localPosition = Vector3.zero;
+            gasRoot.transform.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            gasRoot.transform.SetParent(transform, false);
+            gasRoot.transform.localPosition = new Vector3(0f, 0.6f * sc, 0.4f * sc);
+            gasRoot.transform.localRotation = Quaternion.Euler(-30f, 0f, 0f);
+        }
+
+        // 2. Jet Stream (Getto Gas in Pressione)
+        ParticleSystem psJet = gasRoot.AddComponent<ParticleSystem>();
+        var mainJet = psJet.main;
+        mainJet.playOnAwake = true;
+        mainJet.loop = true;
+        mainJet.duration = 2.0f;
+        mainJet.startLifetime = new ParticleSystem.MinMaxCurve(1.6f, 2.8f);
+        mainJet.startSpeed    = new ParticleSystem.MinMaxCurve(2.2f * sc, 4.0f * sc);
+        mainJet.startSize     = new ParticleSystem.MinMaxCurve(0.2f * sc, 0.55f * sc);
+        mainJet.startColor    = new ParticleSystem.MinMaxGradient(new Color(0.35f, 1f, 0.3f, 0.65f), new Color(0.75f, 1f, 0.25f, 0.50f));
+        mainJet.gravityModifier = -0.04f;
+        mainJet.simulationSpace = ParticleSystemSimulationSpace.World;
+        mainJet.maxParticles    = Mathf.Max(20, Mathf.RoundToInt(200 * sc));
+
+        var emissionJet = psJet.emission;
+        emissionJet.enabled = true;
+        emissionJet.rateOverTime = 32f;
+
+        var shapeJet = psJet.shape;
+        shapeJet.enabled = true;
+        shapeJet.shapeType = ParticleSystemShapeType.SingleSidedEdge;
+        shapeJet.radius = 0.8f * sc;
+
+        var solJet = psJet.sizeOverLifetime;
+        solJet.enabled = true;
+        AnimationCurve curveJet = new AnimationCurve();
+        curveJet.AddKey(0f, 0.3f);
+        curveJet.AddKey(0.3f, 0.95f);
+        curveJet.AddKey(1f, 2.2f);
+        solJet.size = new ParticleSystem.MinMaxCurve(1f, curveJet);
+
+        var colJet = psJet.colorOverLifetime;
+        colJet.enabled = true;
+        Gradient gradJet = new Gradient();
+        gradJet.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(new Color(0.35f, 1f, 0.3f), 0f), new GradientColorKey(new Color(0.85f, 1f, 0.35f), 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.65f, 0.12f), new GradientAlphaKey(0.45f, 0.65f), new GradientAlphaKey(0f, 1f) }
+        );
+        colJet.color = gradJet;
+
+        var noiseJet = psJet.noise;
+        noiseJet.enabled = true;
+        noiseJet.strength = 0.25f;
+        noiseJet.frequency = 0.45f;
+        noiseJet.scrollSpeed = 0.35f;
+
+        ParticleSystemRenderer rendJet = gasRoot.GetComponent<ParticleSystemRenderer>();
+        if (rendJet != null)
+        {
+            rendJet.renderMode = ParticleSystemRenderMode.Billboard;
+            rendJet.alignment = ParticleSystemRenderSpace.View;
+        }
+
+        // 3. Secondary Billowing Cloud (Nube di Gas Espansa)
+        GameObject cloudGo = new GameObject("Gas_Cloud_Billowing");
+        cloudGo.transform.SetParent(gasRoot.transform, false);
+        cloudGo.transform.localPosition = new Vector3(0f, 0.3f * sc, 0.6f * sc);
+
+        ParticleSystem psCloud = cloudGo.AddComponent<ParticleSystem>();
+        var mainCloud = psCloud.main;
+        mainCloud.playOnAwake    = true;
+        mainCloud.loop           = true;
+        mainCloud.duration       = 4.0f;
+        mainCloud.startLifetime  = new ParticleSystem.MinMaxCurve(2.5f, 4.2f);
+        mainCloud.startSpeed     = new ParticleSystem.MinMaxCurve(0.3f * sc, 0.9f * sc);
+        mainCloud.startSize      = new ParticleSystem.MinMaxCurve(0.7f * sc, 1.6f * sc);
+        mainCloud.startColor     = new ParticleSystem.MinMaxGradient(new Color(0.3f, 0.95f, 0.25f, 0.35f), new Color(0.6f, 0.95f, 0.2f, 0.25f));
+        mainCloud.gravityModifier = -0.02f;
+        mainCloud.simulationSpace = ParticleSystemSimulationSpace.World;
+        mainCloud.maxParticles    = Mathf.Max(10, Mathf.RoundToInt(100 * sc));
+
+        var emissionCloud = psCloud.emission;
+        emissionCloud.enabled = true;
+        emissionCloud.rateOverTime = 10f;
+
+        var shapeCloud = psCloud.shape;
+        shapeCloud.enabled   = true;
+        shapeCloud.shapeType = ParticleSystemShapeType.Box;
+        shapeCloud.scale     = new Vector3(1.5f * sc, 0.4f * sc, 1.5f * sc);
+
+        var solCloud = psCloud.sizeOverLifetime;
+        solCloud.enabled = true;
+        AnimationCurve curveCloud = new AnimationCurve();
+        curveCloud.AddKey(0f, 0.5f);
+        curveCloud.AddKey(0.4f, 1.4f);
+        curveCloud.AddKey(1f, 2.6f);
+        solCloud.size = new ParticleSystem.MinMaxCurve(1f, curveCloud);
+
+        var colCloud = psCloud.colorOverLifetime;
+        colCloud.enabled = true;
+        Gradient gradCloud = new Gradient();
+        gradCloud.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(new Color(0.3f, 0.95f, 0.25f), 0f), new GradientColorKey(new Color(0.7f, 1f, 0.3f), 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.35f, 0.25f), new GradientAlphaKey(0.25f, 0.75f), new GradientAlphaKey(0f, 1f) }
+        );
+        colCloud.color = gradCloud;
+
+        ParticleSystemRenderer rendCloud = cloudGo.GetComponent<ParticleSystemRenderer>();
+        if (rendCloud != null)
+        {
+            rendCloud.renderMode = ParticleSystemRenderMode.Billboard;
+        }
+
+        // 4. Pericolo Ambientale (StructuralHazard)
+        StructuralHazard hazard = gasRoot.AddComponent<StructuralHazard>();
+        SphereCollider hazardCollider = gasRoot.AddComponent<SphereCollider>();
+        hazardCollider.isTrigger = true;
+        hazardCollider.radius    = Mathf.Max(0.5f, 2.2f * sc); // zona pericolo proporzionata
+
+        // 5. Aggiungi a particelle guasto
+        AggiungiParticellaGuasto(psJet);
+        AggiungiParticellaGuasto(psCloud);
+
+        Debug.Log($"<color=lime>[GAS LEAK]</color> Generato sistema particellare perdita di gas su <b>{name}</b>!");
     }
 
     private void OnValidate()
@@ -163,7 +322,7 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
             foreach (var ps in particelleGuasto)
             {
                 if (ps != null)
-                    CalibraVisibilitaGocce(ps);
+                    CalibraVisibilitaGocce(ps, moltiplicatoreParticelle);
             }
         }
     }
@@ -183,9 +342,9 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
     }
 
     /// <summary>
-    /// Calibra le particelle come vera perdita chimica/radioattiva: gocce verde fluorescente neon che colano verso il basso.
+    /// Calibra le particelle differenziando esteticamente Gas (sfere espanse), Acqua (gocce allungate), e Scintille (strisce veloci).
     /// </summary>
-    public static void CalibraVisibilitaGocce(ParticleSystem ps)
+    public static void CalibraVisibilitaGocce(ParticleSystem ps, float moltiplicatore = 1.0f)
     {
         if (ps == null) return;
 
@@ -194,42 +353,134 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         main.loop = true;
 
         string n = ps.name.ToLower();
-        if (n.Contains("water") || n.Contains("drip") || n.Contains("gocc") || n.Contains("leak") || n.Contains("chemical") || n.Contains("splatter"))
+        if (n.Contains("gas") || n.Contains("steam") || n.Contains("fumo") || n.Contains("vapor") || n.Contains("smoke"))
+        {
+            // 1. Colore Gas Tossico / Vapore Chimico ad Alta Pressione
+            Color coloreGas = new Color(0.32f, 0.98f, 0.28f, 0.60f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.35f, 1f, 0.3f, 0.65f), new Color(0.7f, 1f, 0.2f, 0.45f));
+
+            // 2. Dimensione e Durata della colonna di gas
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.8f, 3.0f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.25f * moltiplicatore, 0.65f * moltiplicatore);
+
+            // 3. Spinta di fuoriuscita e galleggiamento (leggera ascesa nell'aria)
+            if (n.Contains("cloud") || n.Contains("nube") || n.Contains("haze"))
+            {
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.2f);
+                main.gravityModifier = -0.02f;
+            }
+            else
+            {
+                main.startSpeed = new ParticleSystem.MinMaxCurve(2.0f, 3.8f);
+                main.gravityModifier = -0.04f;
+            }
+
+            // 4. Forma ad espansione larga (crepa/rottura) invece che foro puntiforme
+            var shape = ps.shape;
+            shape.enabled = true;
+            if (n.Contains("cloud") || n.Contains("nube"))
+            {
+                shape.shapeType = ParticleSystemShapeType.Box;
+                shape.scale = new Vector3(1.5f * moltiplicatore, 0.4f * moltiplicatore, 1.5f * moltiplicatore);
+            }
+            else
+            {
+                shape.shapeType = ParticleSystemShapeType.SingleSidedEdge;
+                shape.radius = 0.8f * moltiplicatore; // Ampiezza del foro
+            }
+
+            // 5. Ritmo di emissione continuo e denso
+            var emission = ps.emission;
+            emission.rateOverTime = 30f;
+
+            // 6. Espansione volumetrica nel tempo (Size over Lifetime)
+            var sol = ps.sizeOverLifetime;
+            sol.enabled = true;
+            AnimationCurve curve = new AnimationCurve();
+            curve.AddKey(0f, 0.3f);
+            curve.AddKey(0.3f, 0.9f);
+            curve.AddKey(1f, 2.2f);
+            sol.size = new ParticleSystem.MinMaxCurve(1f, curve);
+
+            // 7. Dissolvenza graduale (Color over Lifetime con morbido Alpha Blend)
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            Gradient grad = new Gradient();
+            grad.SetKeys(
+                new GradientColorKey[] { new GradientColorKey(coloreGas, 0f), new GradientColorKey(new Color(0.85f, 1f, 0.4f), 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.65f, 0.15f), new GradientAlphaKey(0.45f, 0.7f), new GradientAlphaKey(0f, 1f) }
+            );
+            col.color = grad;
+
+            // 8. Colora anche il materiale del ParticleSystemRenderer
+            ParticleSystemRenderer rend = ps.GetComponent<ParticleSystemRenderer>();
+            if (rend != null && rend.material != null)
+            {
+                Material mat = rend.material;
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", coloreGas);
+                if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", coloreGas);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", coloreGas);
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", coloreGas * 1.8f);
+                }
+            }
+
+            // Calibra eventuali emettitori figli
+            foreach (var childPS in ps.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (childPS != ps)
+                {
+                    var cMain = childPS.main;
+                    cMain.startColor = new ParticleSystem.MinMaxGradient(coloreGas);
+                    childPS.gameObject.SetActive(true);
+                }
+            }
+        }
+        else if (n.Contains("water") || n.Contains("drip") || n.Contains("gocc") || n.Contains("leak") || n.Contains("chemical") || n.Contains("splatter"))
         {
             // 1. Colore Verde Fluorescente Radioattivo / Tossico puro
             Color verdeFluo = new Color(0.15f, 1f, 0.08f, 1f);
             main.startColor = new ParticleSystem.MinMaxGradient(verdeFluo);
 
             // 2. Dimensione e Durata goccia
-            main.startSize = 0.24f;
+            main.startSize = 0.24f * moltiplicatore;
             main.startLifetime = 3.5f;
 
             // 3. Caduta realistica verso il basso (gravità), non uno spruzzo sparato a pressione
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
             main.gravityModifier = 0.95f;
 
-            // 4. Forma stretta a gocciolamento puntiforme da crepa (non cono aperto come spruzzo)
+            // 4. Forma stretta a gocciolamento puntiforme
             var shape = ps.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.04f;
+            shape.radius = 0.04f * moltiplicatore;
 
             // 5. Ritmo di emissione: gocciolamento costante e nitido
             var emission = ps.emission;
             emission.rateOverTime = 12f;
 
-            // 6. Colora anche il materiale del ParticleSystemRenderer in Verde Neon Fluorescente
+            // Estetica: RenderMode Stretch per sembrare gocce liquide allungate dalla caduta
             ParticleSystemRenderer rend = ps.GetComponent<ParticleSystemRenderer>();
-            if (rend != null && rend.material != null)
+            if (rend != null)
             {
-                Material mat = rend.material;
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", verdeFluo);
-                if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", verdeFluo);
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", verdeFluo);
-                if (mat.HasProperty("_EmissionColor"))
+                rend.renderMode = ParticleSystemRenderMode.Stretch;
+                rend.lengthScale = 1.8f;   // Allunga la goccia
+                rend.velocityScale = 0.1f; // Scala in base alla velocità
+                
+                if (rend.material != null)
                 {
-                    mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", verdeFluo * 2.5f);
+                    Material mat = rend.material;
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", verdeFluo);
+                    if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", verdeFluo);
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", verdeFluo);
+                    if (mat.HasProperty("_EmissionColor"))
+                    {
+                        mat.EnableKeyword("_EMISSION");
+                        mat.SetColor("_EmissionColor", verdeFluo * 2.5f);
+                    }
                 }
             }
 
@@ -246,10 +497,38 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         }
         else if (n.Contains("spark") || n.Contains("scintill"))
         {
-            // Scintille elettriche arancio/giallo brillante
-            Color coloreScintille = new Color(1f, 0.75f, 0.1f, 1f);
+            // Scintille elettriche blu/ciano brillante
+            Color coloreScintille = new Color(0.1f, 0.7f, 1f, 1f);
             main.startColor = coloreScintille;
-            main.startSize = 0.08f;
+            main.startSize = 0.08f * moltiplicatore;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 4.5f);
+            main.gravityModifier = 0.65f;
+            
+            // Ritmo e burst
+            var emission = ps.emission;
+            emission.rateOverTime = 40f;
+
+            // Estetica: RenderMode Stretch estremo per sembrare veri e propri fulmini/scintille in movimento
+            ParticleSystemRenderer rend = ps.GetComponent<ParticleSystemRenderer>();
+            if (rend != null)
+            {
+                rend.renderMode = ParticleSystemRenderMode.Stretch;
+                rend.lengthScale = 3.5f;   // Molto allungate
+                rend.velocityScale = 0.2f; // Reagiscono fortemente alla velocità
+                
+                if (rend.material != null)
+                {
+                    Material mat = rend.material;
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", coloreScintille);
+                    if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", coloreScintille);
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", coloreScintille);
+                    if (mat.HasProperty("_EmissionColor"))
+                    {
+                        mat.EnableKeyword("_EMISSION");
+                        mat.SetColor("_EmissionColor", coloreScintille * 3.0f);
+                    }
+                }
+            }
         }
 
         ps.gameObject.SetActive(true);

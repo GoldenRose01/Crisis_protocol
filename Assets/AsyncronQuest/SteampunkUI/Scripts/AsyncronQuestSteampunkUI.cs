@@ -1233,14 +1233,12 @@ namespace AsyncronQuest.SteampunkUI
             Time.timeScale = 1f;
             try { onNewGame?.Invoke(); } catch (Exception e) { Debug.LogWarning(e.Message); }
 
-            if (GameManager.Instance != null)
+            if (GameManager.Instance == null)
             {
-                GameManager.Instance.NuovaPartita();
+                GameObject gmObj = new GameObject("GameManager_AutoCreated");
+                gmObj.AddComponent<GameManager>();
             }
-            else
-            {
-                SceneManager.LoadScene(newGameSceneName);
-            }
+            GameManager.Instance.NuovaPartita();
         }
 
         public void ResumeGame()
@@ -1248,14 +1246,12 @@ namespace AsyncronQuest.SteampunkUI
             Time.timeScale = 1f;
             try { onResume?.Invoke(); } catch (Exception e) { Debug.LogWarning(e.Message); }
 
-            if (GameManager.Instance != null)
+            if (GameManager.Instance == null)
             {
-                GameManager.Instance.ResumeSavedGame();
+                GameObject gmObj = new GameObject("GameManager_AutoCreated");
+                gmObj.AddComponent<GameManager>();
             }
-            else
-            {
-                SceneManager.LoadScene(newGameSceneName);
-            }
+            GameManager.Instance.ResumeSavedGame();
         }
 
         public void QuitGame()

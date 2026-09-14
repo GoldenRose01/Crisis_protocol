@@ -173,7 +173,7 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable
                     nomiGiaAggiunti.Add(nome);
 
                     string statoStr = t.IsSbloccato ? "✓ SBLOCCATO" : "BLOCCATO [ATTIVO]";
-                    string nota = t.portaCollegata != null ? $"Collegato alla porta: {t.portaCollegata.name}" : "Terminale di sicurezza del settore.";
+                    string nota = t.porteCollegate != null && t.porteCollegate.Count > 0 ? $"Collegato alla porta: {t.porteCollegate[0].name}" : "Terminale di sicurezza del settore.";
 
                     listaCompleta.Add(new VoceCodicePorta()
                     {

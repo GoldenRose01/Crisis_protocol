@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 using GoldenCast.UI;
 
 public class DroneRonda : MonoBehaviour
@@ -51,6 +52,7 @@ public class DroneRonda : MonoBehaviour
     private IDamageable playerDamageable; 
     private bool playerGiaSegnalato;
     private bool playerPrecedentementeInVista = false;
+    private NavMeshAgent agente;
 
     private void InizializzaAudio()
     {
@@ -112,6 +114,7 @@ public class DroneRonda : MonoBehaviour
 
     void Start()
     {
+        agente = GetComponent<NavMeshAgent>();
         InizializzaAudio();
         ApplicaTagUnity();
         if (luceDrone == null)
@@ -235,8 +238,38 @@ public class DroneRonda : MonoBehaviour
 
         if (target == null) return; // Se tutti i waypoint sono nulli, il drone rimane in hovering stazionario e scansiona
 
-        Vector3 direzione = (target.position - transform.position).normalized;
-        transform.position = Vector3.MoveTowards(transform.position, target.position, velocita * Time.deltaTime);
+        // SE E' UN ROBOT DI TERRA CON NAVMESH AGENT: USA IL PATHFINDING
+        if (agente != null && agente.isOnNavMesh)
+        {
+            agente.speed = velocita;
+            agente.SetDestination(target.position);
+            
+            if (!agente.pathPending && agente.remainingDistance <= (agente.stoppingDistance > 0 ? agente.stoppingDistance : 0.4f))
+            {
+                indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypoints.Length;
+            }
+            return;
+        }
+
+        // SE E' UN DRONE VOLANTE (SENZA NAVMESH): USA IL MOVIMENTO DIRETTO IGNORANDO LA Y
+        // Ignora l'altezza (Y) del waypoint (la flag): il drone deve mantenere la sua quota attuale
+        // altrimenti cercherebbe di schiantarsi sul pavimento girando su se stesso
+        Vector3 targetPos = target.position;
+        targetPos.y = transform.position.y;
+
+        Vector3 direzione = (targetPos - transform.position).normalized;
+        
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null && !rb.isKinematic)
+        {
+            Vector3 targetVel = direzione * velocita;
+            targetVel.y = rb.linearVelocity.y;
+            rb.linearVelocity = targetVel;
+        }
+        else
+        {
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocita * Time.deltaTime);
+        }
 
         if (direzione != Vector3.zero)
         {
@@ -244,7 +277,7 @@ public class DroneRonda : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, rotazioneTarget, 5f * Time.deltaTime);
         }
 
-        if (Vector3.Distance(transform.position, target.position) < 0.4f)
+        if (Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), new Vector3(targetPos.x, 0, targetPos.z)) < 0.4f)
         {
             indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypoints.Length;
         }

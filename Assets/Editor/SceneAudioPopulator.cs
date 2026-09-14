@@ -104,6 +104,7 @@ public class SceneAudioPopulator : EditorWindow
         }
 
         // 4. Focolai di Emergenza (EmergencyHotspot)
+        AudioClip clipGasFurnace = CaricaClip("House & Office/Gas funace_running.wav") ?? CaricaClip("House & Office/Gas Stove_running.wav") ?? clipSpray;
         EmergencyHotspot[] tuttiIFocolai = Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
         foreach (EmergencyHotspot h in tuttiIFocolai)
         {
@@ -111,7 +112,11 @@ public class SceneAudioPopulator : EditorWindow
             SerializedObject so = new SerializedObject(h);
             string n = h.name.ToLower();
             AudioClip loopClip = clipSpray ?? clipLiquidSlosh;
-            if (n.Contains("elettr") || n.Contains("spark") || n.Contains("generat") || n.Contains("volt"))
+            if (n.Contains("gas") || n.Contains("steam") || n.Contains("fumo") || h.HotspotId == "REACTOR_FAULT_002" || n.Contains("(1)"))
+            {
+                loopClip = clipGasFurnace ?? clipSpray;
+            }
+            else if (n.Contains("elettr") || n.Contains("spark") || n.Contains("generat") || n.Contains("volt"))
             {
                 loopClip = clipLightBuzz ?? clipSpray;
             }

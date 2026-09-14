@@ -136,12 +136,19 @@ public class CyberHUD : MonoBehaviour
     private void OnEnable()
     {
         SalutePlayer.OnSaluteCambiata += OnSaluteAggiornata;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         InizializzaStatoIniziale();
     }
 
     private void OnDisable()
     {
         SalutePlayer.OnSaluteCambiata -= OnSaluteAggiornata;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        InizializzaStatoIniziale();
     }
 
     private void Start()
@@ -320,8 +327,7 @@ public class CyberHUD : MonoBehaviour
         if (gameObject.GetComponent<GraphicRaycaster>() == null)
             gameObject.AddComponent<GraphicRaycaster>();
 
-        Font defaultFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (defaultFont == null) defaultFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        Font defaultFont = Font.CreateDynamicFontFromOSFont("Arial", 16);
 
         Sprite solidSprite = CreaSpriteSolido();
         Sprite borderSprite = CreaSpriteCorniceTech();
