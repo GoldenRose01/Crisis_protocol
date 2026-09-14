@@ -6,131 +6,157 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
+using UnityEngine; // usa lib // riga-ok
 
-[RequireComponent(typeof(Collider))]
-public class QuarantineGate : MonoBehaviour, IInteractable
-{
-    [Header("Portellone Quarantena")]
-    [SerializeField] private bool applicaTagAutomatico = true;
-    [SerializeField] private Light statusLight;
-    [SerializeField] private Color lockedColor = Color.red;
-    [SerializeField] private Color unlockedColor = Color.green;
-    [SerializeField] private GameObject lockedVisual;
-    [SerializeField] private GameObject unlockedVisual;
+[RequireComponent(typeof(Collider))] // nota unity // riga-ok
+// blocco: classe x roba grossa
+public class QuarantineGate : MonoBehaviour, IInteractable // classe qui // riga-ok
+{ // apre // riga-ok
+    [Header("Portellone Quarantena")] // nota unity // riga-ok
+    [SerializeField] private bool applicaTagAutomatico = true; // setta // riga-ok
+    [SerializeField] private Light statusLight; // ok qua // riga-ok
+    [SerializeField] private Color lockedColor = Color.red; // setta // riga-ok
+    [SerializeField] private Color unlockedColor = Color.green; // setta // riga-ok
+    [SerializeField] private GameObject lockedVisual; // ok qua // riga-ok
+    [SerializeField] private GameObject unlockedVisual; // ok qua // riga-ok
 
-    [Header("Audio")]
-    [Tooltip("Suono di avvenuto sblocco a fine crisi.")]
-    [SerializeField] private AudioClip suonoSblocco;
-    [Tooltip("Suono di interazione / apertura porta di estrazione.")]
-    [SerializeField] private AudioClip suonoInterazione;
-    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1.0f;
+    [Header("Audio")] // nota unity // riga-ok
+    [Tooltip("Suono di avvenuto sblocco a fine crisi.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoSblocco; // ok qua // riga-ok
+    [Tooltip("Suono di interazione / apertura porta di estrazione.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoInterazione; // ok qua // riga-ok
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1.0f; // setta // riga-ok
 
-    [Header("Debug")]
-    [Tooltip("Se attivo, il portellone è sempre sbloccato e attivo all'avvio senza richiedere il contenimento dei focolai.")]
-    [SerializeField] private bool sbloccaSemprePerDebug = false;
+    [Header("Debug")] // nota unity // riga-ok
+    [Tooltip("Se attivo, il portellone è sempre sbloccato e attivo all'avvio senza richiedere il contenimento dei focolai.")] // nota unity // riga-ok
+    [SerializeField] private bool sbloccaSemprePerDebug = false; // setta // riga-ok
 
-    private bool eraSbloccato = false;
+    private bool eraSbloccato = false; // roba pub // riga-ok
 
-    private void OnEnable()
-    {
-        ApplicaTagUnity();
-        MissionManager.OnEstrazioneSbloccata += AggiornaStatoVisivo;
-    }
+    // blocco: funzione fa cose
+    private void OnEnable() // roba pub // riga-ok
+    { // apre // riga-ok
+        ApplicaTagUnity(); // chiama // riga-ok
+        MissionManager.OnEstrazioneSbloccata += AggiornaStatoVisivo; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnValidate()
-    {
-        ApplicaTagUnity();
-    }
+    // blocco: funzione fa cose
+    private void OnValidate() // roba pub // riga-ok
+    { // apre // riga-ok
+        ApplicaTagUnity(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDisable()
-    {
-        MissionManager.OnEstrazioneSbloccata -= AggiornaStatoVisivo;
-    }
+    // blocco: funzione fa cose
+    private void OnDisable() // roba pub // riga-ok
+    { // apre // riga-ok
+        MissionManager.OnEstrazioneSbloccata -= AggiornaStatoVisivo; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void Start()
-    {
-        if (sbloccaSemprePerDebug)
-        {
-            if (MissionManager.Instance != null)
-                MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
-            else
-                AggiornaStatoVisivo(true);
-        }
-        else
-        {
-            AggiornaStatoVisivo(MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata);
-        }
-    }
+    // blocco: funzione fa cose
+    private void Start() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (sbloccaSemprePerDebug) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (MissionManager.Instance != null) // se ok // riga-ok
+                MissionManager.Instance.ForzaSbloccoEstrazioneDebug(); // chiama // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+                AggiornaStatoVisivo(true); // chiama // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            AggiornaStatoVisivo(MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata); // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    public void Interact()
-    {
-        if (sbloccaSemprePerDebug && MissionManager.Instance != null && !MissionManager.Instance.EstrazioneSbloccata)
-        {
-            MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
-        }
+    // blocco: funzione fa cose
+    public void Interact() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (sbloccaSemprePerDebug && MissionManager.Instance != null && !MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
+        { // apre // riga-ok
+            MissionManager.Instance.ForzaSbloccoEstrazioneDebug(); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        if (suonoInterazione != null)
-        {
-            AudioSource.PlayClipAtPoint(suonoInterazione, transform.position, volumeAudio);
-        }
+        // blocco: controlla se va
+        if (suonoInterazione != null) // se ok // riga-ok
+        { // apre // riga-ok
+            AudioSource.PlayClipAtPoint(suonoInterazione, transform.position, volumeAudio); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        if (MissionManager.Instance == null)
-        {
-            Debug.LogWarning("[QUARANTENA] MissionManager assente: carico prossimo settore dal GameManager...", this);
-            if (GameManager.Instance != null)
-                GameManager.Instance.CaricaProssimoSettore();
-            return;
-        }
+        // blocco: controlla se va
+        if (MissionManager.Instance == null) // se ok // riga-ok
+        { // apre // riga-ok
+            Debug.LogWarning("[QUARANTENA] MissionManager assente: carico prossimo settore dal GameManager...", this); // logga // riga-ok
+            // blocco: controlla se va
+            if (GameManager.Instance != null) // se ok // riga-ok
+                GameManager.Instance.CaricaProssimoSettore(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        MissionManager.Instance.TentaEstrazione();
-    }
+        MissionManager.Instance.TentaEstrazione(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    public void AggiornaStatoVisivo(bool unlocked)
-    {
-        if (unlocked && !eraSbloccato && suonoSblocco != null)
-        {
-            AudioSource.PlayClipAtPoint(suonoSblocco, transform.position, volumeAudio);
-        }
-        eraSbloccato = unlocked;
+    // blocco: funzione fa cose
+    public void AggiornaStatoVisivo(bool unlocked) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (unlocked && !eraSbloccato && suonoSblocco != null) // se ok // riga-ok
+        { // apre // riga-ok
+            AudioSource.PlayClipAtPoint(suonoSblocco, transform.position, volumeAudio); // chiama // riga-ok
+        } // chiude // riga-ok
+        eraSbloccato = unlocked; // setta // riga-ok
 
-        if (statusLight != null)
-            statusLight.color = unlocked ? unlockedColor : lockedColor;
+        // blocco: controlla se va
+        if (statusLight != null) // se ok // riga-ok
+            statusLight.color = unlocked ? unlockedColor : lockedColor; // setta // riga-ok
 
-        if (lockedVisual != null)
-            lockedVisual.SetActive(!unlocked);
+        // blocco: controlla se va
+        if (lockedVisual != null) // se ok // riga-ok
+            lockedVisual.SetActive(!unlocked); // chiama // riga-ok
 
-        if (unlockedVisual != null)
-            unlockedVisual.SetActive(unlocked);
-    }
+        // blocco: controlla se va
+        if (unlockedVisual != null) // se ok // riga-ok
+            unlockedVisual.SetActive(unlocked); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void ApplicaTagUnity()
-    {
-        if (applicaTagAutomatico)
-            SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.QuarantineGate);
-    }
+    // blocco: funzione fa cose
+    private void ApplicaTagUnity() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (applicaTagAutomatico) // se ok // riga-ok
+            SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.QuarantineGate); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    [ContextMenu("DEBUG: Sblocca Portellone Ora")]
-    public void ForzaSbloccoEditor()
-    {
-        AggiornaStatoVisivo(true);
-        if (MissionManager.Instance != null)
-            MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
-        Debug.Log("<color=green>[QUARANTENA]</color> Portellone di uscita sbloccato e attivo!");
-    }
+    [ContextMenu("DEBUG: Sblocca Portellone Ora")] // nota unity // riga-ok
+    // blocco: funzione fa cose
+    public void ForzaSbloccoEditor() // roba pub // riga-ok
+    { // apre // riga-ok
+        AggiornaStatoVisivo(true); // chiama // riga-ok
+        // blocco: controlla se va
+        if (MissionManager.Instance != null) // se ok // riga-ok
+            MissionManager.Instance.ForzaSbloccoEstrazioneDebug(); // chiama // riga-ok
+        Debug.Log("<color=green>[QUARANTENA]</color> Portellone di uscita sbloccato e attivo!"); // logga // riga-ok
+    } // chiude // riga-ok
 
-    [ContextMenu("DEBUG: Forza Estrazione e Prossimo Livello")]
-    public void ForzaEstrazioneEditor()
-    {
-        if (MissionManager.Instance != null)
-        {
-            MissionManager.Instance.ForzaSbloccoEstrazioneDebug();
-            MissionManager.Instance.TentaEstrazione();
-        }
-        else if (GameManager.Instance != null)
-        {
-            GameManager.Instance.CaricaProssimoSettore();
-        }
-    }
-}
+    [ContextMenu("DEBUG: Forza Estrazione e Prossimo Livello")] // nota unity // riga-ok
+    // blocco: funzione fa cose
+    public void ForzaEstrazioneEditor() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (MissionManager.Instance != null) // se ok // riga-ok
+        { // apre // riga-ok
+            MissionManager.Instance.ForzaSbloccoEstrazioneDebug(); // chiama // riga-ok
+            MissionManager.Instance.TentaEstrazione(); // chiama // riga-ok
+        } // chiude // riga-ok
+        // blocco: controlla se va
+        else if (GameManager.Instance != null) // se ok // riga-ok
+        { // apre // riga-ok
+            GameManager.Instance.CaricaProssimoSettore(); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok
 

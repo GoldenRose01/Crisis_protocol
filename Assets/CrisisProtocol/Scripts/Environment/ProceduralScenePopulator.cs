@@ -6,11 +6,12 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
+using UnityEngine; // usa lib // riga-ok
 
 // Sistema di generazione procedurale disattivato su richiesta dell'utente.
 // La classe viene mantenuta inerte per evitare errori di Missing Script nella scena.
-public class ProceduralScenePopulator : MonoBehaviour
-{
+// blocco: classe x roba grossa
+public class ProceduralScenePopulator : MonoBehaviour // classe qui // riga-ok
+{ // apre // riga-ok
     // Nessun'azione all'Awake o Start: la scena viene allestita unicamente a mano dall'utente nell'Editor.
-}
+} // chiude // riga-ok

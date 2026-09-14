@@ -6,335 +6,380 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
-using UnityEngine.InputSystem;
-using CrisisProtocol.UI;
+using UnityEngine; // usa lib // riga-ok
+using UnityEngine.InputSystem; // usa lib // riga-ok
+using CrisisProtocol.UI; // usa lib // riga-ok
 
-public class muve_pg : MonoBehaviour
-{
-    [Header("Parametri di Movimento")]
+// blocco: classe x roba grossa
+public class muve_pg : MonoBehaviour // classe qui // riga-ok
+{ // apre // riga-ok
+    [Header("Parametri di Movimento")] // nota unity // riga-ok
 
-    [Header("Velocità")]
-    public float velocitaCamminata = 4f;
-    public float velocitaCorsa = 8f;
-    private float velocitaCorrente;
+    [Header("Velocità")] // nota unity // riga-ok
+    public float velocitaCamminata = 4f; // roba pub // riga-ok
+    public float velocitaCorsa = 8f; // roba pub // riga-ok
+    private float velocitaCorrente; // roba pub // riga-ok
 
-    public float forzaPrimoSalto = 5f;
-    public float forzaSecondoSalto = 3.5f;
+    public float forzaPrimoSalto = 5f; // roba pub // riga-ok
+    public float forzaSecondoSalto = 3.5f; // roba pub // riga-ok
 
     // FONDAMENTALE: Trascina la tua Main Camera qui dall'Inspector
-    public Transform cameraTransform;
+    public Transform cameraTransform; // roba pub // riga-ok
 
-    [Header("Configurazione Animazione")]
-    public Animator animatorePersonaggio;
+    [Header("Configurazione Animazione")] // nota unity // riga-ok
+    public Animator animatorePersonaggio; // roba pub // riga-ok
 
-    [Header("Audio")]
-    [Tooltip("Suono dei passi durante la camminata standard.")]
-    [SerializeField] private AudioClip suonoPassi;
-    [Tooltip("Suono dei passi durante la corsa (Shift).")]
-    [SerializeField] private AudioClip suonoCorsa;
-    [Tooltip("Suono di stacco del primo salto.")]
-    [SerializeField] private AudioClip suonoPrimoSalto;
-    [Tooltip("Suono di stacco del secondo salto / double jump.")]
-    [SerializeField] private AudioClip suonoSecondoSalto;
-    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.85f;
-    [SerializeField] private float intervalloPassiCamminata = 0.48f;
-    [SerializeField] private float intervalloPassiCorsa = 0.30f;
+    [Header("Audio")] // nota unity // riga-ok
+    [Tooltip("Suono dei passi durante la camminata standard.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoPassi; // ok qua // riga-ok
+    [Tooltip("Suono dei passi durante la corsa (Shift).")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoCorsa; // ok qua // riga-ok
+    [Tooltip("Suono di stacco del primo salto.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoPrimoSalto; // ok qua // riga-ok
+    [Tooltip("Suono di stacco del secondo salto / double jump.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoSecondoSalto; // ok qua // riga-ok
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.85f; // setta // riga-ok
+    [SerializeField] private float intervalloPassiCamminata = 0.48f; // setta // riga-ok
+    [SerializeField] private float intervalloPassiCorsa = 0.30f; // setta // riga-ok
 
-    private int countJump = 0;
-    private bool richiediSalto = false;
-    private bool isGrounded = true;
+    private int countJump = 0; // roba pub // riga-ok
+    private bool richiediSalto = false; // roba pub // riga-ok
+    private bool isGrounded = true; // roba pub // riga-ok
 
-    private Rigidbody rb;
-    private BoxCollider bx;
-    private AudioSource audioSource;
-    private AudioSource audioSourcePassi;
-    private float timerPassi = 0f;
+    private Rigidbody rb; // roba pub // riga-ok
+    private BoxCollider bx; // roba pub // riga-ok
+    private AudioSource audioSource; // roba pub // riga-ok
+    private AudioSource audioSourcePassi; // roba pub // riga-ok
+    private float timerPassi = 0f; // roba pub // riga-ok
 
-    private bool AnimatorePronto =>
-        animatorePersonaggio != null &&
-        animatorePersonaggio.isActiveAndEnabled &&
-        animatorePersonaggio.runtimeAnimatorController != null;
+    private bool AnimatorePronto => // roba pub // riga-ok
+        animatorePersonaggio != null && // setta // riga-ok
+        animatorePersonaggio.isActiveAndEnabled && // ok qua // riga-ok
+        animatorePersonaggio.runtimeAnimatorController != null; // setta // riga-ok
 
-    private void InizializzaAudioSource()
-    {
-        if (audioSource == null)
-            audioSource = GetComponent<AudioSource>();
+    // blocco: funzione fa cose
+    private void InizializzaAudioSource() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+            audioSource = GetComponent<AudioSource>(); // setta // riga-ok
 
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 1.0f; // 3D
-            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSource.minDistance = 1.5f;
-            audioSource.maxDistance = 20.0f;
-            audioSource.dopplerLevel = 0f;
-        }
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource = gameObject.AddComponent<AudioSource>(); // setta // riga-ok
+            audioSource.playOnAwake = false; // setta // riga-ok
+            audioSource.spatialBlend = 1.0f; // 3D // setta // riga-ok
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
+            audioSource.minDistance = 1.5f; // setta // riga-ok
+            audioSource.maxDistance = 20.0f; // setta // riga-ok
+            audioSource.dopplerLevel = 0f; // setta // riga-ok
+        } // chiude // riga-ok
 
-        if (audioSourcePassi == null)
-        {
-            Transform childPassi = transform.Find("AudioPassiSource");
-            if (childPassi != null)
-            {
-                audioSourcePassi = childPassi.GetComponent<AudioSource>();
-            }
+        // blocco: controlla se va
+        if (audioSourcePassi == null) // se ok // riga-ok
+        { // apre // riga-ok
+            Transform childPassi = transform.Find("AudioPassiSource"); // setta // riga-ok
+            // blocco: controlla se va
+            if (childPassi != null) // se ok // riga-ok
+            { // apre // riga-ok
+                audioSourcePassi = childPassi.GetComponent<AudioSource>(); // setta // riga-ok
+            } // chiude // riga-ok
 
-            if (audioSourcePassi == null)
-            {
-                GameObject goPassi = new GameObject("AudioPassiSource");
-                goPassi.transform.SetParent(transform, false);
-                audioSourcePassi = goPassi.AddComponent<AudioSource>();
-            }
+            // blocco: controlla se va
+            if (audioSourcePassi == null) // se ok // riga-ok
+            { // apre // riga-ok
+                GameObject goPassi = new GameObject("AudioPassiSource"); // setta // riga-ok
+                goPassi.transform.SetParent(transform, false); // chiama // riga-ok
+                audioSourcePassi = goPassi.AddComponent<AudioSource>(); // setta // riga-ok
+            } // chiude // riga-ok
 
-            audioSourcePassi.playOnAwake = false;
-            audioSourcePassi.spatialBlend = 1.0f;
-            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSourcePassi.minDistance = 1.5f;
-            audioSourcePassi.maxDistance = 20.0f;
-            audioSourcePassi.dopplerLevel = 0f;
-        }
-    }
+            audioSourcePassi.playOnAwake = false; // setta // riga-ok
+            audioSourcePassi.spatialBlend = 1.0f; // setta // riga-ok
+            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
+            audioSourcePassi.minDistance = 1.5f; // setta // riga-ok
+            audioSourcePassi.maxDistance = 20.0f; // setta // riga-ok
+            audioSourcePassi.dopplerLevel = 0f; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
-    {
-        if (clip == null) return;
-        InizializzaAudioSource();
-        if (audioSource != null)
-        {
-            audioSource.pitch = Random.Range(0.95f, 1.05f);
-            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
-        }
-    }
+    // blocco: funzione fa cose
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (clip == null) return; // se ok // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
+        // blocco: controlla se va
+        if (audioSource != null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource.pitch = Random.Range(0.95f, 1.05f); // setta // riga-ok
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    void Start()
-    {
-        InizializzaAudioSource();
-        bx = GetComponent<BoxCollider>();
-        rb = GetComponent<Rigidbody>();
+    void Start() // chiama // riga-ok
+    { // apre // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
+        bx = GetComponent<BoxCollider>(); // setta // riga-ok
+        rb = GetComponent<Rigidbody>(); // setta // riga-ok
 
-        if (cameraTransform == null && Camera.main != null)
-        {
-            cameraTransform = Camera.main.transform;
-        }
+        // blocco: controlla se va
+        if (cameraTransform == null && Camera.main != null) // se ok // riga-ok
+        { // apre // riga-ok
+            cameraTransform = Camera.main.transform; // setta // riga-ok
+        } // chiude // riga-ok
 
         // Inizializza con la velocità base
-        velocitaCorrente = velocitaCamminata;
-    }
+        velocitaCorrente = velocitaCamminata; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDisable()
-    {
-        FermaAudioPassi();
-    }
+    // blocco: funzione fa cose
+    private void OnDisable() // roba pub // riga-ok
+    { // apre // riga-ok
+        FermaAudioPassi(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    public void FermaAudioPassi()
-    {
-        if (audioSourcePassi != null && audioSourcePassi.isPlaying)
-        {
-            audioSourcePassi.Stop();
-        }
-        timerPassi = 0f;
-    }
+    // blocco: funzione fa cose
+    public void FermaAudioPassi() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (audioSourcePassi != null && audioSourcePassi.isPlaying) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSourcePassi.Stop(); // chiama // riga-ok
+        } // chiude // riga-ok
+        timerPassi = 0f; // setta // riga-ok
+    } // chiude // riga-ok
 
-    void Update()
-    {
-        if (ModalUIState.IsModalOpen)
-        {
-            FermaAudioPassi();
-            return;
-        }
+    void Update() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (ModalUIState.IsModalOpen) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
-        {
-            richiediSalto = true;
-        }
-    }
+        // blocco: controlla se va
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) // se ok // riga-ok
+        { // apre // riga-ok
+            richiediSalto = true; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    void FixedUpdate()
-    {
-        if (ModalUIState.IsModalOpen)
-        {
-            FermaAudioPassi();
+    void FixedUpdate() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (ModalUIState.IsModalOpen) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
 
-            if (rb != null)
-                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            // blocco: controlla se va
+            if (rb != null) // se ok // riga-ok
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f); // setta // riga-ok
 
-            if (AnimatorePronto)
-                animatorePersonaggio.SetFloat("Speed", 0f);
+            // blocco: controlla se va
+            if (AnimatorePronto) // se ok // riga-ok
+                animatorePersonaggio.SetFloat("Speed", 0f); // chiama // riga-ok
 
-            return;
-        }
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        float inputOrizzontale = 0f;
-        float inputVerticale = 0f;
+        float inputOrizzontale = 0f; // setta // riga-ok
+        float inputVerticale = 0f; // setta // riga-ok
 
-        bool staCorrendo = false;
+        bool staCorrendo = false; // setta // riga-ok
 
-        if (Keyboard.current != null)
-        {
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) inputOrizzontale += 1f;
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) inputOrizzontale -= 1f;
+        // blocco: controlla se va
+        if (Keyboard.current != null) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) inputOrizzontale += 1f; // se ok // riga-ok
+            // blocco: controlla se va
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) inputOrizzontale -= 1f; // se ok // riga-ok
 
-            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) inputVerticale += 1f;
-            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) inputVerticale -= 1f;
+            // blocco: controlla se va
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) inputVerticale += 1f; // se ok // riga-ok
+            // blocco: controlla se va
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) inputVerticale -= 1f; // se ok // riga-ok
 
             // RILEVAZIONE DELLA CORSA (Left Shift)
-            staCorrendo = Keyboard.current.leftShiftKey.isPressed;
-        }
+            staCorrendo = Keyboard.current.leftShiftKey.isPressed; // setta // riga-ok
+        } // chiude // riga-ok
 
         // Calcolo della velocità corrente
-        velocitaCorrente = staCorrendo ? velocitaCorsa : velocitaCamminata;
+        velocitaCorrente = staCorrendo ? velocitaCorsa : velocitaCamminata; // setta // riga-ok
 
-        Vector2 direzioneInput = new Vector2(inputOrizzontale, inputVerticale).normalized;
-        float magnitudineMovimento = direzioneInput.magnitude;
+        Vector2 direzioneInput = new Vector2(inputOrizzontale, inputVerticale).normalized; // setta // riga-ok
+        float magnitudineMovimento = direzioneInput.magnitude; // setta // riga-ok
 
         // NOTA: rb.linearVelocity è corretto su Unity 6. Se usi Unity 2023 o inferiori, usa rb.velocity
-        float velocitaY = rb.linearVelocity.y;
+        float velocitaY = rb.linearVelocity.y; // setta // riga-ok
 
-        if (richiediSalto)
-        {
-            if (countJump == 0 && isGrounded)
-            {
-                velocitaY = forzaPrimoSalto;
-                countJump++;
-                isGrounded = false;
-                FermaAudioPassi();
-                RiproduciSuono(suonoPrimoSalto);
-                Debug.Log("Primo Salto eseguito.");
-            }
-            else if (countJump == 1)
-            {
-                velocitaY = forzaSecondoSalto;
-                countJump++;
-                FermaAudioPassi();
-                RiproduciSuono(suonoSecondoSalto ?? suonoPrimoSalto);
+        // blocco: controlla se va
+        if (richiediSalto) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (countJump == 0 && isGrounded) // se ok // riga-ok
+            { // apre // riga-ok
+                velocitaY = forzaPrimoSalto; // setta // riga-ok
+                countJump++; // ok qua // riga-ok
+                isGrounded = false; // setta // riga-ok
+                FermaAudioPassi(); // chiama // riga-ok
+                RiproduciSuono(suonoPrimoSalto); // chiama // riga-ok
+                Debug.Log("Primo Salto eseguito."); // logga // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            else if (countJump == 1) // se ok // riga-ok
+            { // apre // riga-ok
+                velocitaY = forzaSecondoSalto; // setta // riga-ok
+                countJump++; // ok qua // riga-ok
+                FermaAudioPassi(); // chiama // riga-ok
+                RiproduciSuono(suonoSecondoSalto ?? suonoPrimoSalto); // chiama // riga-ok
 
-                if (AnimatorePronto)
-                {
-                    animatorePersonaggio.SetTrigger("DoubleJump");
-                }
-                Debug.Log("Secondo Salto (Risalto) eseguito.");
-            }
-            richiediSalto = false;
-        }
+                // blocco: controlla se va
+                if (AnimatorePronto) // se ok // riga-ok
+                { // apre // riga-ok
+                    animatorePersonaggio.SetTrigger("DoubleJump"); // chiama // riga-ok
+                } // chiude // riga-ok
+                Debug.Log("Secondo Salto (Risalto) eseguito."); // logga // riga-ok
+            } // chiude // riga-ok
+            richiediSalto = false; // setta // riga-ok
+        } // chiude // riga-ok
 
         // GESTIONE SUONO PASSI
-        GestisciAudioPassi(magnitudineMovimento, staCorrendo);
+        GestisciAudioPassi(magnitudineMovimento, staCorrendo); // chiama // riga-ok
 
-        Vector3 movimentoFinale = Vector3.zero;
+        Vector3 movimentoFinale = Vector3.zero; // setta // riga-ok
 
         // Calcolo della direzione relativa alla telecamera
-        if (cameraTransform != null)
-        {
-            Vector3 forwardCamera = cameraTransform.forward;
-            Vector3 rightCamera = cameraTransform.right;
+        // blocco: controlla se va
+        if (cameraTransform != null) // se ok // riga-ok
+        { // apre // riga-ok
+            Vector3 forwardCamera = cameraTransform.forward; // setta // riga-ok
+            Vector3 rightCamera = cameraTransform.right; // setta // riga-ok
 
-            forwardCamera.y = 0f;
-            rightCamera.y = 0f;
+            forwardCamera.y = 0f; // setta // riga-ok
+            rightCamera.y = 0f; // setta // riga-ok
 
-            forwardCamera.Normalize();
-            rightCamera.Normalize();
+            forwardCamera.Normalize(); // chiama // riga-ok
+            rightCamera.Normalize(); // chiama // riga-ok
 
-            movimentoFinale = (forwardCamera * direzioneInput.y + rightCamera * direzioneInput.x) * velocitaCorrente;
-        }
-        else
-        {
-            movimentoFinale = new Vector3(direzioneInput.x * velocitaCorrente, 0f, direzioneInput.y * velocitaCorrente);
-        }
+            movimentoFinale = (forwardCamera * direzioneInput.y + rightCamera * direzioneInput.x) * velocitaCorrente; // setta // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            movimentoFinale = new Vector3(direzioneInput.x * velocitaCorrente, 0f, direzioneInput.y * velocitaCorrente); // setta // riga-ok
+        } // chiude // riga-ok
 
         // Applicazione della velocità lineare
-        rb.linearVelocity = new Vector3(movimentoFinale.x, velocitaY, movimentoFinale.z);
+        rb.linearVelocity = new Vector3(movimentoFinale.x, velocitaY, movimentoFinale.z); // setta // riga-ok
 
         // --- ROTAZIONE DEL PERSONAGGIO ---
-        if (movimentoFinale.x != 0 || movimentoFinale.z != 0)
-        {
-            Vector3 direzioneSguardo = new Vector3(movimentoFinale.x, 0f, movimentoFinale.z).normalized;
-            Quaternion rotazioneTarget = Quaternion.LookRotation(direzioneSguardo);
-            rb.MoveRotation(Quaternion.Slerp(rb.rotation, rotazioneTarget, 10f * Time.fixedDeltaTime));
-        }
+        // blocco: controlla se va
+        if (movimentoFinale.x != 0 || movimentoFinale.z != 0) // se ok // riga-ok
+        { // apre // riga-ok
+            Vector3 direzioneSguardo = new Vector3(movimentoFinale.x, 0f, movimentoFinale.z).normalized; // setta // riga-ok
+            Quaternion rotazioneTarget = Quaternion.LookRotation(direzioneSguardo); // setta // riga-ok
+            rb.MoveRotation(Quaternion.Slerp(rb.rotation, rotazioneTarget, 10f * Time.fixedDeltaTime)); // chiama // riga-ok
+        } // chiude // riga-ok
 
         // INVIO DATI COERENTI ALL'ANIMATORE
-        if (AnimatorePronto)
-        {
+        // blocco: controlla se va
+        if (AnimatorePronto) // se ok // riga-ok
+        { // apre // riga-ok
             // Moltiplichiamo per 2 se corre così lo blend tree dell'Animator distingue camminata (1) da corsa (2)
-            float speedParametro = magnitudineMovimento * (staCorrendo ? 2f : 1f);
+            float speedParametro = magnitudineMovimento * (staCorrendo ? 2f : 1f); // setta // riga-ok
 
-            animatorePersonaggio.SetFloat("Speed", speedParametro);
-            animatorePersonaggio.SetBool("IsGrounded", isGrounded);
-            animatorePersonaggio.SetFloat("VerticalVelocity", rb.linearVelocity.y);
-        }
-    }
+            animatorePersonaggio.SetFloat("Speed", speedParametro); // chiama // riga-ok
+            animatorePersonaggio.SetBool("IsGrounded", isGrounded); // chiama // riga-ok
+            animatorePersonaggio.SetFloat("VerticalVelocity", rb.linearVelocity.y); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void GestisciAudioPassi(float magnitudineMovimento, bool staCorrendo)
-    {
-        InizializzaAudioSource();
+    // blocco: funzione fa cose
+    private void GestisciAudioPassi(float magnitudineMovimento, bool staCorrendo) // roba pub // riga-ok
+    { // apre // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
 
-        bool staMuovendo = isGrounded && magnitudineMovimento > 0.1f;
-        if (!staMuovendo)
-        {
-            FermaAudioPassi();
-            return;
-        }
+        bool staMuovendo = isGrounded && magnitudineMovimento > 0.1f; // setta // riga-ok
+        // blocco: controlla se va
+        if (!staMuovendo) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        AudioClip clipPasso = staCorrendo ? (suonoCorsa ?? suonoPassi) : suonoPassi;
-        if (clipPasso == null || audioSourcePassi == null)
-        {
-            FermaAudioPassi();
-            return;
-        }
+        AudioClip clipPasso = staCorrendo ? (suonoCorsa ?? suonoPassi) : suonoPassi; // setta // riga-ok
+        // blocco: controlla se va
+        if (clipPasso == null || audioSourcePassi == null) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        float volumeTarget = volumeAudio * (staCorrendo ? 0.9f : 0.7f);
+        float volumeTarget = volumeAudio * (staCorrendo ? 0.9f : 0.7f); // setta // riga-ok
 
         // Se la traccia audio è una registrazione continua/multi-passo (es. durata > 0.8s come Footsteps_ running.wav o Footsteps_walking.wav)
-        if (clipPasso.length > 0.8f)
-        {
-            audioSourcePassi.loop = true;
-            audioSourcePassi.volume = volumeTarget;
-            audioSourcePassi.pitch = staCorrendo ? 1.05f : 1.0f;
+        // blocco: controlla se va
+        if (clipPasso.length > 0.8f) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSourcePassi.loop = true; // setta // riga-ok
+            audioSourcePassi.volume = volumeTarget; // setta // riga-ok
+            audioSourcePassi.pitch = staCorrendo ? 1.05f : 1.0f; // setta // riga-ok
 
-            if (audioSourcePassi.clip != clipPasso)
-            {
-                audioSourcePassi.clip = clipPasso;
-                audioSourcePassi.Play();
-            }
-            else if (!audioSourcePassi.isPlaying)
-            {
-                audioSourcePassi.Play();
-            }
-        }
-        else
-        {
+            // blocco: controlla se va
+            if (audioSourcePassi.clip != clipPasso) // se ok // riga-ok
+            { // apre // riga-ok
+                audioSourcePassi.clip = clipPasso; // setta // riga-ok
+                audioSourcePassi.Play(); // chiama // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            else if (!audioSourcePassi.isPlaying) // se ok // riga-ok
+            { // apre // riga-ok
+                audioSourcePassi.Play(); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
             // Se la clip è un singolo impatto di passo (singolo step < 0.8s)
-            audioSourcePassi.loop = false;
-            timerPassi -= Time.fixedDeltaTime;
-            if (timerPassi <= 0f)
-            {
-                audioSourcePassi.pitch = Random.Range(0.95f, 1.05f);
-                audioSourcePassi.PlayOneShot(clipPasso, volumeTarget);
-                timerPassi = staCorrendo ? intervalloPassiCorsa : intervalloPassiCamminata;
-            }
-        }
-    }
+            audioSourcePassi.loop = false; // setta // riga-ok
+            timerPassi -= Time.fixedDeltaTime; // setta // riga-ok
+            // blocco: controlla se va
+            if (timerPassi <= 0f) // se ok // riga-ok
+            { // apre // riga-ok
+                audioSourcePassi.pitch = Random.Range(0.95f, 1.05f); // setta // riga-ok
+                audioSourcePassi.PlayOneShot(clipPasso, volumeTarget); // chiama // riga-ok
+                timerPassi = staCorrendo ? intervalloPassiCorsa : intervalloPassiCamminata; // setta // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Terrain"))
-        {
-            countJump = 0;
-            isGrounded = true;
-            Debug.Log("TERRENO RILEVATO! Reset cinematiche.");
-        }
-    }
+    // blocco: funzione fa cose
+    private void OnCollisionEnter(Collision collision) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (collision.gameObject.CompareTag("Terrain")) // se ok // riga-ok
+        { // apre // riga-ok
+            countJump = 0; // setta // riga-ok
+            isGrounded = true; // setta // riga-ok
+            Debug.Log("TERRENO RILEVATO! Reset cinematiche."); // logga // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void OnCollisionExit(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Terrain"))
-        {
-            if (rb.linearVelocity.y < -0.1f)
-            {
-                isGrounded = false;
-                FermaAudioPassi();
-            }
-        }
-    }
-}
+    // blocco: funzione fa cose
+    private void OnCollisionExit(Collision collision) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (collision.gameObject.CompareTag("Terrain")) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (rb.linearVelocity.y < -0.1f) // se ok // riga-ok
+            { // apre // riga-ok
+                isGrounded = false; // setta // riga-ok
+                FermaAudioPassi(); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok

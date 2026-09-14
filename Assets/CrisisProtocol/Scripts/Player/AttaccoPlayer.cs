@@ -6,172 +6,198 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
-using UnityEngine.InputSystem;
-using CrisisProtocol.UI;
+using UnityEngine; // usa lib // riga-ok
+using UnityEngine.InputSystem; // usa lib // riga-ok
+using CrisisProtocol.UI; // usa lib // riga-ok
 
-public class AttaccoPlayer : MonoBehaviour
-{
-    [Header("Configurazione Attacco")]
-    public float dannoAttaccoFrontale = 25f;
-    public float raggioAttacco = 1.8f;
-    public float cadenzaAttacco = 0.75f;
-    [Tooltip("Secondi di attesa dall'avvio dell'animazione per applicare il danno al termine dello swing/colpo.")]
-    public float ritardoDannoFineAnimazione = 0.45f;
-    private float timerProssimoAttacco = 0f;
-    private Coroutine coroutineAttacco;
+// blocco: classe x roba grossa
+public class AttaccoPlayer : MonoBehaviour // classe qui // riga-ok
+{ // apre // riga-ok
+    [Header("Configurazione Attacco")] // nota unity // riga-ok
+    public float dannoAttaccoFrontale = 25f; // roba pub // riga-ok
+    public float raggioAttacco = 1.8f; // roba pub // riga-ok
+    public float cadenzaAttacco = 0.75f; // roba pub // riga-ok
+    [Tooltip("Secondi di attesa dall'avvio dell'animazione per applicare il danno al termine dello swing/colpo.")] // nota unity // riga-ok
+    public float ritardoDannoFineAnimazione = 0.45f; // roba pub // riga-ok
+    private float timerProssimoAttacco = 0f; // roba pub // riga-ok
+    private Coroutine coroutineAttacco; // roba pub // riga-ok
 
-    [Header("Rilevamento Bersagli")]
-    public LayerMask layerNemici;
-    [Tooltip("Punto di origine del colpo (es. pugno o spada). Se vuoto, usa l'area frontale al personaggio.")]
-    public Transform puntoAttaccoMelee;
+    [Header("Rilevamento Bersagli")] // nota unity // riga-ok
+    public LayerMask layerNemici; // roba pub // riga-ok
+    [Tooltip("Punto di origine del colpo (es. pugno o spada). Se vuoto, usa l'area frontale al personaggio.")] // nota unity // riga-ok
+    public Transform puntoAttaccoMelee; // roba pub // riga-ok
 
-    [Header("Integrazione Animatore")]
-    public Animator animatorePersonaggio;
-    public string triggerAttacco = "Attack";
+    [Header("Integrazione Animatore")] // nota unity // riga-ok
+    public Animator animatorePersonaggio; // roba pub // riga-ok
+    public string triggerAttacco = "Attack"; // roba pub // riga-ok
 
-    [Header("Audio")]
-    [Tooltip("Suono di fendente / swoosh durante l'attacco melee.")]
-    [SerializeField] private AudioClip suonoAttacco;
-    [Tooltip("Suono di impatto quando si colpisce un bersaglio.")]
-    [SerializeField] private AudioClip suonoColpoASegno;
-    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
+    [Header("Audio")] // nota unity // riga-ok
+    [Tooltip("Suono di fendente / swoosh durante l'attacco melee.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoAttacco; // ok qua // riga-ok
+    [Tooltip("Suono di impatto quando si colpisce un bersaglio.")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoColpoASegno; // ok qua // riga-ok
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f; // setta // riga-ok
 
-    private AudioSource audioSource;
+    private AudioSource audioSource; // roba pub // riga-ok
 
-    private void Awake()
-    {
-        if (animatorePersonaggio == null)
-            animatorePersonaggio = GetComponentInChildren<Animator>();
-    }
+    // blocco: funzione fa cose
+    private void Awake() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (animatorePersonaggio == null) // se ok // riga-ok
+            animatorePersonaggio = GetComponentInChildren<Animator>(); // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDisable()
-    {
-        if (coroutineAttacco != null)
-        {
-            StopCoroutine(coroutineAttacco);
-            coroutineAttacco = null;
-        }
-    }
+    // blocco: funzione fa cose
+    private void OnDisable() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
+            coroutineAttacco = null; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void InizializzaAudioSource()
-    {
-        if (audioSource == null)
-            audioSource = GetComponent<AudioSource>();
+    // blocco: funzione fa cose
+    private void InizializzaAudioSource() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+            audioSource = GetComponent<AudioSource>(); // setta // riga-ok
 
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 1.0f; // 3D
-            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSource.minDistance = 1.5f;
-            audioSource.maxDistance = 18.0f;
-            audioSource.dopplerLevel = 0f;
-        }
-    }
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource = gameObject.AddComponent<AudioSource>(); // setta // riga-ok
+            audioSource.playOnAwake = false; // setta // riga-ok
+            audioSource.spatialBlend = 1.0f; // 3D // setta // riga-ok
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
+            audioSource.minDistance = 1.5f; // setta // riga-ok
+            audioSource.maxDistance = 18.0f; // setta // riga-ok
+            audioSource.dopplerLevel = 0f; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
-    {
-        if (clip == null) return;
-        InizializzaAudioSource();
-        if (audioSource != null)
-        {
-            audioSource.pitch = Random.Range(0.95f, 1.05f);
-            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
-        }
-    }
+    // blocco: funzione fa cose
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (clip == null) return; // se ok // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
+        // blocco: controlla se va
+        if (audioSource != null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource.pitch = Random.Range(0.95f, 1.05f); // setta // riga-ok
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    void Update()
-    {
-        if (ModalUIState.IsModalOpen)
-            return;
+    void Update() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (ModalUIState.IsModalOpen) // se ok // riga-ok
+            return; // torna val // riga-ok
 
-        if (timerProssimoAttacco > 0)
-        {
-            timerProssimoAttacco -= Time.deltaTime;
-        }
+        // blocco: controlla se va
+        if (timerProssimoAttacco > 0) // se ok // riga-ok
+        { // apre // riga-ok
+            timerProssimoAttacco -= Time.deltaTime; // setta // riga-ok
+        } // chiude // riga-ok
 
         // Rilevamento Input d'attacco: click sinistro del mouse o tasto F sulla tastiera
-        bool richiedeAttacco = false;
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) richiedeAttacco = true;
-        if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame) richiedeAttacco = true;
+        bool richiedeAttacco = false; // setta // riga-ok
+        // blocco: controlla se va
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) richiedeAttacco = true; // se ok // riga-ok
+        // blocco: controlla se va
+        if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame) richiedeAttacco = true; // se ok // riga-ok
 
-        if (richiedeAttacco && timerProssimoAttacco <= 0)
-        {
-            EseguiColpoMischia();
-        }
-    }
+        // blocco: controlla se va
+        if (richiedeAttacco && timerProssimoAttacco <= 0) // se ok // riga-ok
+        { // apre // riga-ok
+            EseguiColpoMischia(); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void EseguiColpoMischia()
-    {
-        timerProssimoAttacco = cadenzaAttacco;
-        RiproduciSuono(suonoAttacco);
+    // blocco: funzione fa cose
+    private void EseguiColpoMischia() // roba pub // riga-ok
+    { // apre // riga-ok
+        timerProssimoAttacco = cadenzaAttacco; // setta // riga-ok
+        RiproduciSuono(suonoAttacco); // chiama // riga-ok
 
         // Attiva il trigger d'attacco nell'animatore
-        if (animatorePersonaggio != null)
-        {
-            animatorePersonaggio.ResetTrigger(triggerAttacco);
-            animatorePersonaggio.SetTrigger(triggerAttacco);
-        }
+        // blocco: controlla se va
+        if (animatorePersonaggio != null) // se ok // riga-ok
+        { // apre // riga-ok
+            animatorePersonaggio.ResetTrigger(triggerAttacco); // chiama // riga-ok
+            animatorePersonaggio.SetTrigger(triggerAttacco); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        Debug.Log("<color=cyan>[ATTACCO PLAYER] Animazione avviata! Danno programmato a fine colpo.</color>");
+        Debug.Log("<color=cyan>[ATTACCO PLAYER] Animazione avviata! Danno programmato a fine colpo.</color>"); // logga // riga-ok
 
-        if (coroutineAttacco != null)
-            StopCoroutine(coroutineAttacco);
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
 
-        coroutineAttacco = StartCoroutine(EseguiDannoAlTermineAnimazione(ritardoDannoFineAnimazione));
-    }
+        coroutineAttacco = StartCoroutine(EseguiDannoAlTermineAnimazione(ritardoDannoFineAnimazione)); // setta // riga-ok
+    } // chiude // riga-ok
 
-    private System.Collections.IEnumerator EseguiDannoAlTermineAnimazione(float ritardo)
-    {
-        yield return new WaitForSeconds(ritardo);
+    // blocco: funzione fa cose
+    private System.Collections.IEnumerator EseguiDannoAlTermineAnimazione(float ritardo) // roba pub // riga-ok
+    { // apre // riga-ok
+        yield return new WaitForSeconds(ritardo); // aspetta // riga-ok
 
         // Calcola l'origine dell'attacco (frontale rispetto al giocatore se non è assegnato un punto preciso)
-        Vector3 origineAttacco = puntoAttaccoMelee != null 
-            ? puntoAttaccoMelee.position 
-            : transform.position + transform.forward * 1.1f + Vector3.up * 1.0f;
+        Vector3 origineAttacco = puntoAttaccoMelee != null  // setta // riga-ok
+            ? puntoAttaccoMelee.position  // ok qua // riga-ok
+            : transform.position + transform.forward * 1.1f + Vector3.up * 1.0f; // ok qua // riga-ok
 
         // Rileva tutti i collider entro la sfera d'attacco che appartengono al layer dei nemici
-        Collider[] colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco, layerNemici);
+        Collider[] colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco, layerNemici); // setta // riga-ok
 
         // FALLBACK DI SICUREZZA: Se non viene rilevato alcun nemico, scansione globale
-        if (colpiti.Length == 0)
-        {
-            colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco);
-        }
+        // blocco: controlla se va
+        if (colpiti.Length == 0) // se ok // riga-ok
+        { // apre // riga-ok
+            colpiti = Physics.OverlapSphere(origineAttacco, raggioAttacco); // setta // riga-ok
+        } // chiude // riga-ok
 
-        bool haColpitoBersaglio = false;
+        bool haColpitoBersaglio = false; // setta // riga-ok
 
-        foreach (Collider col in colpiti)
-        {
-            if (col.transform.root == transform.root) continue;
+        // blocco: gira piu volte
+        foreach (Collider col in colpiti) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (col.transform.root == transform.root) continue; // se ok // riga-ok
 
-            IDamageable bersaglio = col.GetComponent<IDamageable>() ?? col.GetComponentInParent<IDamageable>() ?? col.GetComponentInChildren<IDamageable>();
+            IDamageable bersaglio = col.GetComponent<IDamageable>() ?? col.GetComponentInParent<IDamageable>() ?? col.GetComponentInChildren<IDamageable>(); // setta // riga-ok
 
-            if (bersaglio != null)
-            {
-                bersaglio.SubisciDanno(dannoAttaccoFrontale);
-                haColpitoBersaglio = true;
-                Debug.Log($"<b>[COMBAT]</b> Colpito con successo: {col.gameObject.name}! Inflitti {dannoAttaccoFrontale} HP di danno.");
-            }
-        }
+            // blocco: controlla se va
+            if (bersaglio != null) // se ok // riga-ok
+            { // apre // riga-ok
+                bersaglio.SubisciDanno(dannoAttaccoFrontale); // chiama // riga-ok
+                haColpitoBersaglio = true; // setta // riga-ok
+                Debug.Log($"<b>[COMBAT]</b> Colpito con successo: {col.gameObject.name}! Inflitti {dannoAttaccoFrontale} HP di danno."); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
-        if (haColpitoBersaglio)
-        {
-            RiproduciSuono(suonoColpoASegno);
-        }
+        // blocco: controlla se va
+        if (haColpitoBersaglio) // se ok // riga-ok
+        { // apre // riga-ok
+            RiproduciSuono(suonoColpoASegno); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        coroutineAttacco = null;
-    }
+        coroutineAttacco = null; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDrawGizmosSelected()
-    {
+    // blocco: funzione fa cose
+    private void OnDrawGizmosSelected() // roba pub // riga-ok
+    { // apre // riga-ok
         // Visualizza il raggio d'azione dell'attacco nell'editor di Unity
-        Gizmos.color = Color.red;
-        Vector3 origineAttacco = puntoAttaccoMelee != null 
-            ? puntoAttaccoMelee.position 
-            : transform.position + transform.forward * 1.0f + Vector3.up * 1.0f;
-        Gizmos.DrawWireSphere(origineAttacco, raggioAttacco);
-    }
-}
+        Gizmos.color = Color.red; // setta // riga-ok
+        Vector3 origineAttacco = puntoAttaccoMelee != null  // setta // riga-ok
+            ? puntoAttaccoMelee.position  // ok qua // riga-ok
+            : transform.position + transform.forward * 1.0f + Vector3.up * 1.0f; // ok qua // riga-ok
+        Gizmos.DrawWireSphere(origineAttacco, raggioAttacco); // chiama // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok

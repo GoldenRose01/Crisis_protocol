@@ -6,1095 +6,1287 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
-using UnityEngine.AI;
-using CrisisProtocol.UI;
+using UnityEngine; // usa lib // riga-ok
+using UnityEngine.AI; // usa lib // riga-ok
+using CrisisProtocol.UI; // usa lib // riga-ok
 
-[RequireComponent(typeof(NavMeshAgent))]
-public class GuardiaNpc : MonoBehaviour, IDamageable
-{
-    public enum StatoGuardia { Inattiva, Ronda, Sospettosa, Inseguimento, RitornoAllaBase, Morta }
+[RequireComponent(typeof(NavMeshAgent))] // nota unity // riga-ok
+// blocco: classe x roba grossa
+public class GuardiaNpc : MonoBehaviour, IDamageable // classe qui // riga-ok
+{ // apre // riga-ok
+    // blocco: scelte rapide
+    public enum StatoGuardia { Inattiva, Ronda, Sospettosa, Inseguimento, RitornoAllaBase, Morta } // enum val // riga-ok
 
-    [Header("Configurazione Comportamento")]
-    [Tooltip("Se attivato, la guardia rimarrà ferma sul posto invece di seguire la ronda.")]
-    [SerializeField] private bool applicaTagEnemyAutomatico = true;
-    public bool eStatica = false;
-    public StatoGuardia statoAttuale = StatoGuardia.Ronda;
+    [Header("Configurazione Comportamento")] // nota unity // riga-ok
+    [Tooltip("Se attivato, la guardia rimarrà ferma sul posto invece di seguire la ronda.")] // nota unity // riga-ok
+    [SerializeField] private bool applicaTagEnemyAutomatico = true; // setta // riga-ok
+    public bool eStatica = false; // roba pub // riga-ok
+    public StatoGuardia statoAttuale = StatoGuardia.Ronda; // roba pub // riga-ok
 
-    [Header("Parametri di Movimento (NavMesh)")]
-    public Transform[] waypointRonda;
-    public float velocitaRonda = 2f;
-    public float velocitaInseguimento = 4.5f;
-    [Tooltip("Distanza ravvicinata corpo a corpo per sferrare il pugno al giocatore.")]
-    public float distanzaArresto = 1.9f;
-    private int indiceWaypointAttuale = 0;
+    [Header("Parametri di Movimento (NavMesh)")] // nota unity // riga-ok
+    public Transform[] waypointRonda; // roba pub // riga-ok
+    public float velocitaRonda = 2f; // roba pub // riga-ok
+    public float velocitaInseguimento = 4.5f; // roba pub // riga-ok
+    [Tooltip("Distanza ravvicinata corpo a corpo per sferrare il pugno al giocatore.")] // nota unity // riga-ok
+    public float distanzaArresto = 1.9f; // roba pub // riga-ok
+    private int indiceWaypointAttuale = 0; // roba pub // riga-ok
 
-    [Header("Comportamento Post-Emergenza (Fine Crisi)")]
-    [Tooltip("Se true, la guardia smette di essere ostile quando l'emergenza termina (focolai contenuti ed estrazione sbloccata).")]
-    [SerializeField] private bool disattivaOstilitAFineEmergenza = true;
-    [Tooltip("Se true, la guardia si ferma completamente/si spegne a fine emergenza. Se false, continua la ronda pacifica senza attaccare.")]
-    [SerializeField] private bool spegniAFineEmergenza = false;
+    [Header("Comportamento Post-Emergenza (Fine Crisi)")] // nota unity // riga-ok
+    [Tooltip("Se true, la guardia smette di essere ostile quando l'emergenza termina (focolai contenuti ed estrazione sbloccata).")] // nota unity // riga-ok
+    [SerializeField] private bool disattivaOstilitAFineEmergenza = true; // setta // riga-ok
+    [Tooltip("Se true, la guardia si ferma completamente/si spegne a fine emergenza. Se false, continua la ronda pacifica senza attaccare.")] // nota unity // riga-ok
+    [SerializeField] private bool spegniAFineEmergenza = false; // setta // riga-ok
 
-    [Header("Pattuglia Random (attiva se Waypoint Ronda è vuoto)")]
-    [Tooltip("Raggio entro cui scegliere il prossimo punto casuale sulla NavMesh.")]
-    public float raggioRondaRandom = 15f;
-    [Tooltip("Secondi di pausa tra un punto casuale e il successivo.")]
-    public float attesaTraPuntiRandom = 1.5f;
-    private Vector3 destinazioneRandom;
-    private float timerAttesaRandom = 0f;
-    private bool inAttesaRandom = false;
-    private bool destinazioneRandomValida = false;
+    [Header("Pattuglia Random (attiva se Waypoint Ronda è vuoto)")] // nota unity // riga-ok
+    [Tooltip("Raggio entro cui scegliere il prossimo punto casuale sulla NavMesh.")] // nota unity // riga-ok
+    public float raggioRondaRandom = 15f; // roba pub // riga-ok
+    [Tooltip("Secondi di pausa tra un punto casuale e il successivo.")] // nota unity // riga-ok
+    public float attesaTraPuntiRandom = 1.5f; // roba pub // riga-ok
+    private Vector3 destinazioneRandom; // roba pub // riga-ok
+    private float timerAttesaRandom = 0f; // roba pub // riga-ok
+    private bool inAttesaRandom = false; // roba pub // riga-ok
+    private bool destinazioneRandomValida = false; // roba pub // riga-ok
     
-    private Vector3 posizioneIniziale;
+    private Vector3 posizioneIniziale; // roba pub // riga-ok
 
-    [Header("Sensore Visivo (Vista)")]
-    public float raggioVisione = 12f;
-    [Range(0, 180)] public float angoloVisione = 90f;
-    [Range(0, 180)] public float angoloPuntoCiecoStealth = 30f;
-    public LayerMask layerOstacoli;
-    public LayerMask layerPersonaggio;
+    [Header("Sensore Visivo (Vista)")] // nota unity // riga-ok
+    public float raggioVisione = 12f; // roba pub // riga-ok
+    [Range(0, 180)] public float angoloVisione = 90f; // setta // riga-ok
+    [Range(0, 180)] public float angoloPuntoCiecoStealth = 30f; // setta // riga-ok
+    public LayerMask layerOstacoli; // roba pub // riga-ok
+    public LayerMask layerPersonaggio; // roba pub // riga-ok
 
-    [Header("Sensore Acustico (Udito)")]
-    public float raggioUditoPassi = 8f;
+    [Header("Sensore Acustico (Udito)")] // nota unity // riga-ok
+    public float raggioUditoPassi = 8f; // roba pub // riga-ok
 
-    [Header("Sistema di Allarme di Gruppo")]
-    public float raggioScattoAllarme = 15f;
-    private bool allarmeLanciato = false;
+    [Header("Sistema di Allarme di Gruppo")] // nota unity // riga-ok
+    public float raggioScattoAllarme = 15f; // roba pub // riga-ok
+    private bool allarmeLanciato = false; // roba pub // riga-ok
 
-    [Header("Statistiche e Combattimento (Corpo a Corpo / Pugno)")]
-    public float saluteMassima = 100f;
-    private float saluteCorrente;
-    public float dannoAttacco = 25f;
-    public float cadenzaAttacco = 1.3f;
-    private float timerProssimoAttacco = 0f;
+    [Header("Statistiche e Combattimento (Corpo a Corpo / Pugno)")] // nota unity // riga-ok
+    public float saluteMassima = 100f; // roba pub // riga-ok
+    private float saluteCorrente; // roba pub // riga-ok
+    public float dannoAttacco = 25f; // roba pub // riga-ok
+    public float cadenzaAttacco = 1.3f; // roba pub // riga-ok
+    private float timerProssimoAttacco = 0f; // roba pub // riga-ok
 
-    [Header("Sincronizzazione Impatto Pugno")]
-    [Tooltip("Ritardo in secondi dall'avvio dell'animazione al momento esatto in cui il colpo/pugno completa l'estensione e impatta sul bersaglio.")]
-    [SerializeField] public float ritardoImpattoPugno = 0.45f;
-    [Tooltip("Raggio di portata entro cui il pugno infligge danno all'impatto.")]
-    [SerializeField] private float raggioImpattoPugno = 2.4f;
-    private Coroutine coroutineAttacco;
+    [Header("Sincronizzazione Impatto Pugno")] // nota unity // riga-ok
+    [Tooltip("Ritardo in secondi dall'avvio dell'animazione al momento esatto in cui il colpo/pugno completa l'estensione e impatta sul bersaglio.")] // nota unity // riga-ok
+    [SerializeField] public float ritardoImpattoPugno = 0.45f; // setta // riga-ok
+    [Tooltip("Raggio di portata entro cui il pugno infligge danno all'impatto.")] // nota unity // riga-ok
+    [SerializeField] private float raggioImpattoPugno = 2.4f; // setta // riga-ok
+    private Coroutine coroutineAttacco; // roba pub // riga-ok
 
-    [Header("Audio 3D")]
-    [SerializeField] private AudioClip suonoPassi;
-    [SerializeField] private AudioClip suonoCorsa;
-    [SerializeField] private AudioClip suonoAllarme;
-    [SerializeField] private AudioClip suonoAttacco;
-    [SerializeField] private AudioClip suonoDanno;
-    [SerializeField] private AudioClip suonoMorte;
-    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f;
-    [SerializeField] private float intervalloPassiCamminata = 0.55f;
-    [SerializeField] private float intervalloPassiCorsa = 0.35f;
+    [Header("Audio 3D")] // nota unity // riga-ok
+    [SerializeField] private AudioClip suonoPassi; // ok qua // riga-ok
+    [SerializeField] private AudioClip suonoCorsa; // ok qua // riga-ok
+    [SerializeField] private AudioClip suonoAllarme; // ok qua // riga-ok
+    [SerializeField] private AudioClip suonoAttacco; // ok qua // riga-ok
+    [SerializeField] private AudioClip suonoDanno; // ok qua // riga-ok
+    [SerializeField] private AudioClip suonoMorte; // ok qua // riga-ok
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f; // setta // riga-ok
+    [SerializeField] private float intervalloPassiCamminata = 0.55f; // setta // riga-ok
+    [SerializeField] private float intervalloPassiCorsa = 0.35f; // setta // riga-ok
 
-    [Header("Integrazione Animazioni")]
-    public Animator animatore;
-    public string parametroVelocita = "Speed";
-    public string triggerAttacco = "Attack";
-    public string triggerMorte = "Morte";
+    [Header("Integrazione Animazioni")] // nota unity // riga-ok
+    public Animator animatore; // roba pub // riga-ok
+    public string parametroVelocita = "Speed"; // roba pub // riga-ok
+    public string triggerAttacco = "Attack"; // roba pub // riga-ok
+    public string triggerMorte = "Morte"; // roba pub // riga-ok
 
-    [Header("Opzioni di Morte & Debug")]
-    public bool sparisciSubitoDopoMorte = true;
-    public float ritardoSparizione = 0.5f;
+    [Header("Opzioni di Morte & Debug")] // nota unity // riga-ok
+    public bool sparisciSubitoDopoMorte = true; // roba pub // riga-ok
+    public float ritardoSparizione = 0.5f; // roba pub // riga-ok
 
-    private NavMeshAgent agente;
-    private Transform playerTransform;
-    private muve_pg playerScript;
-    private IDamageable playerDamageable;
-    private AudioSource audioSource;
-    private AudioSource audioSourcePassi;
-    private float timerPassi = 0f;
+    private NavMeshAgent agente; // roba pub // riga-ok
+    private Transform playerTransform; // roba pub // riga-ok
+    private muve_pg playerScript; // roba pub // riga-ok
+    private IDamageable playerDamageable; // roba pub // riga-ok
+    private AudioSource audioSource; // roba pub // riga-ok
+    private AudioSource audioSourcePassi; // roba pub // riga-ok
+    private float timerPassi = 0f; // roba pub // riga-ok
 
-    private void InizializzaAudioSource()
-    {
-        if (audioSource == null)
-            audioSource = GetComponent<AudioSource>();
+    // blocco: funzione fa cose
+    private void InizializzaAudioSource() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+            audioSource = GetComponent<AudioSource>(); // setta // riga-ok
 
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 1.0f; // 3D
-            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSource.minDistance = 1.5f;
-            audioSource.maxDistance = 18.0f;
-            audioSource.dopplerLevel = 0f;
-        }
+        // blocco: controlla se va
+        if (audioSource == null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource = gameObject.AddComponent<AudioSource>(); // setta // riga-ok
+            audioSource.playOnAwake = false; // setta // riga-ok
+            audioSource.spatialBlend = 1.0f; // 3D // setta // riga-ok
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
+            audioSource.minDistance = 1.5f; // setta // riga-ok
+            audioSource.maxDistance = 18.0f; // setta // riga-ok
+            audioSource.dopplerLevel = 0f; // setta // riga-ok
+        } // chiude // riga-ok
 
-        if (audioSourcePassi == null)
-        {
-            Transform childPassi = transform.Find("AudioPassiSource");
-            if (childPassi != null)
-            {
-                audioSourcePassi = childPassi.GetComponent<AudioSource>();
-            }
+        // blocco: controlla se va
+        if (audioSourcePassi == null) // se ok // riga-ok
+        { // apre // riga-ok
+            Transform childPassi = transform.Find("AudioPassiSource"); // setta // riga-ok
+            // blocco: controlla se va
+            if (childPassi != null) // se ok // riga-ok
+            { // apre // riga-ok
+                audioSourcePassi = childPassi.GetComponent<AudioSource>(); // setta // riga-ok
+            } // chiude // riga-ok
 
-            if (audioSourcePassi == null)
-            {
-                GameObject goPassi = new GameObject("AudioPassiSource");
-                goPassi.transform.SetParent(transform, false);
-                audioSourcePassi = goPassi.AddComponent<AudioSource>();
-            }
+            // blocco: controlla se va
+            if (audioSourcePassi == null) // se ok // riga-ok
+            { // apre // riga-ok
+                GameObject goPassi = new GameObject("AudioPassiSource"); // setta // riga-ok
+                goPassi.transform.SetParent(transform, false); // chiama // riga-ok
+                audioSourcePassi = goPassi.AddComponent<AudioSource>(); // setta // riga-ok
+            } // chiude // riga-ok
 
-            audioSourcePassi.playOnAwake = false;
-            audioSourcePassi.spatialBlend = 1.0f; // 3D
-            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic;
-            audioSourcePassi.minDistance = 1.5f;
-            audioSourcePassi.maxDistance = 18.0f;
-            audioSourcePassi.dopplerLevel = 0f;
-        }
-    }
+            audioSourcePassi.playOnAwake = false; // setta // riga-ok
+            audioSourcePassi.spatialBlend = 1.0f; // 3D // setta // riga-ok
+            audioSourcePassi.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
+            audioSourcePassi.minDistance = 1.5f; // setta // riga-ok
+            audioSourcePassi.maxDistance = 18.0f; // setta // riga-ok
+            audioSourcePassi.dopplerLevel = 0f; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    public void FermaAudioPassi()
-    {
-        if (audioSourcePassi != null && audioSourcePassi.isPlaying)
-        {
-            audioSourcePassi.Stop();
-        }
-        timerPassi = 0f;
-    }
+    // blocco: funzione fa cose
+    public void FermaAudioPassi() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (audioSourcePassi != null && audioSourcePassi.isPlaying) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSourcePassi.Stop(); // chiama // riga-ok
+        } // chiude // riga-ok
+        timerPassi = 0f; // setta // riga-ok
+    } // chiude // riga-ok
 
-    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
-    {
-        if (clip == null) return;
-        InizializzaAudioSource();
-        if (audioSource != null)
-        {
-            audioSource.pitch = Random.Range(0.95f, 1.05f);
-            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
-        }
-    }
+    // blocco: funzione fa cose
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (clip == null) return; // se ok // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
+        // blocco: controlla se va
+        if (audioSource != null) // se ok // riga-ok
+        { // apre // riga-ok
+            audioSource.pitch = Random.Range(0.95f, 1.05f); // setta // riga-ok
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    void Start()
-    {
-        InizializzaAudioSource();
-        ApplicaTagUnity();
-        saluteCorrente = saluteMassima;
-        posizioneIniziale = transform.position;
+    void Start() // chiama // riga-ok
+    { // apre // riga-ok
+        InizializzaAudioSource(); // chiama // riga-ok
+        ApplicaTagUnity(); // chiama // riga-ok
+        saluteCorrente = saluteMassima; // setta // riga-ok
+        posizioneIniziale = transform.position; // setta // riga-ok
 
-        if (distanzaArresto < 1.5f || distanzaArresto > 2.5f)
-        {
-            distanzaArresto = 1.9f; // Calibrazione ottimale pugno corpo a corpo
-        }
+        // blocco: controlla se va
+        if (distanzaArresto < 1.5f || distanzaArresto > 2.5f) // se ok // riga-ok
+        { // apre // riga-ok
+            distanzaArresto = 1.9f; // Calibrazione ottimale pugno corpo a corpo // setta // riga-ok
+        } // chiude // riga-ok
 
-        agente = GetComponent<NavMeshAgent>();
-        if (agente != null)
-        {
-            agente.stoppingDistance = 1.3f;
-            NavMeshHit hitMesh;
+        agente = GetComponent<NavMeshAgent>(); // setta // riga-ok
+        // blocco: controlla se va
+        if (agente != null) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.stoppingDistance = 1.3f; // setta // riga-ok
+            NavMeshHit hitMesh; // ok qua // riga-ok
             // Raggio 8 m: copre NPC posizionati poco sopra/sotto la NavMesh
-            if (NavMesh.SamplePosition(transform.position, out hitMesh, 8.0f, NavMesh.AllAreas))
-            {
-                transform.position = hitMesh.position;
-                agente.Warp(hitMesh.position);
-            }
-            else
-            {
+            // blocco: controlla se va
+            if (NavMesh.SamplePosition(transform.position, out hitMesh, 8.0f, NavMesh.AllAreas)) // se ok // riga-ok
+            { // apre // riga-ok
+                transform.position = hitMesh.position; // setta // riga-ok
+                agente.Warp(hitMesh.position); // chiama // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
                 // Nessuna NavMesh entro 8 m: disabilita l'agente e usa il movimento
                 // di fallback basato su Transform già presente in MuoviInRonda/InseguiEAttacca.
-                Debug.LogWarning($"[NPC] {gameObject.name}: NavMesh non trovata entro 8 m. " +
-                                 "L'NPC userà il movimento diretto (senza pathfinding). " +
-                                 "Verifica la posizione nella scena o ribaka la NavMesh.", this);
-                agente.enabled = false;
-            }
-            if (agente.enabled)
-            {
-                agente.updateRotation = true;
-                agente.stoppingDistance = 0.8f;
-            }
-        }
+                Debug.LogWarning($"[NPC] {gameObject.name}: NavMesh non trovata entro 8 m. " + // logga // riga-ok
+                                 "L'NPC userà il movimento diretto (senza pathfinding). " + // ok qua // riga-ok
+                                 "Verifica la posizione nella scena o ribaka la NavMesh.", this); // chiama // riga-ok
+                agente.enabled = false; // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            if (agente.enabled) // se ok // riga-ok
+            { // apre // riga-ok
+                agente.updateRotation = true; // setta // riga-ok
+                agente.stoppingDistance = 0.8f; // setta // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
-        TrovaRiferimentoPlayer();
+        TrovaRiferimentoPlayer(); // chiama // riga-ok
 
-        if (eStatica)
-        {
-            statoAttuale = StatoGuardia.Inattiva;
-        }
-        else
-        {
-            statoAttuale = StatoGuardia.Ronda;
-            if (agente != null && agente.isOnNavMesh)
-            {
-                if (HaWaypointValidi())
-                {
-                    agente.isStopped = false;
-                    agente.speed = velocitaRonda;
-                    Transform wp = OttieniProssimoWaypointValido();
-                    if (wp != null) agente.SetDestination(wp.position);
-                }
-                else
-                {
-                    destinazioneRandomValida = false;
-                    inAttesaRandom = false;
-                    ScegliPuntoRandom();
-                }
-            }
-        }
+        // blocco: controlla se va
+        if (eStatica) // se ok // riga-ok
+        { // apre // riga-ok
+            statoAttuale = StatoGuardia.Inattiva; // setta // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            statoAttuale = StatoGuardia.Ronda; // setta // riga-ok
+            // blocco: controlla se va
+            if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (HaWaypointValidi()) // se ok // riga-ok
+                { // apre // riga-ok
+                    agente.isStopped = false; // setta // riga-ok
+                    agente.speed = velocitaRonda; // setta // riga-ok
+                    Transform wp = OttieniProssimoWaypointValido(); // setta // riga-ok
+                    // blocco: controlla se va
+                    if (wp != null) agente.SetDestination(wp.position); // se ok // riga-ok
+                } // chiude // riga-ok
+                // blocco: caso diverso
+                else // se no // riga-ok
+                { // apre // riga-ok
+                    destinazioneRandomValida = false; // setta // riga-ok
+                    inAttesaRandom = false; // setta // riga-ok
+                    ScegliPuntoRandom(); // chiama // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
-        if (animatore == null)
-        {
-            animatore = GetComponentInChildren<Animator>();
-        }
+        // blocco: controlla se va
+        if (animatore == null) // se ok // riga-ok
+        { // apre // riga-ok
+            animatore = GetComponentInChildren<Animator>(); // setta // riga-ok
+        } // chiude // riga-ok
 
-        if (animatore != null)
-        {
-            animatore.applyRootMotion = false;
-        }
-    }
+        // blocco: controlla se va
+        if (animatore != null) // se ok // riga-ok
+        { // apre // riga-ok
+            animatore.applyRootMotion = false; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private bool HaWaypointValidi()
-    {
-        if (waypointRonda == null || waypointRonda.Length == 0) return false;
-        for (int i = 0; i < waypointRonda.Length; i++)
-        {
-            if (waypointRonda[i] != null) return true;
-        }
-        return false;
-    }
+    // blocco: funzione fa cose
+    private bool HaWaypointValidi() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (waypointRonda == null || waypointRonda.Length == 0) return false; // se ok // riga-ok
+        // blocco: gira piu volte
+        for (int i = 0; i < waypointRonda.Length; i++) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (waypointRonda[i] != null) return true; // se ok // riga-ok
+        } // chiude // riga-ok
+        return false; // torna val // riga-ok
+    } // chiude // riga-ok
 
-    private Transform OttieniProssimoWaypointValido()
-    {
-        if (waypointRonda == null || waypointRonda.Length == 0) return null;
-        for (int i = 0; i < waypointRonda.Length; i++)
-        {
-            int idx = (indiceWaypointAttuale + i) % waypointRonda.Length;
-            if (waypointRonda[idx] != null)
-            {
-                indiceWaypointAttuale = idx;
-                return waypointRonda[idx];
-            }
-        }
-        return null;
-    }
+    // blocco: funzione fa cose
+    private Transform OttieniProssimoWaypointValido() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (waypointRonda == null || waypointRonda.Length == 0) return null; // se ok // riga-ok
+        // blocco: gira piu volte
+        for (int i = 0; i < waypointRonda.Length; i++) // ciclo x // riga-ok
+        { // apre // riga-ok
+            int idx = (indiceWaypointAttuale + i) % waypointRonda.Length; // setta // riga-ok
+            // blocco: controlla se va
+            if (waypointRonda[idx] != null) // se ok // riga-ok
+            { // apre // riga-ok
+                indiceWaypointAttuale = idx; // setta // riga-ok
+                return waypointRonda[idx]; // torna val // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        return null; // torna val // riga-ok
+    } // chiude // riga-ok
 
-    private void OnEnable()
-    {
-        MissionManager.OnEstrazioneSbloccata += OnStatoEmergenzaCambiato;
-    }
+    // blocco: funzione fa cose
+    private void OnEnable() // roba pub // riga-ok
+    { // apre // riga-ok
+        MissionManager.OnEstrazioneSbloccata += OnStatoEmergenzaCambiato; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDisable()
-    {
-        if (coroutineAttacco != null)
-        {
-            StopCoroutine(coroutineAttacco);
-            coroutineAttacco = null;
-        }
-        FermaAudioPassi();
-        MissionManager.OnEstrazioneSbloccata -= OnStatoEmergenzaCambiato;
-    }
+    // blocco: funzione fa cose
+    private void OnDisable() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
+            coroutineAttacco = null; // setta // riga-ok
+        } // chiude // riga-ok
+        FermaAudioPassi(); // chiama // riga-ok
+        MissionManager.OnEstrazioneSbloccata -= OnStatoEmergenzaCambiato; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private void OnStatoEmergenzaCambiato(bool emergenzaRisolta)
-    {
-        if (emergenzaRisolta && disattivaOstilitAFineEmergenza)
-        {
-            if (spegniAFineEmergenza)
-            {
-                StopAgente();
-                statoAttuale = StatoGuardia.Inattiva;
-            }
-            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa)
-            {
-                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
-                if (agente != null && agente.isOnNavMesh)
-                {
-                    agente.speed = velocitaRonda;
-                    agente.isStopped = false;
-                }
-            }
-            Debug.Log($"<color=green>[GUARDIA]</color> Emergenza risolta: {gameObject.name} non è più ostile.");
-        }
-    }
+    // blocco: funzione fa cose
+    private void OnStatoEmergenzaCambiato(bool emergenzaRisolta) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (emergenzaRisolta && disattivaOstilitAFineEmergenza) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (spegniAFineEmergenza) // se ok // riga-ok
+            { // apre // riga-ok
+                StopAgente(); // chiama // riga-ok
+                statoAttuale = StatoGuardia.Inattiva; // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda; // setta // riga-ok
+                // blocco: controlla se va
+                if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+                { // apre // riga-ok
+                    agente.speed = velocitaRonda; // setta // riga-ok
+                    agente.isStopped = false; // setta // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+            Debug.Log($"<color=green>[GUARDIA]</color> Emergenza risolta: {gameObject.name} non è più ostile."); // logga // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void OnValidate()
-    {
-        ApplicaTagUnity();
-    }
+    // blocco: funzione fa cose
+    private void OnValidate() // roba pub // riga-ok
+    { // apre // riga-ok
+        ApplicaTagUnity(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    void Update()
-    {
-        if (ModalUIState.IsModalOpen)
-        {
-            FermaAudioPassi();
-            return;
-        }
+    void Update() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (ModalUIState.IsModalOpen) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        if (statoAttuale == StatoGuardia.Morta)
-        {
-            FermaAudioPassi();
-            return;
-        }
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        if (playerTransform == null || playerDamageable == null)
-        {
-            TrovaRiferimentoPlayer();
-        }
+        // blocco: controlla se va
+        if (playerTransform == null || playerDamageable == null) // se ok // riga-ok
+        { // apre // riga-ok
+            TrovaRiferimentoPlayer(); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        RilevaGiocatore();
-        EseguiComportamento();
-        AggiornaAnimazioni();
-        GestisciAudioPassi();
+        RilevaGiocatore(); // chiama // riga-ok
+        EseguiComportamento(); // chiama // riga-ok
+        AggiornaAnimazioni(); // chiama // riga-ok
+        GestisciAudioPassi(); // chiama // riga-ok
 
-        if (timerProssimoAttacco > 0)
-        {
-            timerProssimoAttacco -= Time.deltaTime;
-        }
-    }
+        // blocco: controlla se va
+        if (timerProssimoAttacco > 0) // se ok // riga-ok
+        { // apre // riga-ok
+            timerProssimoAttacco -= Time.deltaTime; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void GestisciAudioPassi()
-    {
-        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva)
-        {
-            FermaAudioPassi();
-            return;
-        }
+    // blocco: funzione fa cose
+    private void GestisciAudioPassi() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva) // se ok // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        bool staMuovendo = false;
-        if (agente != null && agente.isOnNavMesh)
-        {
-            staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.05f || agente.desiredVelocity.sqrMagnitude > 0.05f);
-        }
+        bool staMuovendo = false; // setta // riga-ok
+        // blocco: controlla se va
+        if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+        { // apre // riga-ok
+            staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.05f || agente.desiredVelocity.sqrMagnitude > 0.05f); // setta // riga-ok
+        } // chiude // riga-ok
 
-        if (staMuovendo)
-        {
-            InizializzaAudioSource();
-            bool inCorsa = statoAttuale == StatoGuardia.Inseguimento;
-            AudioClip clipPasso = inCorsa ? (suonoCorsa ?? suonoPassi) : suonoPassi;
-            if (clipPasso != null && audioSourcePassi != null)
-            {
-                float targetVolume = volumeAudio * (inCorsa ? 0.85f : 0.65f);
+        // blocco: controlla se va
+        if (staMuovendo) // se ok // riga-ok
+        { // apre // riga-ok
+            InizializzaAudioSource(); // chiama // riga-ok
+            bool inCorsa = statoAttuale == StatoGuardia.Inseguimento; // setta // riga-ok
+            AudioClip clipPasso = inCorsa ? (suonoCorsa ?? suonoPassi) : suonoPassi; // setta // riga-ok
+            // blocco: controlla se va
+            if (clipPasso != null && audioSourcePassi != null) // se ok // riga-ok
+            { // apre // riga-ok
+                float targetVolume = volumeAudio * (inCorsa ? 0.85f : 0.65f); // setta // riga-ok
 
-                if (clipPasso.length > 0.8f)
-                {
-                    audioSourcePassi.loop = true;
-                    audioSourcePassi.volume = targetVolume;
-                    audioSourcePassi.pitch = inCorsa ? 1.05f : 1.0f;
+                // blocco: controlla se va
+                if (clipPasso.length > 0.8f) // se ok // riga-ok
+                { // apre // riga-ok
+                    audioSourcePassi.loop = true; // setta // riga-ok
+                    audioSourcePassi.volume = targetVolume; // setta // riga-ok
+                    audioSourcePassi.pitch = inCorsa ? 1.05f : 1.0f; // setta // riga-ok
 
-                    if (audioSourcePassi.clip != clipPasso)
-                    {
-                        audioSourcePassi.clip = clipPasso;
-                        audioSourcePassi.Play();
-                    }
-                    else if (!audioSourcePassi.isPlaying)
-                    {
-                        audioSourcePassi.Play();
-                    }
-                }
-                else
-                {
-                    audioSourcePassi.loop = false;
-                    timerPassi -= Time.deltaTime;
-                    if (timerPassi <= 0f)
-                    {
-                        audioSourcePassi.pitch = Random.Range(0.95f, 1.05f);
-                        audioSourcePassi.PlayOneShot(clipPasso, targetVolume);
-                        timerPassi = inCorsa ? intervalloPassiCorsa : intervalloPassiCamminata;
-                    }
-                }
-            }
-            else
-            {
-                FermaAudioPassi();
-            }
-        }
-        else
-        {
-            FermaAudioPassi();
-        }
-    }
+                    // blocco: controlla se va
+                    if (audioSourcePassi.clip != clipPasso) // se ok // riga-ok
+                    { // apre // riga-ok
+                        audioSourcePassi.clip = clipPasso; // setta // riga-ok
+                        audioSourcePassi.Play(); // chiama // riga-ok
+                    } // chiude // riga-ok
+                    // blocco: controlla se va
+                    else if (!audioSourcePassi.isPlaying) // se ok // riga-ok
+                    { // apre // riga-ok
+                        audioSourcePassi.Play(); // chiama // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
+                // blocco: caso diverso
+                else // se no // riga-ok
+                { // apre // riga-ok
+                    audioSourcePassi.loop = false; // setta // riga-ok
+                    timerPassi -= Time.deltaTime; // setta // riga-ok
+                    // blocco: controlla se va
+                    if (timerPassi <= 0f) // se ok // riga-ok
+                    { // apre // riga-ok
+                        audioSourcePassi.pitch = Random.Range(0.95f, 1.05f); // setta // riga-ok
+                        audioSourcePassi.PlayOneShot(clipPasso, targetVolume); // chiama // riga-ok
+                        timerPassi = inCorsa ? intervalloPassiCorsa : intervalloPassiCamminata; // setta // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
+                FermaAudioPassi(); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            FermaAudioPassi(); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void AggiornaAnimazioni()
-    {
-        if (animatore == null) return;
+    // blocco: funzione fa cose
+    private void AggiornaAnimazioni() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (animatore == null) return; // se ok // riga-ok
 
-        float valoreVelocita = 0f;
+        float valoreVelocita = 0f; // setta // riga-ok
 
-        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva || statoAttuale == StatoGuardia.Sospettosa)
-        {
-            valoreVelocita = 0f;
-        }
-        else if (statoAttuale == StatoGuardia.Inseguimento)
-        {
-            bool staEseguendoPugno = animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") || 
-                                    (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca"));
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta || statoAttuale == StatoGuardia.Inattiva || statoAttuale == StatoGuardia.Sospettosa) // se ok // riga-ok
+        { // apre // riga-ok
+            valoreVelocita = 0f; // setta // riga-ok
+        } // chiude // riga-ok
+        // blocco: controlla se va
+        else if (statoAttuale == StatoGuardia.Inseguimento) // se ok // riga-ok
+        { // apre // riga-ok
+            bool staEseguendoPugno = animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") ||  // setta // riga-ok
+                                    (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca")); // chiama // riga-ok
 
-            if (staEseguendoPugno)
-            {
-                valoreVelocita = 0f;
-            }
-            else
-            {
-                bool staMuovendo = false;
-                if (agente != null && agente.isOnNavMesh)
-                {
-                    staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f);
-                }
-                else
-                {
-                    staMuovendo = playerTransform != null && Vector3.Distance(transform.position, playerTransform.position) > distanzaArresto;
-                }
+            // blocco: controlla se va
+            if (staEseguendoPugno) // se ok // riga-ok
+            { // apre // riga-ok
+                valoreVelocita = 0f; // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
+                bool staMuovendo = false; // setta // riga-ok
+                // blocco: controlla se va
+                if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+                { // apre // riga-ok
+                    staMuovendo = !agente.isStopped && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f); // setta // riga-ok
+                } // chiude // riga-ok
+                // blocco: caso diverso
+                else // se no // riga-ok
+                { // apre // riga-ok
+                    staMuovendo = playerTransform != null && Vector3.Distance(transform.position, playerTransform.position) > distanzaArresto; // setta // riga-ok
+                } // chiude // riga-ok
 
-                valoreVelocita = staMuovendo ? 3.0f : 0f;
-            }
-        }
-        else // Ronda o RitornoAllaBase
-        {
+                valoreVelocita = staMuovendo ? 3.0f : 0f; // setta // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // Ronda o RitornoAllaBase // se no // riga-ok
+        { // apre // riga-ok
             // In ronda: se non in pausa e si muove, valore 1.2 attiva 'camina' (richiede Speed > 0.1 e < 2.5)
-            bool staMuovendo = false;
-            if (agente != null && agente.isOnNavMesh)
-            {
-                staMuovendo = !agente.isStopped && !inAttesaRandom && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f || agente.hasPath);
-            }
-            else
-            {
-                staMuovendo = true;
-            }
+            bool staMuovendo = false; // setta // riga-ok
+            // blocco: controlla se va
+            if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+            { // apre // riga-ok
+                staMuovendo = !agente.isStopped && !inAttesaRandom && (agente.velocity.sqrMagnitude > 0.04f || agente.desiredVelocity.sqrMagnitude > 0.04f || agente.hasPath); // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
+                staMuovendo = true; // setta // riga-ok
+            } // chiude // riga-ok
 
-            valoreVelocita = staMuovendo ? 1.2f : 0f;
-        }
+            valoreVelocita = staMuovendo ? 1.2f : 0f; // setta // riga-ok
+        } // chiude // riga-ok
 
-        animatore.SetFloat(parametroVelocita, valoreVelocita);
-    }
+        animatore.SetFloat(parametroVelocita, valoreVelocita); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void EseguiComportamento()
-    {
-        switch (statoAttuale)
-        {
-            case StatoGuardia.Inattiva:
-                StopAgente();
-                break;
-            case StatoGuardia.Ronda:
-                MuoviInRonda();
-                break;
-            case StatoGuardia.Sospettosa:
-                StopAgente();
-                RotazioneFluida(playerTransform.position);
-                break;
-            case StatoGuardia.Inseguimento:
-                InseguiEAttacca();
-                break;
-            case StatoGuardia.RitornoAllaBase:
-                EseguiRitornoAllaBase();
-                break;
-        }
-    }
+    // blocco: funzione fa cose
+    private void EseguiComportamento() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: scegli strada
+        switch (statoAttuale) // scegli // riga-ok
+        { // apre // riga-ok
+            case StatoGuardia.Inattiva: // caso // riga-ok
+                StopAgente(); // chiama // riga-ok
+                break; // stop // riga-ok
+            case StatoGuardia.Ronda: // caso // riga-ok
+                MuoviInRonda(); // chiama // riga-ok
+                break; // stop // riga-ok
+            case StatoGuardia.Sospettosa: // caso // riga-ok
+                StopAgente(); // chiama // riga-ok
+                RotazioneFluida(playerTransform.position); // chiama // riga-ok
+                break; // stop // riga-ok
+            case StatoGuardia.Inseguimento: // caso // riga-ok
+                InseguiEAttacca(); // chiama // riga-ok
+                break; // stop // riga-ok
+            case StatoGuardia.RitornoAllaBase: // caso // riga-ok
+                EseguiRitornoAllaBase(); // chiama // riga-ok
+                break; // stop // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void StopAgente()
-    {
-        if (agente != null && agente.isOnNavMesh)
-        {
-            agente.isStopped = true;
-            agente.velocity = Vector3.zero;
-        }
-    }
+    // blocco: funzione fa cose
+    private void StopAgente() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.isStopped = true; // setta // riga-ok
+            agente.velocity = Vector3.zero; // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void MuoviInRonda()
-    {
+    // blocco: funzione fa cose
+    private void MuoviInRonda() // roba pub // riga-ok
+    { // apre // riga-ok
         // ── MODALITÀ WAYPOINT FISSI ────────────────────────────────────────────
-        if (HaWaypointValidi())
-        {
-            Transform target = waypointRonda[indiceWaypointAttuale];
-            if (target == null)
-            {
-                target = OttieniProssimoWaypointValido();
-                if (target == null) return;
-            }
+        // blocco: controlla se va
+        if (HaWaypointValidi()) // se ok // riga-ok
+        { // apre // riga-ok
+            Transform target = waypointRonda[indiceWaypointAttuale]; // setta // riga-ok
+            // blocco: controlla se va
+            if (target == null) // se ok // riga-ok
+            { // apre // riga-ok
+                target = OttieniProssimoWaypointValido(); // setta // riga-ok
+                // blocco: controlla se va
+                if (target == null) return; // se ok // riga-ok
+            } // chiude // riga-ok
 
-            if (agente != null && agente.isOnNavMesh)
-            {
-                agente.isStopped = false;
-                agente.speed = velocitaRonda;
+            // blocco: controlla se va
+            if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+            { // apre // riga-ok
+                agente.isStopped = false; // setta // riga-ok
+                agente.speed = velocitaRonda; // setta // riga-ok
 
-                Vector2 posAgenteXZ = new Vector2(transform.position.x, transform.position.z);
-                Vector2 posTargetXZ = new Vector2(target.position.x, target.position.z);
-                float distanzaXZ = Vector2.Distance(posAgenteXZ, posTargetXZ);
+                Vector2 posAgenteXZ = new Vector2(transform.position.x, transform.position.z); // setta // riga-ok
+                Vector2 posTargetXZ = new Vector2(target.position.x, target.position.z); // setta // riga-ok
+                float distanzaXZ = Vector2.Distance(posAgenteXZ, posTargetXZ); // setta // riga-ok
 
-                if (!agente.hasPath || Vector3.Distance(agente.destination, target.position) > 1.5f)
-                {
-                    agente.SetDestination(target.position);
-                }
+                // blocco: controlla se va
+                if (!agente.hasPath || Vector3.Distance(agente.destination, target.position) > 1.5f) // se ok // riga-ok
+                { // apre // riga-ok
+                    agente.SetDestination(target.position); // chiama // riga-ok
+                } // chiude // riga-ok
 
-                if (distanzaXZ <= distanzaArresto + 0.8f || (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.8f))
-                {
-                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
-                    Transform nextTarget = OttieniProssimoWaypointValido();
-                    if (nextTarget != null)
-                    {
-                        agente.SetDestination(nextTarget.position);
-                    }
-                }
-            }
-            else
-            {
+                // blocco: controlla se va
+                if (distanzaXZ <= distanzaArresto + 0.8f || (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.8f)) // se ok // riga-ok
+                { // apre // riga-ok
+                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length; // setta // riga-ok
+                    Transform nextTarget = OttieniProssimoWaypointValido(); // setta // riga-ok
+                    // blocco: controlla se va
+                    if (nextTarget != null) // se ok // riga-ok
+                    { // apre // riga-ok
+                        agente.SetDestination(nextTarget.position); // chiama // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
                 // Fallback senza NavMesh
-                Vector3 direzione = (target.position - transform.position).normalized;
-                direzione.y = 0;
-                Vector3 targetPos = target.position;
-                targetPos.y = transform.position.y;
-                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime);
-                if (direzione != Vector3.zero)
-                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime);
-                if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(target.position.x, target.position.z)) < 1.0f)
-                {
-                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length;
-                    OttieniProssimoWaypointValido();
-                }
-            }
-            return;
-        }
+                Vector3 direzione = (target.position - transform.position).normalized; // setta // riga-ok
+                direzione.y = 0; // setta // riga-ok
+                Vector3 targetPos = target.position; // setta // riga-ok
+                targetPos.y = transform.position.y; // setta // riga-ok
+                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime); // setta // riga-ok
+                // blocco: controlla se va
+                if (direzione != Vector3.zero) // se ok // riga-ok
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime); // setta // riga-ok
+                // blocco: controlla se va
+                if (Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(target.position.x, target.position.z)) < 1.0f) // se ok // riga-ok
+                { // apre // riga-ok
+                    indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypointRonda.Length; // setta // riga-ok
+                    OttieniProssimoWaypointValido(); // chiama // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
         // ── MODALITÀ RANDOM SU NAVMESH ─────────────────────────────────────────
-        if (agente == null || !agente.isOnNavMesh)
-            return;
+        // blocco: controlla se va
+        if (agente == null || !agente.isOnNavMesh) // se ok // riga-ok
+            return; // torna val // riga-ok
 
         // Pausa al punto raggiunto
-        if (inAttesaRandom)
-        {
-            agente.isStopped = true;
-            agente.velocity = Vector3.zero;
-            timerAttesaRandom -= Time.deltaTime;
-            if (timerAttesaRandom <= 0f)
-            {
-                inAttesaRandom = false;
-                destinazioneRandomValida = false;
-                ScegliPuntoRandom();
-            }
-            return;
-        }
+        // blocco: controlla se va
+        if (inAttesaRandom) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.isStopped = true; // setta // riga-ok
+            agente.velocity = Vector3.zero; // setta // riga-ok
+            timerAttesaRandom -= Time.deltaTime; // setta // riga-ok
+            // blocco: controlla se va
+            if (timerAttesaRandom <= 0f) // se ok // riga-ok
+            { // apre // riga-ok
+                inAttesaRandom = false; // setta // riga-ok
+                destinazioneRandomValida = false; // setta // riga-ok
+                ScegliPuntoRandom(); // chiama // riga-ok
+            } // chiude // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
         // Scegli un nuovo punto casuale se necessario
-        if (!destinazioneRandomValida)
-        {
-            destinazioneRandomValida = ScegliPuntoRandom();
-            if (!destinazioneRandomValida)
-                return;
-        }
+        // blocco: controlla se va
+        if (!destinazioneRandomValida) // se ok // riga-ok
+        { // apre // riga-ok
+            destinazioneRandomValida = ScegliPuntoRandom(); // setta // riga-ok
+            // blocco: controlla se va
+            if (!destinazioneRandomValida) // se ok // riga-ok
+                return; // torna val // riga-ok
+        } // chiude // riga-ok
 
         // Controlla se siamo arrivati
-        if (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.4f)
-        {
-            destinazioneRandomValida = false;
-            inAttesaRandom = true;
-            timerAttesaRandom = attesaTraPuntiRandom;
-            Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: punto raggiunto. Pausa {attesaTraPuntiRandom}s.");
-        }
-        else if (!agente.pathPending && !agente.hasPath)
-        {
-            destinazioneRandomValida = false;
-            ScegliPuntoRandom();
-        }
-    }
+        // blocco: controlla se va
+        if (!agente.pathPending && agente.hasPath && agente.remainingDistance <= agente.stoppingDistance + 0.4f) // se ok // riga-ok
+        { // apre // riga-ok
+            destinazioneRandomValida = false; // setta // riga-ok
+            inAttesaRandom = true; // setta // riga-ok
+            timerAttesaRandom = attesaTraPuntiRandom; // setta // riga-ok
+            Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: punto raggiunto. Pausa {attesaTraPuntiRandom}s."); // logga // riga-ok
+        } // chiude // riga-ok
+        // blocco: controlla se va
+        else if (!agente.pathPending && !agente.hasPath) // se ok // riga-ok
+        { // apre // riga-ok
+            destinazioneRandomValida = false; // setta // riga-ok
+            ScegliPuntoRandom(); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private bool ScegliPuntoRandom()
-    {
-        if (agente == null || !agente.isOnNavMesh) return false;
+    // blocco: funzione fa cose
+    private bool ScegliPuntoRandom() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (agente == null || !agente.isOnNavMesh) return false; // se ok // riga-ok
 
-        Vector3 centroRonda = (posizioneIniziale != Vector3.zero) ? posizioneIniziale : transform.position;
+        Vector3 centroRonda = (posizioneIniziale != Vector3.zero) ? posizioneIniziale : transform.position; // setta // riga-ok
 
-        for (int tentativi = 0; tentativi < 10; tentativi++)
-        {
-            Vector2 offset2D = Random.insideUnitCircle * raggioRondaRandom;
-            Vector3 puntoCandidato = centroRonda + new Vector3(offset2D.x, 0f, offset2D.y);
+        // blocco: gira piu volte
+        for (int tentativi = 0; tentativi < 10; tentativi++) // ciclo x // riga-ok
+        { // apre // riga-ok
+            Vector2 offset2D = Random.insideUnitCircle * raggioRondaRandom; // setta // riga-ok
+            Vector3 puntoCandidato = centroRonda + new Vector3(offset2D.x, 0f, offset2D.y); // setta // riga-ok
 
-            if (NavMesh.SamplePosition(puntoCandidato, out NavMeshHit hit, raggioRondaRandom, NavMesh.AllAreas))
-            {
-                if (Vector3.Distance(transform.position, hit.position) > 2.0f)
-                {
-                    NavMeshPath path = new NavMeshPath();
-                    if (agente.CalculatePath(hit.position, path) && path.status == NavMeshPathStatus.PathComplete)
-                    {
-                        destinazioneRandom = hit.position;
-                        agente.isStopped = false;
-                        agente.speed = velocitaRonda;
-                        agente.SetPath(path);
-                        destinazioneRandomValida = true;
-                        inAttesaRandom = false;
-                        Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: nuovo punto → {destinazioneRandom}");
-                        return true;
-                    }
-                }
-            }
-        }
-        destinazioneRandomValida = false;
-        return false;
-    }
+            // blocco: controlla se va
+            if (NavMesh.SamplePosition(puntoCandidato, out NavMeshHit hit, raggioRondaRandom, NavMesh.AllAreas)) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (Vector3.Distance(transform.position, hit.position) > 2.0f) // se ok // riga-ok
+                { // apre // riga-ok
+                    NavMeshPath path = new NavMeshPath(); // setta // riga-ok
+                    // blocco: controlla se va
+                    if (agente.CalculatePath(hit.position, path) && path.status == NavMeshPathStatus.PathComplete) // se ok // riga-ok
+                    { // apre // riga-ok
+                        destinazioneRandom = hit.position; // setta // riga-ok
+                        agente.isStopped = false; // setta // riga-ok
+                        agente.speed = velocitaRonda; // setta // riga-ok
+                        agente.SetPath(path); // chiama // riga-ok
+                        destinazioneRandomValida = true; // setta // riga-ok
+                        inAttesaRandom = false; // setta // riga-ok
+                        Debug.Log($"<color=cyan>[GUARDIA RANDOM]</color> {gameObject.name}: nuovo punto → {destinazioneRandom}"); // logga // riga-ok
+                        return true; // torna val // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        destinazioneRandomValida = false; // setta // riga-ok
+        return false; // torna val // riga-ok
+    } // chiude // riga-ok
 
-    private void InseguiEAttacca()
-    {
-        if (playerTransform == null) return;
+    // blocco: funzione fa cose
+    private void InseguiEAttacca() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (playerTransform == null) return; // se ok // riga-ok
 
-        float distanzaDalGiocatore = Vector3.Distance(transform.position, playerTransform.position);
-        float sogliaPugno = Mathf.Clamp(distanzaArresto, 1.6f, 2.2f);
+        float distanzaDalGiocatore = Vector3.Distance(transform.position, playerTransform.position); // setta // riga-ok
+        float sogliaPugno = Mathf.Clamp(distanzaArresto, 1.6f, 2.2f); // setta // riga-ok
 
-        bool staEseguendoPugno = animatore != null && 
-            (animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") || 
-             (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca")));
+        bool staEseguendoPugno = animatore != null &&  // setta // riga-ok
+            (animatore.GetCurrentAnimatorStateInfo(0).IsName("attaca") ||  // ok qua // riga-ok
+             (animatore.IsInTransition(0) && animatore.GetNextAnimatorStateInfo(0).IsName("attaca"))); // chiama // riga-ok
 
-        if (agente != null && agente.isOnNavMesh)
-        {
-            agente.speed = velocitaInseguimento;
+        // blocco: controlla se va
+        if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.speed = velocitaInseguimento; // setta // riga-ok
 
-            if (distanzaDalGiocatore <= sogliaPugno || staEseguendoPugno)
-            {
-                agente.isStopped = true;
-                agente.velocity = Vector3.zero;
-            }
-            else
-            {
-                agente.isStopped = false;
-                agente.SetDestination(playerTransform.position);
-            }
+            // blocco: controlla se va
+            if (distanzaDalGiocatore <= sogliaPugno || staEseguendoPugno) // se ok // riga-ok
+            { // apre // riga-ok
+                agente.isStopped = true; // setta // riga-ok
+                agente.velocity = Vector3.zero; // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
+                agente.isStopped = false; // setta // riga-ok
+                agente.SetDestination(playerTransform.position); // chiama // riga-ok
+            } // chiude // riga-ok
 
-            if (distanzaDalGiocatore < sogliaPugno + 3.0f)
-            {
-                RotazioneFluida(playerTransform.position);
-            }
-        }
-        else
-        {
-            if (distanzaDalGiocatore > sogliaPugno && !staEseguendoPugno)
-            {
-                Vector3 targetPos = playerTransform.position;
-                targetPos.y = transform.position.y;
-                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime);
-            }
-            RotazioneFluida(playerTransform.position);
-        }
+            // blocco: controlla se va
+            if (distanzaDalGiocatore < sogliaPugno + 3.0f) // se ok // riga-ok
+            { // apre // riga-ok
+                RotazioneFluida(playerTransform.position); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (distanzaDalGiocatore > sogliaPugno && !staEseguendoPugno) // se ok // riga-ok
+            { // apre // riga-ok
+                Vector3 targetPos = playerTransform.position; // setta // riga-ok
+                targetPos.y = transform.position.y; // setta // riga-ok
+                transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaInseguimento * Time.deltaTime); // setta // riga-ok
+            } // chiude // riga-ok
+            RotazioneFluida(playerTransform.position); // chiama // riga-ok
+        } // chiude // riga-ok
 
         // Sferra il pugno non appena raggiunge la portata di ingaggio corpo a corpo
-        if (distanzaDalGiocatore <= sogliaPugno && timerProssimoAttacco <= 0 && !staEseguendoPugno)
-        {
-            AttaccaPlayer();
-        }
-    }
+        // blocco: controlla se va
+        if (distanzaDalGiocatore <= sogliaPugno && timerProssimoAttacco <= 0 && !staEseguendoPugno) // se ok // riga-ok
+        { // apre // riga-ok
+            AttaccaPlayer(); // chiama // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
     
-    private void EseguiRitornoAllaBase()
-    {
+    // blocco: funzione fa cose
+    private void EseguiRitornoAllaBase() // roba pub // riga-ok
+    { // apre // riga-ok
         // In modalità random torna sempre alla posizioneIniziale;
         // in modalità waypoint torna al primo waypoint (comportamento originale).
-        Vector3 destinazione = (waypointRonda != null && waypointRonda.Length > 0)
-            ? waypointRonda[0].position
-            : posizioneIniziale;
+        Vector3 destinazione = (waypointRonda != null && waypointRonda.Length > 0) // setta // riga-ok
+            ? waypointRonda[0].position // ok qua // riga-ok
+            : posizioneIniziale; // ok qua // riga-ok
 
-        if (agente != null && agente.isOnNavMesh)
-        {
-            agente.isStopped = false;
-            agente.speed = velocitaRonda;
-            agente.SetDestination(destinazione);
+        // blocco: controlla se va
+        if (agente != null && agente.isOnNavMesh) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.isStopped = false; // setta // riga-ok
+            agente.speed = velocitaRonda; // setta // riga-ok
+            agente.SetDestination(destinazione); // chiama // riga-ok
 
-            if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.5f)
-            {
-                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
-                indiceWaypointAttuale = 0;
-                destinazioneRandomValida = false; // forza nuovo punto random al riavvio ronda
-                Debug.Log("<color=green>[GUARDIA] Posizione di partenza raggiunta. Riprendo le direttive operative.</color>");
-            }
-        }
-        else
-        {
-            Vector3 direzione = (destinazione - transform.position).normalized;
-            direzione.y = 0;
-            Vector3 targetPos = destinazione;
-            targetPos.y = transform.position.y;
+            // blocco: controlla se va
+            if (!agente.pathPending && agente.remainingDistance <= agente.stoppingDistance + 0.5f) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda; // setta // riga-ok
+                indiceWaypointAttuale = 0; // setta // riga-ok
+                destinazioneRandomValida = false; // forza nuovo punto random al riavvio ronda // setta // riga-ok
+                Debug.Log("<color=green>[GUARDIA] Posizione di partenza raggiunta. Riprendo le direttive operative.</color>"); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            Vector3 direzione = (destinazione - transform.position).normalized; // setta // riga-ok
+            direzione.y = 0; // setta // riga-ok
+            Vector3 targetPos = destinazione; // setta // riga-ok
+            targetPos.y = transform.position.y; // setta // riga-ok
 
-            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocitaRonda * Time.deltaTime); // setta // riga-ok
 
-            if (direzione != Vector3.zero)
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime);
+            // blocco: controlla se va
+            if (direzione != Vector3.zero) // se ok // riga-ok
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direzione), 5f * Time.deltaTime); // setta // riga-ok
 
-            if (Vector3.Distance(transform.position, targetPos) < 0.5f)
-            {
-                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
-                indiceWaypointAttuale = 0;
-                destinazioneRandomValida = false;
-            }
-        }
-    }
+            // blocco: controlla se va
+            if (Vector3.Distance(transform.position, targetPos) < 0.5f) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda; // setta // riga-ok
+                indiceWaypointAttuale = 0; // setta // riga-ok
+                destinazioneRandomValida = false; // setta // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void TrovaRiferimentoPlayer(Transform specifico = null)
-    {
-        if (specifico != null)
-        {
-            playerTransform = specifico;
-            playerScript = specifico.GetComponent<muve_pg>() ?? specifico.GetComponentInParent<muve_pg>() ?? specifico.GetComponentInChildren<muve_pg>();
-            playerDamageable = specifico.GetComponent<IDamageable>() ?? specifico.GetComponentInParent<IDamageable>() ?? specifico.GetComponentInChildren<IDamageable>();
-            if (playerDamageable != null) return;
-        }
+    // blocco: funzione fa cose
+    private void TrovaRiferimentoPlayer(Transform specifico = null) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (specifico != null) // se ok // riga-ok
+        { // apre // riga-ok
+            playerTransform = specifico; // setta // riga-ok
+            playerScript = specifico.GetComponent<muve_pg>() ?? specifico.GetComponentInParent<muve_pg>() ?? specifico.GetComponentInChildren<muve_pg>(); // setta // riga-ok
+            playerDamageable = specifico.GetComponent<IDamageable>() ?? specifico.GetComponentInParent<IDamageable>() ?? specifico.GetComponentInChildren<IDamageable>(); // setta // riga-ok
+            // blocco: controlla se va
+            if (playerDamageable != null) return; // se ok // riga-ok
+        } // chiude // riga-ok
 
         // 1. Ricerca tramite Tag Player
-        GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player);
-        if (playerObj != null)
-        {
-            if (playerTransform == null) playerTransform = playerObj.transform;
-            if (playerScript == null) playerScript = playerObj.GetComponent<muve_pg>() ?? playerObj.GetComponentInParent<muve_pg>() ?? playerObj.GetComponentInChildren<muve_pg>();
-            if (playerDamageable == null) playerDamageable = playerObj.GetComponent<IDamageable>() ?? playerObj.GetComponentInParent<IDamageable>() ?? playerObj.GetComponentInChildren<IDamageable>();
-        }
+        GameObject playerObj = GameObject.FindGameObjectWithTag(SectorContainmentTags.Player); // setta // riga-ok
+        // blocco: controlla se va
+        if (playerObj != null) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (playerTransform == null) playerTransform = playerObj.transform; // se ok // riga-ok
+            // blocco: controlla se va
+            if (playerScript == null) playerScript = playerObj.GetComponent<muve_pg>() ?? playerObj.GetComponentInParent<muve_pg>() ?? playerObj.GetComponentInChildren<muve_pg>(); // se ok // riga-ok
+            // blocco: controlla se va
+            if (playerDamageable == null) playerDamageable = playerObj.GetComponent<IDamageable>() ?? playerObj.GetComponentInParent<IDamageable>() ?? playerObj.GetComponentInChildren<IDamageable>(); // se ok // riga-ok
+        } // chiude // riga-ok
 
         // 2. Fallback diretto tramite SalutePlayer nella scena
-        if (playerDamageable == null)
-        {
-            SalutePlayer salute = Object.FindAnyObjectByType<SalutePlayer>();
-            if (salute != null)
-            {
-                playerDamageable = salute;
-                if (playerTransform == null) playerTransform = salute.transform;
-                if (playerScript == null) playerScript = salute.GetComponent<muve_pg>() ?? salute.GetComponentInParent<muve_pg>() ?? salute.GetComponentInChildren<muve_pg>();
-            }
-        }
+        // blocco: controlla se va
+        if (playerDamageable == null) // se ok // riga-ok
+        { // apre // riga-ok
+            SalutePlayer salute = Object.FindAnyObjectByType<SalutePlayer>(); // setta // riga-ok
+            // blocco: controlla se va
+            if (salute != null) // se ok // riga-ok
+            { // apre // riga-ok
+                playerDamageable = salute; // setta // riga-ok
+                // blocco: controlla se va
+                if (playerTransform == null) playerTransform = salute.transform; // se ok // riga-ok
+                // blocco: controlla se va
+                if (playerScript == null) playerScript = salute.GetComponent<muve_pg>() ?? salute.GetComponentInParent<muve_pg>() ?? salute.GetComponentInChildren<muve_pg>(); // se ok // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
         // 3. Fallback tramite muve_pg
-        if (playerTransform == null)
-        {
-            muve_pg muve = Object.FindAnyObjectByType<muve_pg>();
-            if (muve != null)
-            {
-                playerTransform = muve.transform;
-                playerScript = muve;
-                if (playerDamageable == null) playerDamageable = muve.GetComponent<IDamageable>() ?? muve.GetComponentInParent<IDamageable>() ?? muve.GetComponentInChildren<IDamageable>();
-            }
-        }
-    }
+        // blocco: controlla se va
+        if (playerTransform == null) // se ok // riga-ok
+        { // apre // riga-ok
+            muve_pg muve = Object.FindAnyObjectByType<muve_pg>(); // setta // riga-ok
+            // blocco: controlla se va
+            if (muve != null) // se ok // riga-ok
+            { // apre // riga-ok
+                playerTransform = muve.transform; // setta // riga-ok
+                playerScript = muve; // setta // riga-ok
+                // blocco: controlla se va
+                if (playerDamageable == null) playerDamageable = muve.GetComponent<IDamageable>() ?? muve.GetComponentInParent<IDamageable>() ?? muve.GetComponentInChildren<IDamageable>(); // se ok // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void AttaccaPlayer()
-    {
-        timerProssimoAttacco = cadenzaAttacco;
+    // blocco: funzione fa cose
+    private void AttaccaPlayer() // roba pub // riga-ok
+    { // apre // riga-ok
+        timerProssimoAttacco = cadenzaAttacco; // setta // riga-ok
 
-        if (animatore != null)
-        {
-            animatore.ResetTrigger(triggerAttacco);
-            animatore.SetTrigger(triggerAttacco);
-        }
+        // blocco: controlla se va
+        if (animatore != null) // se ok // riga-ok
+        { // apre // riga-ok
+            animatore.ResetTrigger(triggerAttacco); // chiama // riga-ok
+            animatore.SetTrigger(triggerAttacco); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        RiproduciSuono(suonoAttacco);
+        RiproduciSuono(suonoAttacco); // chiama // riga-ok
 
-        if (coroutineAttacco != null)
-            StopCoroutine(coroutineAttacco);
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
 
-        coroutineAttacco = StartCoroutine(EseguiImpattoPugno(ritardoImpattoPugno));
-    }
+        coroutineAttacco = StartCoroutine(EseguiImpattoPugno(ritardoImpattoPugno)); // setta // riga-ok
+    } // chiude // riga-ok
 
-    private System.Collections.IEnumerator EseguiImpattoPugno(float ritardo)
-    {
-        yield return new WaitForSeconds(ritardo);
+    // blocco: funzione fa cose
+    private System.Collections.IEnumerator EseguiImpattoPugno(float ritardo) // roba pub // riga-ok
+    { // apre // riga-ok
+        yield return new WaitForSeconds(ritardo); // aspetta // riga-ok
 
-        if (statoAttuale == StatoGuardia.Morta) yield break;
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta) yield break; // se ok // riga-ok
 
-        if (playerDamageable == null || playerTransform == null)
-        {
-            TrovaRiferimentoPlayer(playerTransform);
-        }
+        // blocco: controlla se va
+        if (playerDamageable == null || playerTransform == null) // se ok // riga-ok
+        { // apre // riga-ok
+            TrovaRiferimentoPlayer(playerTransform); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        if (playerTransform != null && playerDamageable != null)
-        {
-            float distanza = Vector3.Distance(transform.position, playerTransform.position);
-            if (distanza <= raggioImpattoPugno)
-            {
-                Debug.Log($"<color=red>[GUARDIA] Impatto Pugno a segno! Infligge {dannoAttacco} HP al giocatore.</color>");
-                playerDamageable.SubisciDanno(dannoAttacco);
-            }
-            else
-            {
-                Debug.Log("<color=yellow>[GUARDIA] Pugno a vuoto: bersaglio fuori portata all'impatto.</color>");
-            }
-        }
-        else
-        {
-            Debug.LogError("[SISTEMA COMBATTIMENTO] ATTENZIONE: La guardia ha sferrato il pugno, ma lo script della salute del giocatore non è stato trovato!");
-        }
+        // blocco: controlla se va
+        if (playerTransform != null && playerDamageable != null) // se ok // riga-ok
+        { // apre // riga-ok
+            float distanza = Vector3.Distance(transform.position, playerTransform.position); // setta // riga-ok
+            // blocco: controlla se va
+            if (distanza <= raggioImpattoPugno) // se ok // riga-ok
+            { // apre // riga-ok
+                Debug.Log($"<color=red>[GUARDIA] Impatto Pugno a segno! Infligge {dannoAttacco} HP al giocatore.</color>"); // logga // riga-ok
+                playerDamageable.SubisciDanno(dannoAttacco); // chiama // riga-ok
+            } // chiude // riga-ok
+            // blocco: caso diverso
+            else // se no // riga-ok
+            { // apre // riga-ok
+                Debug.Log("<color=yellow>[GUARDIA] Pugno a vuoto: bersaglio fuori portata all'impatto.</color>"); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            Debug.LogError("[SISTEMA COMBATTIMENTO] ATTENZIONE: La guardia ha sferrato il pugno, ma lo script della salute del giocatore non è stato trovato!"); // logga // riga-ok
+        } // chiude // riga-ok
 
-        coroutineAttacco = null;
-    }
+        coroutineAttacco = null; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
-    {
-        Vector3 direction = (playerChest - eyeOrigin);
-        float distance = direction.magnitude;
-        if (distance > maxDistance || distance < 0.01f) return distance <= maxDistance;
-        direction.Normalize();
+    // blocco: funzione fa cose
+    private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance) // roba pub // riga-ok
+    { // apre // riga-ok
+        Vector3 direction = (playerChest - eyeOrigin); // setta // riga-ok
+        float distance = direction.magnitude; // setta // riga-ok
+        // blocco: controlla se va
+        if (distance > maxDistance || distance < 0.01f) return distance <= maxDistance; // se ok // riga-ok
+        direction.Normalize(); // chiama // riga-ok
 
-        RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, direction, distance, ~0, QueryTriggerInteraction.Ignore);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        RaycastHit[] hits = Physics.RaycastAll(eyeOrigin, direction, distance, ~0, QueryTriggerInteraction.Ignore); // setta // riga-ok
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance)); // setta // riga-ok
 
-        foreach (RaycastHit hit in hits)
-        {
-            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone))
-                continue;
+        // blocco: gira piu volte
+        foreach (RaycastHit hit in hits) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (hit.transform.root == transform.root || hit.collider.CompareTag(SectorContainmentTags.Enemy) || hit.collider.CompareTag(SectorContainmentTags.Drone)) // se ok // riga-ok
+                continue; // salta // riga-ok
 
-            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player))
-                return true;
+            // blocco: controlla se va
+            if (hit.transform.root == playerTransform.root || hit.collider.CompareTag(SectorContainmentTags.Player)) // se ok // riga-ok
+                return true; // torna val // riga-ok
 
-            if (hit.collider.isTrigger)
-                continue;
+            // blocco: controlla se va
+            if (hit.collider.isTrigger) // se ok // riga-ok
+                continue; // salta // riga-ok
 
-            if (hit.distance >= distance - 0.3f)
-                return true;
+            // blocco: controlla se va
+            if (hit.distance >= distance - 0.3f) // se ok // riga-ok
+                return true; // torna val // riga-ok
 
             // Muro/ostacolo che blocca la linea di vista
-            return false;
-        }
+            return false; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        return true;
-    }
+        return true; // torna val // riga-ok
+    } // chiude // riga-ok
 
-    private void RilevaGiocatore()
-    {
-        if (playerTransform == null)
-        {
-            TrovaRiferimentoPlayer();
-            if (playerTransform == null) return;
-        }
+    // blocco: funzione fa cose
+    private void RilevaGiocatore() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (playerTransform == null) // se ok // riga-ok
+        { // apre // riga-ok
+            TrovaRiferimentoPlayer(); // chiama // riga-ok
+            // blocco: controlla se va
+            if (playerTransform == null) return; // se ok // riga-ok
+        } // chiude // riga-ok
 
         // Se l'emergenza è rientrata e le guardie sono state pacificate, non rilevano né attaccano
-        if (disattivaOstilitAFineEmergenza && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
-        {
-            if (spegniAFineEmergenza)
-            {
-                StopAgente();
-                statoAttuale = StatoGuardia.Inattiva;
-            }
-            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa)
-            {
-                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda;
-            }
-            return;
-        }
+        // blocco: controlla se va
+        if (disattivaOstilitAFineEmergenza && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (spegniAFineEmergenza) // se ok // riga-ok
+            { // apre // riga-ok
+                StopAgente(); // chiama // riga-ok
+                statoAttuale = StatoGuardia.Inattiva; // setta // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            else if (statoAttuale == StatoGuardia.Inseguimento || statoAttuale == StatoGuardia.Sospettosa) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = eStatica ? StatoGuardia.Inattiva : StatoGuardia.Ronda; // setta // riga-ok
+            } // chiude // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        Vector3 eyeOrigin = transform.position + Vector3.up * 1.5f;
-        Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f;
-        float distanza = Vector3.Distance(transform.position, playerTransform.position);
+        Vector3 eyeOrigin = transform.position + Vector3.up * 1.5f; // setta // riga-ok
+        Vector3 playerChest = playerTransform.position + Vector3.up * 1.0f; // setta // riga-ok
+        float distanza = Vector3.Distance(transform.position, playerTransform.position); // setta // riga-ok
 
         // Se il giocatore è vicinissimo (entro 3.5 metri), ingaggia e si prepara al pugno immediatamente
-        if (distanza <= 3.5f)
-        {
-            if (statoAttuale != StatoGuardia.Inseguimento)
-            {
-                statoAttuale = StatoGuardia.Inseguimento;
-                timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno
-                Debug.Log("<color=red>[GUARDIA] Bersaglio individuato a distanza ravvicinata! Inseguimento e pugno corpo a corpo.</color>");
-                if (MissionManager.Instance != null)
-                    MissionManager.Instance.RegistraRilevamento(gameObject.name);
-                AllertaGuardieVicine();
-            }
-            return;
-        }
+        // blocco: controlla se va
+        if (distanza <= 3.5f) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (statoAttuale != StatoGuardia.Inseguimento) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = StatoGuardia.Inseguimento; // setta // riga-ok
+                timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno // setta // riga-ok
+                Debug.Log("<color=red>[GUARDIA] Bersaglio individuato a distanza ravvicinata! Inseguimento e pugno corpo a corpo.</color>"); // logga // riga-ok
+                // blocco: controlla se va
+                if (MissionManager.Instance != null) // se ok // riga-ok
+                    MissionManager.Instance.RegistraRilevamento(gameObject.name); // chiama // riga-ok
+                AllertaGuardieVicine(); // chiama // riga-ok
+            } // chiude // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
-        if (playerScript != null)
-        {
-            bool staCorrendo = UnityEngine.InputSystem.Keyboard.current != null && 
-                               UnityEngine.InputSystem.Keyboard.current.leftShiftKey.isPressed && 
-                               (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed || 
-                                UnityEngine.InputSystem.Keyboard.current.aKey.isPressed || 
-                                UnityEngine.InputSystem.Keyboard.current.sKey.isPressed || 
-                                UnityEngine.InputSystem.Keyboard.current.dKey.isPressed);
+        // blocco: controlla se va
+        if (playerScript != null) // se ok // riga-ok
+        { // apre // riga-ok
+            bool staCorrendo = UnityEngine.InputSystem.Keyboard.current != null &&  // setta // riga-ok
+                               UnityEngine.InputSystem.Keyboard.current.leftShiftKey.isPressed &&  // ok qua // riga-ok
+                               (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed ||  // ok qua // riga-ok
+                                UnityEngine.InputSystem.Keyboard.current.aKey.isPressed ||  // ok qua // riga-ok
+                                UnityEngine.InputSystem.Keyboard.current.sKey.isPressed ||  // ok qua // riga-ok
+                                UnityEngine.InputSystem.Keyboard.current.dKey.isPressed); // chiama // riga-ok
 
-            if (staCorrendo && distanza <= raggioUditoPassi)
-            {
-                if (statoAttuale != StatoGuardia.Inseguimento)
-                {
-                    statoAttuale = StatoGuardia.Sospettosa;
-                    Debug.Log("<color=yellow>[GUARDIA] Sente rumore di passi veloci alle spalle! Stato: Sospettosa.</color>");
-                }
-            }
-        }
+            // blocco: controlla se va
+            if (staCorrendo && distanza <= raggioUditoPassi) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (statoAttuale != StatoGuardia.Inseguimento) // se ok // riga-ok
+                { // apre // riga-ok
+                    statoAttuale = StatoGuardia.Sospettosa; // setta // riga-ok
+                    Debug.Log("<color=yellow>[GUARDIA] Sente rumore di passi veloci alle spalle! Stato: Sospettosa.</color>"); // logga // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
-        if (distanza <= raggioVisione)
-        {
-            Vector3 dirXZ = (playerTransform.position - transform.position);
-            dirXZ.y = 0;
-            float angoloFrontale = Vector3.Angle(transform.forward, dirXZ.normalized);
+        // blocco: controlla se va
+        if (distanza <= raggioVisione) // se ok // riga-ok
+        { // apre // riga-ok
+            Vector3 dirXZ = (playerTransform.position - transform.position); // setta // riga-ok
+            dirXZ.y = 0; // setta // riga-ok
+            float angoloFrontale = Vector3.Angle(transform.forward, dirXZ.normalized); // setta // riga-ok
 
-            if (angoloFrontale < (angoloVisione / 2f) + 5f)
-            {
-                if (HaLineaDiVistaLibera(eyeOrigin, playerChest, distanza))
-                {
-                    if (statoAttuale != StatoGuardia.Inseguimento)
-                    {
-                        statoAttuale = StatoGuardia.Inseguimento;
-                        timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno
-                        Debug.Log("<color=red>[GUARDIA] Bersaglio individuato! Inseguimento e pugno corpo a corpo.</color>");
-                        if (MissionManager.Instance != null)
-                            MissionManager.Instance.RegistraRilevamento(gameObject.name);
-                        AllertaGuardieVicine();
-                    }
-                    return;
-                }
-            }
-        }
+            // blocco: controlla se va
+            if (angoloFrontale < (angoloVisione / 2f) + 5f) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (HaLineaDiVistaLibera(eyeOrigin, playerChest, distanza)) // se ok // riga-ok
+                { // apre // riga-ok
+                    // blocco: controlla se va
+                    if (statoAttuale != StatoGuardia.Inseguimento) // se ok // riga-ok
+                    { // apre // riga-ok
+                        statoAttuale = StatoGuardia.Inseguimento; // setta // riga-ok
+                        timerProssimoAttacco = 0f; // Attacca subito non appena a portata di pugno // setta // riga-ok
+                        Debug.Log("<color=red>[GUARDIA] Bersaglio individuato! Inseguimento e pugno corpo a corpo.</color>"); // logga // riga-ok
+                        // blocco: controlla se va
+                        if (MissionManager.Instance != null) // se ok // riga-ok
+                            MissionManager.Instance.RegistraRilevamento(gameObject.name); // chiama // riga-ok
+                        AllertaGuardieVicine(); // chiama // riga-ok
+                    } // chiude // riga-ok
+                    return; // torna val // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
         
-        if (distanza > raggioVisione + 6f && statoAttuale == StatoGuardia.Inseguimento)
-        {
-            statoAttuale = StatoGuardia.RitornoAllaBase;
-            allarmeLanciato = false;
-            Debug.Log("<color=grey>[GUARDIA] Bersaglio perso. Rientro alla posizione di partenza in corso.</color>");
-        }
-    }
+        // blocco: controlla se va
+        if (distanza > raggioVisione + 6f && statoAttuale == StatoGuardia.Inseguimento) // se ok // riga-ok
+        { // apre // riga-ok
+            statoAttuale = StatoGuardia.RitornoAllaBase; // setta // riga-ok
+            allarmeLanciato = false; // setta // riga-ok
+            Debug.Log("<color=grey>[GUARDIA] Bersaglio perso. Rientro alla posizione di partenza in corso.</color>"); // logga // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void AllertaGuardieVicine()
-    {
-        if (allarmeLanciato) return;
+    // blocco: funzione fa cose
+    private void AllertaGuardieVicine() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (allarmeLanciato) return; // se ok // riga-ok
 
-        allarmeLanciato = true;
-        RiproduciSuono(suonoAllarme);
-        Debug.Log($"<color=orange>[ALLARME RADIO] Guardia in combattimento! Invio segnale alle unità entro {raggioScattoAllarme} metri!</color>");
+        allarmeLanciato = true; // setta // riga-ok
+        RiproduciSuono(suonoAllarme); // chiama // riga-ok
+        Debug.Log($"<color=orange>[ALLARME RADIO] Guardia in combattimento! Invio segnale alle unità entro {raggioScattoAllarme} metri!</color>"); // logga // riga-ok
 
-        GuardiaNpc[] tutteLeGuardie = Object.FindObjectsByType<GuardiaNpc>(FindObjectsSortMode.None);
+        GuardiaNpc[] tutteLeGuardie = Object.FindObjectsByType<GuardiaNpc>(FindObjectsSortMode.None); // setta // riga-ok
         
-        foreach (GuardiaNpc guardia in tutteLeGuardie)
-        {
-            if (guardia == this || guardia.statoAttuale == StatoGuardia.Morta) continue;
+        // blocco: gira piu volte
+        foreach (GuardiaNpc guardia in tutteLeGuardie) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (guardia == this || guardia.statoAttuale == StatoGuardia.Morta) continue; // se ok // riga-ok
 
-            float distanzaDallAllarme = Vector3.Distance(transform.position, guardia.transform.position);
-            if (distanzaDallAllarme <= raggioScattoAllarme)
-            {
-                if (guardia.statoAttuale != StatoGuardia.Inseguimento)
-                {
-                    guardia.RiceviAllarmeRinforzi(playerTransform);
-                }
-            }
-        }
-    }
+            float distanzaDallAllarme = Vector3.Distance(transform.position, guardia.transform.position); // setta // riga-ok
+            // blocco: controlla se va
+            if (distanzaDallAllarme <= raggioScattoAllarme) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (guardia.statoAttuale != StatoGuardia.Inseguimento) // se ok // riga-ok
+                { // apre // riga-ok
+                    guardia.RiceviAllarmeRinforzi(playerTransform); // chiama // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    public void RiceviAllarmeRinforzi(Transform targetPlayer)
-    {
-        if (statoAttuale == StatoGuardia.Morta) return;
+    // blocco: funzione fa cose
+    public void RiceviAllarmeRinforzi(Transform targetPlayer) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta) return; // se ok // riga-ok
 
-        statoAttuale = StatoGuardia.Inseguimento;
-        TrovaRiferimentoPlayer(targetPlayer);
-        allarmeLanciato = true;
-        RiproduciSuono(suonoAllarme);
+        statoAttuale = StatoGuardia.Inseguimento; // setta // riga-ok
+        TrovaRiferimentoPlayer(targetPlayer); // chiama // riga-ok
+        allarmeLanciato = true; // setta // riga-ok
+        RiproduciSuono(suonoAllarme); // chiama // riga-ok
 
-        Debug.Log($"<color=red><b>[RINFORZI]</b> {gameObject.name} ha ricevuto l'allarme radio di combattimento! Corre in supporto!</color>");
-    }
+        Debug.Log($"<color=red><b>[RINFORZI]</b> {gameObject.name} ha ricevuto l'allarme radio di combattimento! Corre in supporto!</color>"); // logga // riga-ok
+    } // chiude // riga-ok
 
-    public void SubisciDanno(float quantitaDanno)
-    {
-        if (statoAttuale == StatoGuardia.Morta) return;
+    // blocco: funzione fa cose
+    public void SubisciDanno(float quantitaDanno) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (statoAttuale == StatoGuardia.Morta) return; // se ok // riga-ok
 
-        bool colpoFurtivo = RilevaSeColpitoAlleSpalle();
+        bool colpoFurtivo = RilevaSeColpitoAlleSpalle(); // setta // riga-ok
 
-        if (colpoFurtivo)
-        {
-            saluteCorrente = 0;
-            MorteFurtiva();
-        }
-        else
-        {
-            saluteCorrente -= quantitaDanno;
-            RiproduciSuono(suonoDanno);
-            Debug.Log($"<color=orange>[GUARDIA] Colpito! Subito {quantitaDanno} HP di danno frontale. Salute rimanente: {saluteCorrente}</color>");
+        // blocco: controlla se va
+        if (colpoFurtivo) // se ok // riga-ok
+        { // apre // riga-ok
+            saluteCorrente = 0; // setta // riga-ok
+            MorteFurtiva(); // chiama // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            saluteCorrente -= quantitaDanno; // setta // riga-ok
+            RiproduciSuono(suonoDanno); // chiama // riga-ok
+            Debug.Log($"<color=orange>[GUARDIA] Colpito! Subito {quantitaDanno} HP di danno frontale. Salute rimanente: {saluteCorrente}</color>"); // logga // riga-ok
             
-            if (statoAttuale != StatoGuardia.Inseguimento)
-            {
-                statoAttuale = StatoGuardia.Inseguimento;
-                AllertaGuardieVicine();
-            }
+            // blocco: controlla se va
+            if (statoAttuale != StatoGuardia.Inseguimento) // se ok // riga-ok
+            { // apre // riga-ok
+                statoAttuale = StatoGuardia.Inseguimento; // setta // riga-ok
+                AllertaGuardieVicine(); // chiama // riga-ok
+            } // chiude // riga-ok
 
-            if (saluteCorrente <= 0)
-            {
-                MorteStandard();
-            }
-        }
-    }
+            // blocco: controlla se va
+            if (saluteCorrente <= 0) // se ok // riga-ok
+            { // apre // riga-ok
+                MorteStandard(); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private bool RilevaSeColpitoAlleSpalle()
-    {
-        if (playerTransform == null) return false;
+    // blocco: funzione fa cose
+    private bool RilevaSeColpitoAlleSpalle() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (playerTransform == null) return false; // se ok // riga-ok
         
-        Vector3 direzioneDalPlayer = (transform.position - playerTransform.position).normalized;
-        float angoloImpattoAlleSpalle = Vector3.Angle(transform.forward, direzioneDalPlayer);
+        Vector3 direzioneDalPlayer = (transform.position - playerTransform.position).normalized; // setta // riga-ok
+        float angoloImpattoAlleSpalle = Vector3.Angle(transform.forward, direzioneDalPlayer); // setta // riga-ok
 
-        return angoloImpattoAlleSpalle < 60f;
-    }
+        return angoloImpattoAlleSpalle < 60f; // torna val // riga-ok
+    } // chiude // riga-ok
 
-    private void MorteFurtiva()
-    {
-        if (coroutineAttacco != null)
-        {
-            StopCoroutine(coroutineAttacco);
-            coroutineAttacco = null;
-        }
-        statoAttuale = StatoGuardia.Morta;
-        Debug.Log("<color=green><b>[STEALTH SUCCESS]</b> Guardia eliminata sul colpo con un'azione furtiva silenziosa!</color>");
-        EseguiDissolvenzaMorte();
-    }
+    // blocco: funzione fa cose
+    private void MorteFurtiva() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
+            coroutineAttacco = null; // setta // riga-ok
+        } // chiude // riga-ok
+        statoAttuale = StatoGuardia.Morta; // setta // riga-ok
+        Debug.Log("<color=green><b>[STEALTH SUCCESS]</b> Guardia eliminata sul colpo con un'azione furtiva silenziosa!</color>"); // logga // riga-ok
+        EseguiDissolvenzaMorte(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void MorteStandard()
-    {
-        if (coroutineAttacco != null)
-        {
-            StopCoroutine(coroutineAttacco);
-            coroutineAttacco = null;
-        }
-        statoAttuale = StatoGuardia.Morta;
-        Debug.Log("<color=white>[GUARDIA] Eliminata in combattimento frontale.</color>");
-        EseguiDissolvenzaMorte();
-    }
+    // blocco: funzione fa cose
+    private void MorteStandard() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (coroutineAttacco != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(coroutineAttacco); // corutina // riga-ok
+            coroutineAttacco = null; // setta // riga-ok
+        } // chiude // riga-ok
+        statoAttuale = StatoGuardia.Morta; // setta // riga-ok
+        Debug.Log("<color=white>[GUARDIA] Eliminata in combattimento frontale.</color>"); // logga // riga-ok
+        EseguiDissolvenzaMorte(); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void EseguiDissolvenzaMorte()
-    {
-        FermaAudioPassi();
-        GetComponent<Collider>().enabled = false;
-        RiproduciSuono(suonoMorte);
+    // blocco: funzione fa cose
+    private void EseguiDissolvenzaMorte() // roba pub // riga-ok
+    { // apre // riga-ok
+        FermaAudioPassi(); // chiama // riga-ok
+        GetComponent<Collider>().enabled = false; // setta // riga-ok
+        RiproduciSuono(suonoMorte); // chiama // riga-ok
         
-        if (agente != null)
-        {
-            agente.enabled = false;
-        }
+        // blocco: controlla se va
+        if (agente != null) // se ok // riga-ok
+        { // apre // riga-ok
+            agente.enabled = false; // setta // riga-ok
+        } // chiude // riga-ok
 
-        if (animatore != null)
-        {
-            animatore.SetTrigger(triggerMorte);
-        }
+        // blocco: controlla se va
+        if (animatore != null) // se ok // riga-ok
+        { // apre // riga-ok
+            animatore.SetTrigger(triggerMorte); // chiama // riga-ok
+        } // chiude // riga-ok
 
-        if (sparisciSubitoDopoMorte)
-        {
-            Destroy(gameObject, ritardoSparizione);
-        }
-        else
-        {
-            Debug.Log("<color=cyan>[GUARDIA] La guardia è morta. Il cadavere rimane a terra poiché 'sparisciSubitoDopoMorte' è disattivato.</color>");
-        }
-    }
+        // blocco: controlla se va
+        if (sparisciSubitoDopoMorte) // se ok // riga-ok
+        { // apre // riga-ok
+            Destroy(gameObject, ritardoSparizione); // elimina // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            Debug.Log("<color=cyan>[GUARDIA] La guardia è morta. Il cadavere rimane a terra poiché 'sparisciSubitoDopoMorte' è disattivato.</color>"); // logga // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void RotazioneFluida(Vector3 targetPos)
-    {
-        Vector3 direzioneSguardo = (targetPos - transform.position).normalized;
-        direzioneSguardo.y = 0;
+    // blocco: funzione fa cose
+    private void RotazioneFluida(Vector3 targetPos) // roba pub // riga-ok
+    { // apre // riga-ok
+        Vector3 direzioneSguardo = (targetPos - transform.position).normalized; // setta // riga-ok
+        direzioneSguardo.y = 0; // setta // riga-ok
         
-        if (direzioneSguardo != Vector3.zero)
-        {
-            Quaternion rotTarget = Quaternion.LookRotation(direzioneSguardo);
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotTarget, 8f * Time.deltaTime);
-        }
-    }
+        // blocco: controlla se va
+        if (direzioneSguardo != Vector3.zero) // se ok // riga-ok
+        { // apre // riga-ok
+            Quaternion rotTarget = Quaternion.LookRotation(direzioneSguardo); // setta // riga-ok
+            transform.rotation = Quaternion.Slerp(transform.rotation, rotTarget, 8f * Time.deltaTime); // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(transform.position, raggioUditoPassi);
+    // blocco: funzione fa cose
+    private void OnDrawGizmos() // roba pub // riga-ok
+    { // apre // riga-ok
+        Gizmos.color = Color.blue; // setta // riga-ok
+        Gizmos.DrawWireSphere(transform.position, raggioUditoPassi); // chiama // riga-ok
 
-        Gizmos.color = new Color(1f, 0.5f, 0f, 0.4f);
-        Gizmos.DrawWireSphere(transform.position, raggioScattoAllarme);
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.4f); // setta // riga-ok
+        Gizmos.DrawWireSphere(transform.position, raggioScattoAllarme); // chiama // riga-ok
 
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, raggioVisione);
+        Gizmos.color = Color.red; // setta // riga-ok
+        Gizmos.DrawWireSphere(transform.position, raggioVisione); // chiama // riga-ok
         
-        Vector3 dirDestraFrontale = Quaternion.Euler(0, angoloVisione / 2, 0) * transform.forward;
-        Vector3 dirSinistraFrontale = Quaternion.Euler(0, -angoloVisione / 2, 0) * transform.forward;
+        Vector3 dirDestraFrontale = Quaternion.Euler(0, angoloVisione / 2, 0) * transform.forward; // setta // riga-ok
+        Vector3 dirSinistraFrontale = Quaternion.Euler(0, -angoloVisione / 2, 0) * transform.forward; // setta // riga-ok
         
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawRay(transform.position, dirDestraFrontale * raggioVisione);
-        Gizmos.DrawRay(transform.position, dirSinistraFrontale * raggioVisione);
+        Gizmos.color = Color.yellow; // setta // riga-ok
+        Gizmos.DrawRay(transform.position, dirDestraFrontale * raggioVisione); // chiama // riga-ok
+        Gizmos.DrawRay(transform.position, dirSinistraFrontale * raggioVisione); // chiama // riga-ok
         
-        Vector3 dirDestraPosteriore = Quaternion.Euler(0, 180 - (angoloPuntoCiecoStealth / 2), 0) * transform.forward;
-        Vector3 dirSinistraPosteriore = Quaternion.Euler(0, 180 + (angoloPuntoCiecoStealth / 2), 0) * transform.forward;
+        Vector3 dirDestraPosteriore = Quaternion.Euler(0, 180 - (angoloPuntoCiecoStealth / 2), 0) * transform.forward; // setta // riga-ok
+        Vector3 dirSinistraPosteriore = Quaternion.Euler(0, 180 + (angoloPuntoCiecoStealth / 2), 0) * transform.forward; // setta // riga-ok
         
-        Gizmos.color = Color.green;
-        Gizmos.DrawRay(transform.position, dirDestraPosteriore * 3f);
-        Gizmos.DrawRay(transform.position, dirSinistraPosteriore * 3f);
-    }
+        Gizmos.color = Color.green; // setta // riga-ok
+        Gizmos.DrawRay(transform.position, dirDestraPosteriore * 3f); // chiama // riga-ok
+        Gizmos.DrawRay(transform.position, dirSinistraPosteriore * 3f); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private void ApplicaTagUnity()
-    {
-        if (applicaTagEnemyAutomatico)
-            SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.Enemy);
-    }
-}
+    // blocco: funzione fa cose
+    private void ApplicaTagUnity() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (applicaTagEnemyAutomatico) // se ok // riga-ok
+            SectorContainmentTags.ApplyTag(gameObject, SectorContainmentTags.Enemy); // chiama // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok

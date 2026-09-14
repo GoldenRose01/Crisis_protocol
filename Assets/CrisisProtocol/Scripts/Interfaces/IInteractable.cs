@@ -6,10 +6,11 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
+using UnityEngine; // usa lib // riga-ok
 
-public interface IInteractable
-{
+// blocco: regole x tutti
+public interface IInteractable // contratto // riga-ok
+{ // apre // riga-ok
     // La "I" di Interact deve essere rigorosamente maiuscola
-    void Interact();
-}
+    void Interact(); // chiama // riga-ok
+} // chiude // riga-ok

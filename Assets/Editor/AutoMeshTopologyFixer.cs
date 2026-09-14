@@ -6,7 +6,7 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-#if UNITY_EDITOR
+#if UNITY_EDITOR // prep ok // riga-ok
 // AutoMeshTopologyFixer.cs  —  deve stare in una cartella "Editor"
 // Non viene incluso nelle build di gioco.
 //
@@ -20,150 +20,179 @@
 //   3. MeshCollider con mesh problematica -> convex = true (protezione extra)
 //   4. MeshTopologyPostprocessor: previene il problema sulle importazioni future
 
-using System.Collections.Generic;
-using UnityEditor;
-using UnityEngine;
+using System.Collections.Generic; // usa lib // riga-ok
+using UnityEditor; // usa lib // riga-ok
+using UnityEngine; // usa lib // riga-ok
 
-[InitializeOnLoad]
-public static class AutoMeshTopologyFixer
-{
-    private const string SessionKey = "AutoMeshTopologyFixer_v3";
+[InitializeOnLoad] // nota unity // riga-ok
+public static class AutoMeshTopologyFixer // roba pub // riga-ok
+{ // apre // riga-ok
+    private const string SessionKey = "AutoMeshTopologyFixer_v3"; // roba pub // riga-ok
 
-    static AutoMeshTopologyFixer()
-    {
-        EditorApplication.delayCall += RunOnce;
-    }
+    static AutoMeshTopologyFixer() // roba pub // riga-ok
+    { // apre // riga-ok
+        EditorApplication.delayCall += RunOnce; // setta // riga-ok
+    } // chiude // riga-ok
 
-    private static void RunOnce()
-    {
-        if (SessionState.GetBool(SessionKey, false)) return;
-        SessionState.SetBool(SessionKey, true);
+    // blocco: funzione fa cose
+    private static void RunOnce() // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (SessionState.GetBool(SessionKey, false)) return; // se ok // riga-ok
+        SessionState.SetBool(SessionKey, true); // chiama // riga-ok
 
-        int count = FixAll(silent: true);
-        if (count > 0)
-            Debug.Log("[AutoFix] Corrette automaticamente " + count +
-                      " sub-mesh con topologia non-triangolo. " +
-                      "Premi Play: gli errori subMesh.topology non appariranno piu'.");
-    }
+        int count = FixAll(silent: true); // setta // riga-ok
+        // blocco: controlla se va
+        if (count > 0) // se ok // riga-ok
+            Debug.Log("[AutoFix] Corrette automaticamente " + count + // logga // riga-ok
+                      " sub-mesh con topologia non-triangolo. " + // ok qua // riga-ok
+                      "Premi Play: gli errori subMesh.topology non appariranno piu'."); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    [MenuItem("Tools/Fix Mesh Topology Issues")]
-    public static void FixManual()
-    {
-        int count = FixAll(silent: false);
-        EditorUtility.DisplayDialog(
-            "Fix Mesh Topology",
-            count > 0
-                ? "Corrette " + count + " sub-mesh non-triangolo.\nPremi Play per verificare."
-                : "Nessuna mesh problematica trovata.",
-            "OK");
-    }
+    [MenuItem("Tools/Fix Mesh Topology Issues")] // nota unity // riga-ok
+    // blocco: funzione fa cose
+    public static void FixManual() // roba pub // riga-ok
+    { // apre // riga-ok
+        int count = FixAll(silent: false); // setta // riga-ok
+        EditorUtility.DisplayDialog( // ok qua // riga-ok
+            "Fix Mesh Topology", // ok qua // riga-ok
+            count > 0 // ok qua // riga-ok
+                ? "Corrette " + count + " sub-mesh non-triangolo.\nPremi Play per verificare." // ok qua // riga-ok
+                : "Nessuna mesh problematica trovata.", // ok qua // riga-ok
+            "OK"); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private static int FixAll(bool silent)
-    {
-        int totalFixed = 0;
-        var processed = new HashSet<string>();
+    // blocco: funzione fa cose
+    private static int FixAll(bool silent) // roba pub // riga-ok
+    { // apre // riga-ok
+        int totalFixed = 0; // setta // riga-ok
+        var processed = new HashSet<string>(); // setta // riga-ok
 
-        AssetDatabase.StartAssetEditing();
-        try
-        {
-            string[] guids = AssetDatabase.FindAssets("t:Mesh");
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!processed.Add(path)) continue;
+        AssetDatabase.StartAssetEditing(); // chiama // riga-ok
+        // blocco: prova safe
+        try // prova // riga-ok
+        { // apre // riga-ok
+            string[] guids = AssetDatabase.FindAssets("t:Mesh"); // setta // riga-ok
+            // blocco: gira piu volte
+            foreach (string guid in guids) // ciclo x // riga-ok
+            { // apre // riga-ok
+                string path = AssetDatabase.GUIDToAssetPath(guid); // setta // riga-ok
+                // blocco: controlla se va
+                if (!processed.Add(path)) continue; // se ok // riga-ok
 
-                Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
-                bool anyFixed = false;
+                Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path); // setta // riga-ok
+                bool anyFixed = false; // setta // riga-ok
 
-                foreach (Object asset in assets)
-                {
-                    Mesh mesh = asset as Mesh;
-                    if (mesh == null || !mesh.isReadable) continue;
+                // blocco: gira piu volte
+                foreach (Object asset in assets) // ciclo x // riga-ok
+                { // apre // riga-ok
+                    Mesh mesh = asset as Mesh; // setta // riga-ok
+                    // blocco: controlla se va
+                    if (mesh == null || !mesh.isReadable) continue; // se ok // riga-ok
 
-                    for (int i = 0; i < mesh.subMeshCount; i++)
-                    {
-                        MeshTopology topo = mesh.GetSubMesh(i).topology;
-                        if (topo != MeshTopology.Lines &&
-                            topo != MeshTopology.LineStrip &&
-                            topo != MeshTopology.Points) continue;
+                    // blocco: gira piu volte
+                    for (int i = 0; i < mesh.subMeshCount; i++) // ciclo x // riga-ok
+                    { // apre // riga-ok
+                        MeshTopology topo = mesh.GetSubMesh(i).topology; // setta // riga-ok
+                        // blocco: controlla se va
+                        if (topo != MeshTopology.Lines && // se ok // riga-ok
+                            topo != MeshTopology.LineStrip && // setta // riga-ok
+                            topo != MeshTopology.Points) continue; // setta // riga-ok
 
                         // Svuota la sub-mesh: 0 indici e la forza a Triangles per non mandare in crash Unity
-                        mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false);
-                        EditorUtility.SetDirty(mesh);
-                        totalFixed++;
-                        anyFixed = true;
+                        mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false); // chiama // riga-ok
+                        EditorUtility.SetDirty(mesh); // chiama // riga-ok
+                        totalFixed++; // ok qua // riga-ok
+                        anyFixed = true; // setta // riga-ok
 
-                        if (!silent)
-                            Debug.Log("[AutoFix] sub-mesh[" + i + "] (" + topo + ")" +
-                                      " svuotata in '" + mesh.name + "' @ " + path);
-                    }
-                }
+                        // blocco: controlla se va
+                        if (!silent) // se ok // riga-ok
+                            Debug.Log("[AutoFix] sub-mesh[" + i + "] (" + topo + ")" + // logga // riga-ok
+                                      " svuotata in '" + mesh.name + "' @ " + path); // chiama // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
 
-                if (anyFixed)
-                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
-            }
-        }
-        finally
-        {
-            AssetDatabase.StopAssetEditing();
-            AssetDatabase.SaveAssets();
-        }
+                // blocco: controlla se va
+                if (anyFixed) // se ok // riga-ok
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate); // chiama // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        finally // ok qua // riga-ok
+        { // apre // riga-ok
+            AssetDatabase.StopAssetEditing(); // chiama // riga-ok
+            AssetDatabase.SaveAssets(); // chiama // riga-ok
+        } // chiude // riga-ok
 
         // Protezione extra: MeshCollider con mesh problematica -> convex = true
-        MeshCollider[] cols = Object.FindObjectsByType<MeshCollider>(FindObjectsSortMode.None);
-        foreach (MeshCollider col in cols)
-        {
-            if (col.sharedMesh == null || col.convex) continue;
-            for (int i = 0; i < col.sharedMesh.subMeshCount; i++)
-            {
-                MeshTopology topo = col.sharedMesh.GetSubMesh(i).topology;
-                if (topo != MeshTopology.Lines &&
-                    topo != MeshTopology.LineStrip &&
-                    topo != MeshTopology.Points) continue;
+        MeshCollider[] cols = Object.FindObjectsByType<MeshCollider>(FindObjectsSortMode.None); // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (MeshCollider col in cols) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (col.sharedMesh == null || col.convex) continue; // se ok // riga-ok
+            // blocco: gira piu volte
+            for (int i = 0; i < col.sharedMesh.subMeshCount; i++) // ciclo x // riga-ok
+            { // apre // riga-ok
+                MeshTopology topo = col.sharedMesh.GetSubMesh(i).topology; // setta // riga-ok
+                // blocco: controlla se va
+                if (topo != MeshTopology.Lines && // se ok // riga-ok
+                    topo != MeshTopology.LineStrip && // setta // riga-ok
+                    topo != MeshTopology.Points) continue; // setta // riga-ok
 
-                col.convex = true;
-                EditorUtility.SetDirty(col);
-                if (!silent)
-                    Debug.Log("[AutoFix] MeshCollider.convex=true su '" + col.gameObject.name + "'");
-                break;
-            }
-        }
+                col.convex = true; // setta // riga-ok
+                EditorUtility.SetDirty(col); // chiama // riga-ok
+                // blocco: controlla se va
+                if (!silent) // se ok // riga-ok
+                    Debug.Log("[AutoFix] MeshCollider.convex=true su '" + col.gameObject.name + "'"); // logga // riga-ok
+                break; // stop // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
 
-        return totalFixed;
-    }
-}
+        return totalFixed; // torna val // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok
 
 // Previene il problema su ogni futuro modello importato (FBX, GLB, OBJ, ...)
-public class MeshTopologyPostprocessor : AssetPostprocessor
-{
-    private void OnPostprocessModel(GameObject root)
-    {
-        int count = 0;
-        foreach (MeshFilter mf in root.GetComponentsInChildren<MeshFilter>(true))
-            if (mf.sharedMesh != null) count += Strip(mf.sharedMesh);
-        foreach (SkinnedMeshRenderer smr in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-            if (smr.sharedMesh != null) count += Strip(smr.sharedMesh);
-        if (count > 0)
-            Debug.Log("[MeshPostprocessor] Rimosse " + count +
-                      " sub-mesh non-triangolo da '" + assetPath + "'");
-    }
+// blocco: classe x roba grossa
+public class MeshTopologyPostprocessor : AssetPostprocessor // classe qui // riga-ok
+{ // apre // riga-ok
+    // blocco: funzione fa cose
+    private void OnPostprocessModel(GameObject root) // roba pub // riga-ok
+    { // apre // riga-ok
+        int count = 0; // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (MeshFilter mf in root.GetComponentsInChildren<MeshFilter>(true)) // ciclo x // riga-ok
+            // blocco: controlla se va
+            if (mf.sharedMesh != null) count += Strip(mf.sharedMesh); // se ok // riga-ok
+        // blocco: gira piu volte
+        foreach (SkinnedMeshRenderer smr in root.GetComponentsInChildren<SkinnedMeshRenderer>(true)) // ciclo x // riga-ok
+            // blocco: controlla se va
+            if (smr.sharedMesh != null) count += Strip(smr.sharedMesh); // se ok // riga-ok
+        // blocco: controlla se va
+        if (count > 0) // se ok // riga-ok
+            Debug.Log("[MeshPostprocessor] Rimosse " + count + // logga // riga-ok
+                      " sub-mesh non-triangolo da '" + assetPath + "'"); // chiama // riga-ok
+    } // chiude // riga-ok
 
-    private static int Strip(Mesh mesh)
-    {
-        int n = 0;
-        for (int i = 0; i < mesh.subMeshCount; i++)
-        {
-            MeshTopology t = mesh.GetSubMesh(i).topology;
-            if (t == MeshTopology.Lines ||
-                t == MeshTopology.LineStrip ||
-                t == MeshTopology.Points)
-            {
-                mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false);
-                n++;
-            }
-        }
-        return n;
-    }
-}
-#endif
+    // blocco: funzione fa cose
+    private static int Strip(Mesh mesh) // roba pub // riga-ok
+    { // apre // riga-ok
+        int n = 0; // setta // riga-ok
+        // blocco: gira piu volte
+        for (int i = 0; i < mesh.subMeshCount; i++) // ciclo x // riga-ok
+        { // apre // riga-ok
+            MeshTopology t = mesh.GetSubMesh(i).topology; // setta // riga-ok
+            // blocco: controlla se va
+            if (t == MeshTopology.Lines || // se ok // riga-ok
+                t == MeshTopology.LineStrip || // setta // riga-ok
+                t == MeshTopology.Points) // setta // riga-ok
+            { // apre // riga-ok
+                mesh.SetIndices(new int[0], MeshTopology.Triangles, i, false); // chiama // riga-ok
+                n++; // ok qua // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+        return n; // torna val // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok
+#endif // prep ok // riga-ok
 

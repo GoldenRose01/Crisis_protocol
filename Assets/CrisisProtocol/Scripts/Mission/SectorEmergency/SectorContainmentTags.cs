@@ -6,38 +6,43 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using UnityEngine;
+using UnityEngine; // usa lib // riga-ok
 
-public static class SectorContainmentTags
-{
-    public const string Player = "Player";
-    public const string Enemy = "Enemy";
-    public const string Drone = "Drone";
-    public const string Interactable = "Interactable";
-    public const string AccessCredential = "AccessCredential";
-    public const string EmergencyHotspot = "EmergencyHotspot";
-    public const string QuarantineGate = "QuarantineGate";
-    public const string ControlRoom = "ControlRoom";
-    public const string StructuralHazard = "StructuralHazard";
-    public const string MaintenanceBot = "MaintenanceBot";
-    public const string SecurityTerminal = "SecurityTerminal";
-    public const string ReactorFault = "ReactorFault";
-    public const string GasLeak = "GasLeak";
-    public const string ElectricArc = "ElectricArc";
+public static class SectorContainmentTags // roba pub // riga-ok
+{ // apre // riga-ok
+    public const string Player = "Player"; // roba pub // riga-ok
+    public const string Enemy = "Enemy"; // roba pub // riga-ok
+    public const string Drone = "Drone"; // roba pub // riga-ok
+    public const string Interactable = "Interactable"; // roba pub // riga-ok
+    public const string AccessCredential = "AccessCredential"; // roba pub // riga-ok
+    public const string EmergencyHotspot = "EmergencyHotspot"; // roba pub // riga-ok
+    public const string QuarantineGate = "QuarantineGate"; // roba pub // riga-ok
+    public const string ControlRoom = "ControlRoom"; // roba pub // riga-ok
+    public const string StructuralHazard = "StructuralHazard"; // roba pub // riga-ok
+    public const string MaintenanceBot = "MaintenanceBot"; // roba pub // riga-ok
+    public const string SecurityTerminal = "SecurityTerminal"; // roba pub // riga-ok
+    public const string ReactorFault = "ReactorFault"; // roba pub // riga-ok
+    public const string GasLeak = "GasLeak"; // roba pub // riga-ok
+    public const string ElectricArc = "ElectricArc"; // roba pub // riga-ok
 
-    public static void ApplyTag(GameObject target, string tagName)
-    {
-        if (target == null || string.IsNullOrWhiteSpace(tagName))
-            return;
+    // blocco: funzione fa cose
+    public static void ApplyTag(GameObject target, string tagName) // roba pub // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (target == null || string.IsNullOrWhiteSpace(tagName)) // se ok // riga-ok
+            return; // torna val // riga-ok
 
-        try
-        {
-            if (!target.CompareTag(tagName))
-                target.tag = tagName;
-        }
-        catch (UnityException)
-        {
-            Debug.LogWarning($"[TAGS] Il tag '{tagName}' non esiste nel TagManager. Aggiungilo in Project Settings > Tags and Layers.", target);
-        }
-    }
-}
+        // blocco: prova safe
+        try // prova // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (!target.CompareTag(tagName)) // se ok // riga-ok
+                target.tag = tagName; // setta // riga-ok
+        } // chiude // riga-ok
+        // blocco: becca errore
+        catch (UnityException) // err qui // riga-ok
+        { // apre // riga-ok
+            Debug.LogWarning($"[TAGS] Il tag '{tagName}' non esiste nel TagManager. Aggiungilo in Project Settings > Tags and Layers.", target); // logga // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+} // chiude // riga-ok
