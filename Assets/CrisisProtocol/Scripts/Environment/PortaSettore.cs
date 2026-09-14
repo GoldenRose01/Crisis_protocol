@@ -138,16 +138,16 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
         if (sbloccata) // se ok // riga-ok
         { // apre // riga-ok
             // blocco: controlla se va
-            if (aperturaAInterazione) // se ok // riga-ok
-            { // apre // riga-ok
-                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata. Porta sbloccata per apertura a interazione: <b>{name}</b>"); // logga // riga-ok
-                Sblocca(); // chiama // riga-ok
-            } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (apriAlTermineCrisi) // se ok // riga-ok
+            if (apriAlTermineCrisi) // se ok // riga-ok
             { // apre // riga-ok
                 Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>"); // logga // riga-ok
                 SbloccaEDApri(); // chiama // riga-ok
+            } // chiude // riga-ok
+            // blocco: controlla se va
+            else if (aperturaAInterazione) // se ok // riga-ok
+            { // apre // riga-ok
+                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata. Porta sbloccata per apertura a interazione: <b>{name}</b>"); // logga // riga-ok
+                Sblocca(); // chiama // riga-ok
             } // chiude // riga-ok
             // blocco: caso diverso
             else // se no // riga-ok
@@ -219,7 +219,7 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
 
         // Se apertura a interazione è disattivata e la crisi è già risolta all'avvio
         // blocco: controlla se va
-        if (!aperturaAInterazione && apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
+        if (apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
         { // apre // riga-ok
             ApplicaStatoIstantaneo(true); // chiama // riga-ok
             return; // torna val // riga-ok
@@ -265,6 +265,10 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
     // blocco: funzione fa cose
     public bool PuoEssereAperta() // roba pub // riga-ok
     { // apre // riga-ok
+        // blocco: porta fine livello solo auto
+        if (apriAlTermineCrisi) // se ok // riga-ok
+            return MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata; // torna val // riga-ok
+
         // 1. Se è collegata a un terminale e il terminale non è ancora stato sbloccato -> BLOCCATA (ROSSO)
         // blocco: controlla se va
         if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato) // se ok // riga-ok
@@ -376,6 +380,15 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
     { // apre // riga-ok
         // blocco: controlla se va
         if (inAnimazione) return; // se ok // riga-ok
+
+        // blocco: porta fine livello non manuale
+        if (apriAlTermineCrisi) // se ok // riga-ok
+        { // apre // riga-ok
+            RiproduciSuono(suonoBloccata, 0.8f); // chiama // riga-ok
+            Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: porta di fine livello. Si apre solo automaticamente a missione completata."); // logga // riga-ok
+            StartCoroutine(FlashCoroutine()); // corutina // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
         // Toggle: se aperta, richiudi
         // blocco: controlla se va
