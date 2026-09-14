@@ -432,7 +432,7 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         tutorialButtonContainer.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
         tutorialButtonContainer.pivot = new Vector2(1f, 1f); // setta // riga-ok
         tutorialButtonContainer.anchoredPosition = new Vector2(-340f, -34f); // setta // riga-ok
-        tutorialButtonContainer.sizeDelta = new Vector2(58f, 58f); // setta // riga-ok
+        tutorialButtonContainer.sizeDelta = new Vector2(190f, 58f); // setta // riga-ok
 
         Image buttonBg = buttonGO.AddComponent<Image>(); // setta // riga-ok
         buttonBg.sprite = border; // setta // riga-ok
@@ -448,17 +448,34 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         iconGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
         Text iconText = iconGO.AddComponent<Text>(); // setta // riga-ok
         iconText.font = font; // setta // riga-ok
-        iconText.text = "⚙\nF1"; // setta // riga-ok
-        iconText.fontSize = 24; // setta // riga-ok
+        iconText.text = "⚙"; // setta // riga-ok
+        iconText.fontSize = 30; // setta // riga-ok
         iconText.fontStyle = FontStyle.Bold; // setta // riga-ok
         iconText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
         iconText.color = textCyan; // setta // riga-ok
         iconText.raycastTarget = false; // setta // riga-ok
         RectTransform iconRect = iconGO.GetComponent<RectTransform>(); // setta // riga-ok
-        iconRect.anchorMin = Vector2.zero; // setta // riga-ok
-        iconRect.anchorMax = Vector2.one; // setta // riga-ok
-        iconRect.offsetMin = Vector2.zero; // setta // riga-ok
-        iconRect.offsetMax = Vector2.zero; // setta // riga-ok
+        iconRect.anchorMin = new Vector2(1f, 0f); // setta // riga-ok
+        iconRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
+        iconRect.pivot = new Vector2(1f, 0.5f); // setta // riga-ok
+        iconRect.anchoredPosition = Vector2.zero; // setta // riga-ok
+        iconRect.sizeDelta = new Vector2(58f, 0f); // setta // riga-ok
+
+        GameObject labelGO = new GameObject("Tutorial_Key_Label"); // setta // riga-ok
+        labelGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
+        Text labelText = labelGO.AddComponent<Text>(); // setta // riga-ok
+        labelText.font = font; // setta // riga-ok
+        labelText.text = "TUTORIAL\nF1"; // setta // riga-ok
+        labelText.fontSize = 16; // setta // riga-ok
+        labelText.fontStyle = FontStyle.Bold; // setta // riga-ok
+        labelText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
+        labelText.color = textCyan; // setta // riga-ok
+        labelText.raycastTarget = false; // setta // riga-ok
+        RectTransform labelRect = labelGO.GetComponent<RectTransform>(); // setta // riga-ok
+        labelRect.anchorMin = Vector2.zero; // setta // riga-ok
+        labelRect.anchorMax = Vector2.one; // setta // riga-ok
+        labelRect.offsetMin = new Vector2(10f, 0f); // setta // riga-ok
+        labelRect.offsetMax = new Vector2(-62f, 0f); // setta // riga-ok
 
         GameObject panelGO = new GameObject("HUD_Tutorial_Panel"); // setta // riga-ok
         panelGO.transform.SetParent(transform, false); // chiama // riga-ok
