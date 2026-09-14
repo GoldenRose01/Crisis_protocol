@@ -10,6 +10,7 @@ using System.Collections.Generic; // usa lib // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.UI; // usa lib // riga-ok
 using UnityEngine.InputSystem; // usa lib // riga-ok
+using UnityEngine.EventSystems; // usa ui // riga-ok
 using CrisisProtocol.UI; // usa lib // riga-ok
 
 /// <summary>
@@ -21,6 +22,7 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
     public static DatapadOlogrammaUI Instance { get; private set; } // roba pub // riga-ok
 
     private const string ModalOwner = "DatapadOlogramma"; // roba pub // riga-ok
+    private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem"; // roba pub // riga-ok
 
     private Canvas canvasRoot; // roba pub // riga-ok
     private GameObject bgOverlay; // roba pub // riga-ok
@@ -64,9 +66,9 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         if (datapadAttivo == null || canvasRoot == null || !canvasRoot.gameObject.activeSelf || pannelloOlogramma == null || !pannelloOlogramma.activeSelf) // se ok // riga-ok
             return; // torna val // riga-ok
 
-        // Chiusura con tasto ESC o E
+        // Chiusura con tasto ESC
         // blocco: controlla se va
-        if (Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.eKey.wasPressedThisFrame)) // se ok // riga-ok
+        if (TastoChiusuraPremuto()) // se ok // riga-ok
         { // apre // riga-ok
             ChiudiOlogramma(); // chiama // riga-ok
             return; // torna val // riga-ok
@@ -109,9 +111,11 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         PopolaElencoCodici(datapad); // chiama // riga-ok
 
         // Blocca i movimenti di gioco e sblocca il cursore
-        ModalUIState.TryOpen(ModalOwner); // chiama // riga-ok
-        Cursor.visible = true; // setta // riga-ok
-        Cursor.lockState = CursorLockMode.None; // setta // riga-ok
+        if (!ModalUIState.TryOpen(ModalOwner)) // se ok // riga-ok
+        { // apre // riga-ok
+            ChiudiOlogramma(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose
@@ -131,8 +135,14 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
 
         datapadAttivo = null; // setta // riga-ok
         ModalUIState.Close(ModalOwner); // chiama // riga-ok
-        Cursor.visible = false; // setta // riga-ok
-        Cursor.lockState = CursorLockMode.Locked; // setta // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: legge esc
+    private bool TastoChiusuraPremuto() // roba pub // riga-ok
+    { // apre // riga-ok
+        bool escNuovoInput = Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame; // setta // riga-ok
+        bool escInputVecchio = Input.GetKeyDown(KeyCode.Escape); // setta // riga-ok
+        return escNuovoInput || escInputVecchio; // torna val // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose
@@ -276,6 +286,8 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
     { // apre // riga-ok
         // blocco: controlla se va
         if (pannelloOlogramma != null) return; // se ok // riga-ok
+
+        EnsureEventSystem(); // chiama // riga-ok
 
         canvasRoot = GetComponentInChildren<Canvas>(); // setta // riga-ok
         // blocco: controlla se va
@@ -525,7 +537,7 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         rtTxtBtn.anchorMax = Vector2.one; // setta // riga-ok
         Text txtBtn = txtBtnObj.AddComponent<Text>(); // setta // riga-ok
         txtBtn.font = defaultFont; // setta // riga-ok
-        txtBtn.text = "[✕] CHIUDI HOLOPAD (ESC)"; // setta // riga-ok
+        txtBtn.text = "[X] CHIUDI HOLOPAD (ESC)"; // setta // riga-ok
         txtBtn.fontSize = 15; // setta // riga-ok
         txtBtn.fontStyle = FontStyle.Bold; // setta // riga-ok
         txtBtn.color = Color.white; // setta // riga-ok
@@ -538,6 +550,30 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         if (pannelloOlogramma != null) pannelloOlogramma.SetActive(false); // se ok // riga-ok
         // blocco: controlla se va
         if (canvasRoot != null) canvasRoot.gameObject.SetActive(false); // se ok // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: prepara click ui
+    private static void EnsureEventSystem() // roba pub // riga-ok
+    { // apre // riga-ok
+        EventSystem eventSystem = EventSystem.current; // setta // riga-ok
+        // blocco: controlla se va
+        if (eventSystem == null) // se ok // riga-ok
+        { // apre // riga-ok
+            eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>(); // setta // riga-ok
+        } // chiude // riga-ok
+
+        System.Type inputSystemModuleType = System.Type.GetType(InputSystemUiModuleTypeName); // setta // riga-ok
+        // blocco: controlla se va
+        if (inputSystemModuleType != null && eventSystem.GetComponent(inputSystemModuleType) == null) // se ok // riga-ok
+        { // apre // riga-ok
+            eventSystem.gameObject.AddComponent(inputSystemModuleType); // chiama // riga-ok
+        } // chiude // riga-ok
+
+        // blocco: controlla se va
+        if (inputSystemModuleType == null && eventSystem.GetComponent<StandaloneInputModule>() == null) // se ok // riga-ok
+        { // apre // riga-ok
+            eventSystem.gameObject.AddComponent<StandaloneInputModule>(); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     #endregion // prep ok // riga-ok
