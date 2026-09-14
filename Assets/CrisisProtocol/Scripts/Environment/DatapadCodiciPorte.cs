@@ -75,12 +75,33 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
     [Tooltip("Se true, la luce del datapad pulsa dolcemente per attirare l'attenzione.")] // nota unity // riga-ok
     public bool animaPulsazioneLuce = true; // roba pub // riga-ok
 
+    [Header("Evidenziazione Visuale Player")] // nota unity // riga-ok
+    [Tooltip("Se attivo, crea da solo un marker luminoso sopra il datapad nella visuale del player.")] // nota unity // riga-ok
+    [SerializeField] private bool evidenziaInVisualePlayer = true; // setta // riga-ok
+
+    [Tooltip("Altezza del marker luminoso sopra l'oggetto.")] // nota unity // riga-ok
+    [SerializeField] private float altezzaMarkerVisuale = 1.15f; // setta // riga-ok
+
+    [Tooltip("Grandezza del marker visivo automatico.")] // nota unity // riga-ok
+    [SerializeField] private float scalaMarkerVisuale = 0.18f; // setta // riga-ok
+
+    [Tooltip("Distanza della luce usata per far risaltare il datapad.")] // nota unity // riga-ok
+    [SerializeField] private float raggioLuceVisuale = 4.5f; // setta // riga-ok
+
+    [Tooltip("Intensita' base della luce automatica sopra il datapad.")] // nota unity // riga-ok
+    [SerializeField] private float intensitaLuceVisuale = 1.75f; // setta // riga-ok
+
     [Header("Audio")] // nota unity // riga-ok
     [Tooltip("Suono di accensione / battitura all'apertura del datapad.")] // nota unity // riga-ok
     [SerializeField] private AudioClip suonoApertura; // ok qua // riga-ok
     [Range(0f, 1f)] [SerializeField] private float volumeAudio = 0.9f; // setta // riga-ok
 
     private float intensitaLuceBase = 2.0f; // roba pub // riga-ok
+    private GameObject markerVisuale; // cache obj // riga-ok
+    private Light luceMarkerVisuale; // cache luce // riga-ok
+    private Renderer rendererMarkerVisuale; // cache rend // riga-ok
+    private Material materialeMarkerVisuale; // cache mat // riga-ok
+    private Camera cameraPrincipale; // cache cam // riga-ok
 
     void Start() // chiama // riga-ok
     { // apre // riga-ok
@@ -120,6 +141,8 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
                 mat.SetColor("_EmissionColor", coloreOlogramma * 2.5f); // chiama // riga-ok
             } // chiude // riga-ok
         } // chiude // riga-ok
+
+        ConfiguraEvidenzaVisuale(); // chiama // riga-ok
     } // chiude // riga-ok
 
     void Update() // chiama // riga-ok
@@ -130,6 +153,87 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
             float sin = Mathf.Sin(Time.time * 3f); // setta // riga-ok
             luceOlogramma.intensity = intensitaLuceBase + (sin * 0.4f); // setta // riga-ok
         } // chiude // riga-ok
+
+        AggiornaEvidenzaVisuale(); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: crea marker vista
+    private void ConfiguraEvidenzaVisuale() // roba priv // riga-ok
+    { // apre // riga-ok
+        if (!evidenziaInVisualePlayer) return; // se off // riga-ok
+        if (markerVisuale != null) return; // gia fatto // riga-ok
+
+        cameraPrincipale = Camera.main; // trova cam // riga-ok
+
+        markerVisuale = GameObject.CreatePrimitive(PrimitiveType.Sphere); // crea sfera // riga-ok
+        markerVisuale.name = "Datapad_View_Highlight"; // setta nome // riga-ok
+        markerVisuale.transform.SetParent(transform, false); // aggancia // riga-ok
+        markerVisuale.transform.localPosition = Vector3.up * altezzaMarkerVisuale; // alza // riga-ok
+        markerVisuale.transform.localScale = Vector3.one * scalaMarkerVisuale; // scala // riga-ok
+
+        Collider markerCollider = markerVisuale.GetComponent<Collider>(); // prende col // riga-ok
+        if (markerCollider != null) Destroy(markerCollider); // elimina col // riga-ok
+
+        rendererMarkerVisuale = markerVisuale.GetComponent<Renderer>(); // prende rend // riga-ok
+        if (rendererMarkerVisuale != null) // se ok // riga-ok
+        { // apre // riga-ok
+            materialeMarkerVisuale = CreaMaterialeEvidenza(); // crea mat // riga-ok
+            rendererMarkerVisuale.material = materialeMarkerVisuale; // assegna // riga-ok
+        } // chiude // riga-ok
+
+        luceMarkerVisuale = markerVisuale.AddComponent<Light>(); // crea luce // riga-ok
+        luceMarkerVisuale.type = LightType.Point; // tipo luce // riga-ok
+        luceMarkerVisuale.color = coloreOlogramma; // setta col // riga-ok
+        luceMarkerVisuale.range = raggioLuceVisuale; // setta raggio // riga-ok
+        luceMarkerVisuale.intensity = intensitaLuceVisuale; // setta forza // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: materiale marker
+    private Material CreaMaterialeEvidenza() // roba priv // riga-ok
+    { // apre // riga-ok
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default"); // trova shader // riga-ok
+        Material mat = new Material(shader); // crea mat // riga-ok
+        Color colore = coloreOlogramma; // copia col // riga-ok
+        colore.a = 0.85f; // setta alfa // riga-ok
+
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", colore); // col base // riga-ok
+        else if (mat.HasProperty("_Color")) mat.color = colore; // col base // riga-ok
+
+        if (mat.HasProperty("_EmissionColor")) // se ok // riga-ok
+        { // apre // riga-ok
+            mat.EnableKeyword("_EMISSION"); // accendi // riga-ok
+            mat.SetColor("_EmissionColor", coloreOlogramma * 3.0f); // emette // riga-ok
+        } // chiude // riga-ok
+
+        return mat; // torna mat // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: anima marker
+    private void AggiornaEvidenzaVisuale() // roba priv // riga-ok
+    { // apre // riga-ok
+        if (!evidenziaInVisualePlayer || markerVisuale == null) return; // se off // riga-ok
+
+        float pulse = (Mathf.Sin(Time.time * 4.5f) + 1f) * 0.5f; // calcola // riga-ok
+        float scala = scalaMarkerVisuale * Mathf.Lerp(0.85f, 1.25f, pulse); // scala ora // riga-ok
+        markerVisuale.transform.localScale = Vector3.one * scala; // applica // riga-ok
+
+        if (luceMarkerVisuale != null) // se ok // riga-ok
+        { // apre // riga-ok
+            luceMarkerVisuale.intensity = intensitaLuceVisuale * Mathf.Lerp(0.65f, 1.35f, pulse); // pulsa // riga-ok
+        } // chiude // riga-ok
+
+        if (cameraPrincipale == null) cameraPrincipale = Camera.main; // trova cam // riga-ok
+        if (cameraPrincipale != null) // se ok // riga-ok
+        { // apre // riga-ok
+            Vector3 direzioneCamera = markerVisuale.transform.position - cameraPrincipale.transform.position; // calcola dir // riga-ok
+            if (direzioneCamera.sqrMagnitude > 0.001f) markerVisuale.transform.rotation = Quaternion.LookRotation(direzioneCamera); // guarda cam // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: pulizia marker
+    private void OnDestroy() // roba priv // riga-ok
+    { // apre // riga-ok
+        if (materialeMarkerVisuale != null) Destroy(materialeMarkerVisuale); // elimina mat // riga-ok
     } // chiude // riga-ok
 
     /// <summary>

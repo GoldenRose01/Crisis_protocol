@@ -435,7 +435,7 @@ MonoBehaviour:
   neonGreen: {r: 0, g: 1, b: 0.45, a: 1}
   neonGreenGlow: {r: 0, g: 1, b: 0.45, a: 0.25}
   neonYellow: {r: 1, g: 0.95, b: 0.05, a: 1}
-  neonYellowGlow: {r: 1, g: 0.95, b: 0.05, a: 0.25}
+  neonYellowGlow: {r: 1, g: 0.946281, b: 0, a: 0.003921569}
   neonRed: {r: 1, g: 0.08, b: 0.28, a: 1}
   neonRedGlow: {r: 1, g: 0.08, b: 0.28, a: 0.25}
   cyberCyan: {r: 0.25, g: 0.9, b: 1, a: 1}

@@ -64,6 +64,7 @@ public class MainMenuManager : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     public void StartGame() // roba pub // riga-ok
     { // apre // riga-ok
+        NascondiMenuDuranteAvvio(); // chiama // riga-ok
         // blocco: controlla se va
         if (GameManager.Instance != null) // se ok // riga-ok
             GameManager.Instance.NuovaPartita(); // chiama // riga-ok
@@ -76,6 +77,7 @@ public class MainMenuManager : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     public void ContinuaPartita() // roba pub // riga-ok
     { // apre // riga-ok
+        NascondiMenuDuranteAvvio(); // chiama // riga-ok
         // blocco: controlla se va
         if (GameManager.Instance != null) // se ok // riga-ok
             GameManager.Instance.ResumeSavedGame(); // chiama // riga-ok
@@ -88,12 +90,21 @@ public class MainMenuManager : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     public void CaricaLivello(int index) // roba pub // riga-ok
     { // apre // riga-ok
+        NascondiMenuDuranteAvvio(); // chiama // riga-ok
         // blocco: controlla se va
         if (GameManager.Instance != null) // se ok // riga-ok
             GameManager.Instance.CaricaSettore(index); // chiama // riga-ok
         // blocco: caso diverso
         else // se no // riga-ok
             UnityEngine.SceneManagement.SceneManager.LoadScene($"settore {index}"); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: spegne menu
+    private void NascondiMenuDuranteAvvio() // roba priv // riga-ok
+    { // apre // riga-ok
+        if (panelMain != null) panelMain.SetActive(false); // spegne main // riga-ok
+        if (panelOptions != null) panelOptions.SetActive(false); // spegne opt // riga-ok
+        if (panelLevelSelect != null) panelLevelSelect.SetActive(false); // spegne liv // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose

@@ -52,6 +52,7 @@ public class MissionManager : MonoBehaviour // classe qui // riga-ok
     private int danniSubitiArrotondati; // roba pub // riga-ok
     private int punteggioBase; // roba pub // riga-ok
     private bool estrazioneSbloccata; // roba pub // riga-ok
+    private bool bloccaSbloccoEstrazioneDebug; // blocca debug // riga-ok
     private bool missioneTerminata; // roba pub // riga-ok
 
     public static event Action<float, float> OnDestabilizzazioneCambiata; // roba pub // riga-ok
@@ -266,61 +267,69 @@ public class MissionManager : MonoBehaviour // classe qui // riga-ok
     public void RisolviStatoEmergenzaETuttiTaskDebug() // roba pub // riga-ok
     { // apre // riga-ok
         Debug.Log("<color=lime><b>[DEBUG] RISOLUZIONE TOTALE EMERGENZA AVVIATA...</b></color>"); // logga // riga-ok
+        bloccaSbloccoEstrazioneDebug = true; // blocca porta // riga-ok
 
-        // 1. Raccogli tutte le credenziali/keycard presenti nella scena
-        AccessCredentialPickup[] pickups = UnityEngine.Object.FindObjectsByType<AccessCredentialPickup>(FindObjectsSortMode.None); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (var p in pickups) // ciclo x // riga-ok
+        try // prova // riga-ok
         { // apre // riga-ok
-            // blocco: controlla se va
-            if (p != null) // se ok // riga-ok
+            // 1. Raccogli tutte le credenziali/keycard presenti nella scena
+            AccessCredentialPickup[] pickups = UnityEngine.Object.FindObjectsByType<AccessCredentialPickup>(FindObjectsSortMode.None); // setta // riga-ok
+            // blocco: gira piu volte
+            foreach (var p in pickups) // ciclo x // riga-ok
             { // apre // riga-ok
-                var idField = typeof(AccessCredentialPickup).GetField("credentialId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance); // setta // riga-ok
-                string credId = idField != null ? (string)idField.GetValue(p) : "KEYCARD_A01"; // setta // riga-ok
-                RegistraCredenziale(credId); // chiama // riga-ok
                 // blocco: controlla se va
-                if (GameManager.Instance != null) // se ok // riga-ok
-                    GameManager.Instance.RegisterSecuritySignature(credId); // chiama // riga-ok
+                if (p != null) // se ok // riga-ok
+                { // apre // riga-ok
+                    var idField = typeof(AccessCredentialPickup).GetField("credentialId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance); // setta // riga-ok
+                    string credId = idField != null ? (string)idField.GetValue(p) : "KEYCARD_A01"; // setta // riga-ok
+                    RegistraCredenziale(credId); // chiama // riga-ok
+                    // blocco: controlla se va
+                    if (GameManager.Instance != null) // se ok // riga-ok
+                        GameManager.Instance.RegisterSecuritySignature(credId); // chiama // riga-ok
+                } // chiude // riga-ok
             } // chiude // riga-ok
-        } // chiude // riga-ok
-        RegistraCredenziale("KEYCARD_A01"); // chiama // riga-ok
-        RegistraCredenziale("KEYCARD_B02"); // chiama // riga-ok
-        RegistraCredenziale("KEYCARD_MASTER"); // chiama // riga-ok
+            RegistraCredenziale("KEYCARD_A01"); // chiama // riga-ok
+            RegistraCredenziale("KEYCARD_B02"); // chiama // riga-ok
+            RegistraCredenziale("KEYCARD_MASTER"); // chiama // riga-ok
 
-        // 2. Risolvi tutti i focolai nella scena
-        EmergencyHotspot[] focolai = UnityEngine.Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (var f in focolai) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (f != null && !f.Contenuto) // se ok // riga-ok
+            // 2. Risolvi tutti i focolai nella scena
+            EmergencyHotspot[] focolai = UnityEngine.Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None); // setta // riga-ok
+            // blocco: gira piu volte
+            foreach (var f in focolai) // ciclo x // riga-ok
             { // apre // riga-ok
-                f.ForzaRisoluzioneDebug(); // chiama // riga-ok
+                // blocco: controlla se va
+                if (f != null && !f.Contenuto) // se ok // riga-ok
+                { // apre // riga-ok
+                    f.ForzaRisoluzioneDebug(); // chiama // riga-ok
+                } // chiude // riga-ok
             } // chiude // riga-ok
+
+            // 3. Azzera il collasso strutturale
+            collassoCorrente = 0f; // setta // riga-ok
+            OnDestabilizzazioneCambiata?.Invoke(0f, collassoStrutturale.CollassoMassimo); // chiama // riga-ok
+            OnCollassoStrutturaleCambiato?.Invoke(0f, collassoStrutturale.CollassoMassimo); // chiama // riga-ok
+
+            // 4. Lascia il portellone chiuso: F6 serve x sbloccarlo a mano
+            if (estrazioneSbloccata) // se ok // riga-ok
+                OnEstrazioneSbloccata?.Invoke(true); // chiama // riga-ok
+
+            // 5. Spegni tutte le luci e sirene di emergenza del settore
+            LuceEmergenzaSettore[] luciEmergenza = UnityEngine.Object.FindObjectsByType<LuceEmergenzaSettore>(FindObjectsSortMode.None); // setta // riga-ok
+            // blocco: gira piu volte
+            foreach (var l in luciEmergenza) // ciclo x // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (l != null) l.SetStatoEmergenza(false); // se ok // riga-ok
+            } // chiude // riga-ok
+
+            // 6. Notifica stato e aggiorna UI
+            NotificaStatoMissione(); // chiama // riga-ok
         } // chiude // riga-ok
-
-        // 3. Azzera il collasso strutturale
-        collassoCorrente = 0f; // setta // riga-ok
-        OnDestabilizzazioneCambiata?.Invoke(0f, collassoStrutturale.CollassoMassimo); // chiama // riga-ok
-        OnCollassoStrutturaleCambiato?.Invoke(0f, collassoStrutturale.CollassoMassimo); // chiama // riga-ok
-
-        // 4. Sblocca estrazione
-        estrazioneSbloccata = true; // setta // riga-ok
-        OnEstrazioneSbloccata?.Invoke(true); // chiama // riga-ok
-
-        // 5. Spegni tutte le luci e sirene di emergenza del settore
-        LuceEmergenzaSettore[] luciEmergenza = UnityEngine.Object.FindObjectsByType<LuceEmergenzaSettore>(FindObjectsSortMode.None); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (var l in luciEmergenza) // ciclo x // riga-ok
+        finally // sempre // riga-ok
         { // apre // riga-ok
-            // blocco: controlla se va
-            if (l != null) l.SetStatoEmergenza(false); // se ok // riga-ok
+            bloccaSbloccoEstrazioneDebug = false; // sblocca flag // riga-ok
         } // chiude // riga-ok
 
-        // 6. Notifica stato e aggiorna UI
-        NotificaStatoMissione(); // chiama // riga-ok
-
-        Debug.Log("<color=lime><b>[DEBUG] STATO DI EMERGENZA RIMOSSO CON SUCCESSO! TUTTI I TASK SONO PRONTI E L'USCITA È APERTA.</b></color>"); // logga // riga-ok
+        Debug.Log("<color=lime><b>[DEBUG] STATO DI EMERGENZA RIMOSSO! F4 NON APRE IL PORTELLONE: USA F6 SE VUOI SBLOCCARLO.</b></color>"); // logga // riga-ok
     } // chiude // riga-ok
 
     [ContextMenu("DEBUG: Forza Sblocco Estrazione (F6)")] // nota unity // riga-ok
@@ -442,6 +451,12 @@ public class MissionManager : MonoBehaviour // classe qui // riga-ok
         // L'obiettivo decide quando il portellone puo' aprirsi; MissionManager
         // si limita a tradurre il conteggio dei focolai in evento per UI e porta.
         bool nuovoStato = obiettivi.IsQuarantineGateUnlocked(focolaiContenuti.Count); // setta // riga-ok
+        // blocco: controlla se va
+        if (bloccaSbloccoEstrazioneDebug && nuovoStato && !estrazioneSbloccata) // se ok // riga-ok
+        { // apre // riga-ok
+            Debug.Log("<color=yellow>[DEBUG]</color> F4 ha completato i task, ma il portellone resta chiuso. Usa F6 x aprirlo."); // logga // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
         // blocco: controlla se va
         if (estrazioneSbloccata == nuovoStato) // se ok // riga-ok
             return; // torna val // riga-ok

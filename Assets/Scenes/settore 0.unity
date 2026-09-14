@@ -222,7 +222,7 @@ Transform:
   m_GameObject: {fileID: 29231079}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 436.8, y: 5.63, z: 407.9}
+  m_LocalPosition: {x: 436.8, y: 5.63, z: 407.05}
   m_LocalScale: {x: 27.2, y: 12.97, z: 15.3}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5311,7 +5311,7 @@ MonoBehaviour:
   distanza: 2
   sensibilitaMouse: 0.8
   renderersPersonaggio: []
-  sogliaSparizione: 1.2
+  sogliaSparizione: 0
 --- !u!114 &609909991
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9844,7 +9844,7 @@ MeshRenderer:
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
-  m_LightProbeUsage: 1
+  m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
@@ -9853,8 +9853,7 @@ MeshRenderer:
   m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_Materials: []
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -11171,7 +11170,7 @@ MonoBehaviour:
   coloreBloccato: {r: 1, g: 0, b: 0, a: 1}
   coloreSbloccato: {r: 0, g: 1, b: 0, a: 1}
   intensitaEmissione: 2
-  aperturaAInterazione: 0
+  aperturaAInterazione: 1
   apriAlTermineCrisi: 0
   apertaAllInizio: 0
   suonoApertura: {fileID: 8300000, guid: 61f51bc75eb87884aa639b61793bfe31, type: 3}
@@ -13787,7 +13786,7 @@ MonoBehaviour:
     totaleFocolaiDaContenere: 0
     contaFocolaiInScena: 1
   usaTempoLimite: 1
-  tempoLimiteMinuti: 5
+  tempoLimiteMinuti: 2.5
   sconfittaAScadenzaTimer: 1
   collassoStrutturale:
     collassoIniziale: 0
@@ -14788,12 +14787,15 @@ MonoBehaviour:
   hotspotId: REACTOR_FAULT_12
   requiredCredentialId: KEYCARD_A12
   applicaTagAutomatico: 1
+  modalitaVisiva: 0
   criticalColor: {r: 0.9339623, g: 0, b: 0, a: 0}
   containedColor: {r: 1, g: 0, b: 0, a: 1}
   particelleGuasto: []
   containmentVfx: {fileID: 0}
   autoDisattivaParticelleGuasto: 1
   potenziaVisibilitaParticelle: 1
+  moltiplicatoreParticelle: 1
+  puntoEmissioneCustom: {fileID: 0}
   containedStateObject: {fileID: 0}
   suonoLoopGuasto: {fileID: 0}
   suonoRiparazione: {fileID: 0}

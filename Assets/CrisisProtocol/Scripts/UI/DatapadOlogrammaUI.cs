@@ -432,6 +432,8 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         RectTransform rtTxtClose = txtCloseObj.AddComponent<RectTransform>(); // setta // riga-ok
         rtTxtClose.anchorMin = Vector2.zero; // setta // riga-ok
         rtTxtClose.anchorMax = Vector2.one; // setta // riga-ok
+        rtTxtClose.offsetMin = Vector2.zero; // setta // riga-ok
+        rtTxtClose.offsetMax = Vector2.zero; // setta // riga-ok
         Text txtClose = txtCloseObj.AddComponent<Text>(); // setta // riga-ok
         txtClose.font = defaultFont; // setta // riga-ok
         txtClose.text = "✕"; // setta // riga-ok
@@ -521,6 +523,7 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         RectTransform rtHoloClose = btnHoloCloseObj.AddComponent<RectTransform>(); // setta // riga-ok
         rtHoloClose.anchorMin = new Vector2(1, 0.5f); // setta // riga-ok
         rtHoloClose.anchorMax = new Vector2(1, 0.5f); // setta // riga-ok
+        rtHoloClose.pivot = new Vector2(1, 0.5f); // setta // riga-ok
         rtHoloClose.sizeDelta = new Vector2(240, 44); // setta // riga-ok
         rtHoloClose.anchoredPosition = new Vector2(-20, 0); // setta // riga-ok
 
@@ -535,6 +538,8 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
         RectTransform rtTxtBtn = txtBtnObj.AddComponent<RectTransform>(); // setta // riga-ok
         rtTxtBtn.anchorMin = Vector2.zero; // setta // riga-ok
         rtTxtBtn.anchorMax = Vector2.one; // setta // riga-ok
+        rtTxtBtn.offsetMin = Vector2.zero; // setta // riga-ok
+        rtTxtBtn.offsetMax = Vector2.zero; // setta // riga-ok
         Text txtBtn = txtBtnObj.AddComponent<Text>(); // setta // riga-ok
         txtBtn.font = defaultFont; // setta // riga-ok
         txtBtn.text = "[X] CHIUDI HOLOPAD (ESC)"; // setta // riga-ok

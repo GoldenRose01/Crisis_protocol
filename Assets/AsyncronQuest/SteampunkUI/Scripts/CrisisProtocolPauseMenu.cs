@@ -14,7 +14,6 @@ using UnityEngine.EventSystems; // usa lib // riga-ok
 using UnityEngine.InputSystem; // usa lib // riga-ok
 using UnityEngine.SceneManagement; // usa lib // riga-ok
 using UnityEngine.UI; // usa lib // riga-ok
-using UnityEngine.Video; // usa lib // riga-ok
 
 #if UNITY_EDITOR // prep ok // riga-ok
 using UnityEditor; // usa lib // riga-ok
@@ -32,7 +31,6 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         private const string DefaultPauseMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Option_menu.png"; // roba pub // riga-ok
         private const string DefaultMapFramePath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/TacticalMap_Frame.jpg"; // roba pub // riga-ok
         private const string PauseMenuPrefabPath = "Assets/AsyncronQuest/SteampunkUI/Prefabs/CrisisProtocolPauseMenu.prefab"; // roba pub // riga-ok
-        private const string DefaultLoadingVideoPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Caricamento.mp4"; // roba pub // riga-ok
 #endif // prep ok // riga-ok
 
         [Header("Canvas")] // nota unity // riga-ok
@@ -43,10 +41,6 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
 
         [Header("Localization")] // nota unity // riga-ok
         [SerializeField] private string languageCode = "It"; // setta // riga-ok
-
-        [Header("Video Transitions")] // nota unity // riga-ok
-        [SerializeField] private VideoClip exitLoadingVideo; // ok qua // riga-ok
-        [SerializeField] private int videoSortingOrder = 1000; // setta // riga-ok
 
         [Header("Map Camera")] // nota unity // riga-ok
         [SerializeField, Min(10f)] private float mapCameraHeight = 150f; // setta // riga-ok
@@ -200,19 +194,9 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
 
             Time.timeScale = 1f; // setta // riga-ok
             MenuAudioSilencer.SetMenuAudioPaused(false); // chiama // riga-ok
-            isPaused = false; // setta // riga-ok
-            ModalUIState.Close(ModalOwner); // chiama // riga-ok
-
-            // blocco: controlla se va
-            if (menuGroup) // se ok // riga-ok
-            { // apre // riga-ok
-                menuGroup.alpha = 0f; // setta // riga-ok
-                menuGroup.interactable = false; // setta // riga-ok
-                menuGroup.blocksRaycasts = false; // setta // riga-ok
-            } // chiude // riga-ok
-
+            SpegniMappaPausaSubito(); // chiama // riga-ok
             transitionInProgress = true; // setta // riga-ok
-            StartCoroutine(SteampunkUIVideoTransition.Play(this, exitLoadingVideo, videoSortingOrder, LoadMainMenuScene)); // corutina // riga-ok
+            LoadMainMenuScene(); // chiama // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
@@ -267,6 +251,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) // roba pub // riga-ok
         { // apre // riga-ok
             cachedPlayer = null; // setta // riga-ok
+            transitionInProgress = false; // setta // riga-ok
+            SpegniMappaPausaSubito(); // chiama // riga-ok
             SetPaused(false, true); // chiama // riga-ok
         } // chiude // riga-ok
 
@@ -314,6 +300,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             // blocco: controlla se va
             if (menuGroup) // se ok // riga-ok
             { // apre // riga-ok
+                menuGroup.gameObject.SetActive(isPaused); // chiama // riga-ok
                 menuGroup.alpha = isPaused ? 1f : 0f; // setta // riga-ok
                 menuGroup.interactable = isPaused; // setta // riga-ok
                 menuGroup.blocksRaycasts = isPaused; // setta // riga-ok
@@ -324,6 +311,21 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             // blocco: controlla se va
             if (mapUI != null) // se ok // riga-ok
                 mapUI.enabled = isPaused; // setta // riga-ok
+        } // chiude // riga-ok
+
+        // blocco: chiude mappa
+        private void SpegniMappaPausaSubito() // roba priv // riga-ok
+        { // apre // riga-ok
+            isPaused = false; // setta // riga-ok
+            ModalUIState.Close(ModalOwner); // chiama // riga-ok
+            if (mapUI != null) mapUI.enabled = false; // spegne map // riga-ok
+            if (menuGroup != null) // se ok // riga-ok
+            { // apre // riga-ok
+                menuGroup.alpha = 0f; // setta // riga-ok
+                menuGroup.interactable = false; // setta // riga-ok
+                menuGroup.blocksRaycasts = false; // setta // riga-ok
+                menuGroup.gameObject.SetActive(false); // spegne ui // riga-ok
+            } // chiude // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
@@ -408,8 +410,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             rtActions.sizeDelta = new Vector2(650f, 60f); // setta // riga-ok
             rtActions.anchoredPosition = new Vector2(0f, 20f); // setta // riga-ok
 
-            resumeButtonRect = AddNeonButton("Btn_Resume", "[ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-160f, 22f), new Vector2(290f, 46f), new Color(0.0f, 1.0f, 0.5f), Resume).GetComponent<RectTransform>(); // setta // riga-ok
-            exitButtonRect = AddNeonButton("Btn_Exit", "[ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(160f, 22f), new Vector2(290f, 46f), new Color(1.0f, 0.35f, 0.35f), BackToMainMenu).GetComponent<RectTransform>(); // setta // riga-ok
+            resumeButtonRect = AddNeonButton("Btn_Resume", "[ RIPRENDI (ESC) ]", actionsBar.transform, new Vector2(-160f, 22f), new Vector2(290f, 46f), new Color(0.0f, 1.0f, 0.5f), new Color(0.0f, 0.24f, 0.11f, 1f), Resume).GetComponent<RectTransform>(); // setta // riga-ok
+            exitButtonRect = AddNeonButton("Btn_Exit", "[ MENU PRINCIPALE ]", actionsBar.transform, new Vector2(160f, 22f), new Vector2(290f, 46f), new Color(1.0f, 0.18f, 0.18f), new Color(0.32f, 0.0f, 0.0f, 1f), BackToMainMenu).GetComponent<RectTransform>(); // setta // riga-ok
 
             menuGroup = canvas.gameObject.AddComponent<CanvasGroup>(); // setta // riga-ok
         } // chiude // riga-ok
@@ -440,7 +442,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
-        private Button AddNeonButton(string objectName, string label, Transform parent, Vector2 position, Vector2 size, Color neonColor, UnityEngine.Events.UnityAction action) // roba pub // riga-ok
+        private Button AddNeonButton(string objectName, string label, Transform parent, Vector2 position, Vector2 size, Color neonColor, Color sfondoForte, UnityEngine.Events.UnityAction action) // roba pub // riga-ok
         { // apre // riga-ok
             GameObject btnObj = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(Button)); // setta // riga-ok
             btnObj.transform.SetParent(parent, false); // chiama // riga-ok
@@ -453,7 +455,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             rect.sizeDelta = size; // setta // riga-ok
 
             Image img = btnObj.GetComponent<Image>(); // setta // riga-ok
-            img.color = new Color(0.02f, 0.09f, 0.06f, 0.96f); // setta // riga-ok
+            img.color = sfondoForte; // setta // riga-ok
             img.raycastTarget = true; // setta // riga-ok
 
             // Bordo neon
@@ -472,8 +474,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             button.interactable = true; // setta // riga-ok
             ColorBlock colors = button.colors; // setta // riga-ok
             colors.normalColor = Color.white; // setta // riga-ok
-            colors.highlightedColor = new Color(1.3f, 1.3f, 1.3f, 1f); // setta // riga-ok
-            colors.pressedColor = new Color(0.6f, 0.6f, 0.6f, 1f); // setta // riga-ok
+            colors.highlightedColor = new Color(1.0f, 1.0f, 1.0f, 1f); // setta // riga-ok
+            colors.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f); // setta // riga-ok
             button.colors = colors; // setta // riga-ok
             button.onClick.AddListener(action); // chiama // riga-ok
 
@@ -483,12 +485,15 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             Stretch(rtTxt); // chiama // riga-ok
             TextMeshProUGUI txt = txtObj.GetComponent<TextMeshProUGUI>(); // setta // riga-ok
             txt.color = Color.white; // setta // riga-ok
-            txt.text = $"<b><color=#{ColorUtility.ToHtmlStringRGB(neonColor)}>{label}</color></b>"; // setta // riga-ok
+            txt.text = $"<b>{label}</b>"; // setta // riga-ok
             txt.fontSize = 18f; // setta // riga-ok
             txt.fontStyle = FontStyles.Bold; // setta // riga-ok
             txt.alignment = TextAlignmentOptions.Center; // setta // riga-ok
             txt.enableWordWrapping = false; // setta // riga-ok
             txt.raycastTarget = false; // setta // riga-ok
+            Shadow ombraTesto = txtObj.AddComponent<Shadow>(); // setta // riga-ok
+            ombraTesto.effectColor = Color.black; // setta // riga-ok
+            ombraTesto.effectDistance = new Vector2(2f, -2f); // setta // riga-ok
 
             return button; // torna val // riga-ok
         } // chiude // riga-ok
@@ -816,9 +821,6 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             if (!mapFrameSprite) // se ok // riga-ok
                 mapFrameSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DefaultMapFramePath); // setta // riga-ok
 
-            // blocco: controlla se va
-            if (!exitLoadingVideo) // se ok // riga-ok
-                exitLoadingVideo = AssetDatabase.LoadAssetAtPath<VideoClip>(DefaultLoadingVideoPath); // setta // riga-ok
         } // chiude // riga-ok
 #endif // prep ok // riga-ok
 

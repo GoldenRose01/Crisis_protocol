@@ -203,6 +203,7 @@ public class StoryBriefingController : MonoBehaviour // classe qui // riga-ok
             GameManager.Instance.CaricaSettore(0); // chiama // riga-ok
         } // chiude // riga-ok
         
+        yield return null; // aspetta // riga-ok
         canvas.gameObject.SetActive(false); // chiama // riga-ok
     } // chiude // riga-ok
 } // chiude // riga-ok

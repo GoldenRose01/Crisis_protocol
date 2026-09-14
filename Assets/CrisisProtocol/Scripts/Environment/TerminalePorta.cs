@@ -19,6 +19,7 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
     [Header("Porte Collegate")] // nota unity // riga-ok
     [Tooltip("Trascina qui le PortaSettore (anche più di una) da sbloccare ed aprire con questo terminale.")] // nota unity // riga-ok
     public System.Collections.Generic.List<PortaSettore> porteCollegate = new System.Collections.Generic.List<PortaSettore>(); // roba pub // riga-ok
+    [SerializeField, HideInInspector] private PortaSettore portaCollegata; // setta // riga-ok
 
     [Header("Configurazione Sicurezza")] // nota unity // riga-ok
     [Tooltip("Nome descrittivo visualizzato sull'interfaccia (es. 'TERMINALE SETTORE REATTORE').")] // nota unity // riga-ok
@@ -96,6 +97,8 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
 
     void Start() // chiama // riga-ok
     { // apre // riga-ok
+        SincronizzaPortaLegacy(); // chiama // riga-ok
+
         // Se non è stato impostato il layer Interactable, applicalo per consentire la pressione di E
         // blocco: controlla se va
         if (gameObject.layer == 0) // se ok // riga-ok
@@ -122,6 +125,17 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
         } // chiude // riga-ok
 
         AggiornaGraficaMonitor(); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: compat vecchia porta
+    private void SincronizzaPortaLegacy() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (portaCollegata == null) return; // se ok // riga-ok
+        if (porteCollegate == null) porteCollegate = new System.Collections.Generic.List<PortaSettore>(); // se ok // riga-ok
+        if (!porteCollegate.Contains(portaCollegata)) // se ok // riga-ok
+        { // apre // riga-ok
+            porteCollegate.Add(portaCollegata); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose

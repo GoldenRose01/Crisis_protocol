@@ -540,9 +540,10 @@ public class EmergencyScanner : MonoBehaviour // classe qui // riga-ok
         { // apre // riga-ok
             GUIStyle labelStyle = new GUIStyle(GUI.skin.label) // setta // riga-ok
             { // apre // riga-ok
-                fontSize = 14, // setta // riga-ok
+                fontSize = 16, // setta // riga-ok
                 fontStyle = FontStyle.Bold, // setta // riga-ok
-                alignment = TextAnchor.MiddleCenter // setta // riga-ok
+                alignment = TextAnchor.MiddleCenter, // setta // riga-ok
+                wordWrap = true // testo va // riga-ok
             }; // ok qua // riga-ok
 
             // blocco: gira piu volte
@@ -561,15 +562,21 @@ public class EmergencyScanner : MonoBehaviour // classe qui // riga-ok
                 { // apre // riga-ok
                     float distance = Vector3.Distance(telecameraPrincipale.transform.position, targetWorldPos); // setta // riga-ok
                     float guiY = Screen.height - screenPos.y; // setta // riga-ok
+                    string testoMarker = $"{target.label} [{Mathf.RoundToInt(distance)}m]"; // setta // riga-ok
+                    float larghezzaBox = Mathf.Clamp(labelStyle.CalcSize(new GUIContent(testoMarker)).x + 44f, 320f, Mathf.Min(620f, Screen.width - 32f)); // calcola // riga-ok
+                    float altezzaBox = Mathf.Clamp(labelStyle.CalcHeight(new GUIContent(testoMarker), larghezzaBox - 24f) + 16f, 42f, 74f); // calcola // riga-ok
+                    float boxX = Mathf.Clamp(screenPos.x - (larghezzaBox * 0.5f), 16f, Screen.width - larghezzaBox - 16f); // calcola // riga-ok
+                    float boxY = Mathf.Clamp(guiY - altezzaBox - 10f, 16f, Screen.height - altezzaBox - 16f); // calcola // riga-ok
+                    Rect markerRect = new Rect(boxX, boxY, larghezzaBox, altezzaBox); // setta // riga-ok
 
                     // Badge di evidenziazione
                     GUI.color = new Color(0.02f, 0.05f, 0.08f, 0.85f); // setta // riga-ok
-                    GUI.DrawTexture(new Rect(screenPos.x - 120f, guiY - 24f, 240f, 28f), Texture2D.whiteTexture); // chiama // riga-ok
+                    GUI.DrawTexture(markerRect, Texture2D.whiteTexture); // chiama // riga-ok
 
                     // Contorno
                     GUI.color = target.color; // setta // riga-ok
                     labelStyle.normal.textColor = target.color; // setta // riga-ok
-                    GUI.Label(new Rect(screenPos.x - 120f, guiY - 24f, 240f, 28f), $"{target.label} [{Mathf.RoundToInt(distance)}m]", labelStyle); // chiama // riga-ok
+                    GUI.Label(markerRect, testoMarker, labelStyle); // chiama // riga-ok
                 } // chiude // riga-ok
             } // chiude // riga-ok
         } // chiude // riga-ok

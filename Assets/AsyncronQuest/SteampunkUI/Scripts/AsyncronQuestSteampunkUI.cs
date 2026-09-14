@@ -55,6 +55,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         private const string PreMuteVolumePrefKey = "PreMuteVolume"; // roba pub // riga-ok
 
         private Canvas mainCanvas; // roba pub // riga-ok
+        private CanvasGroup mainCanvasGroup; // roba pub // riga-ok
         private RectTransform mainPanelRoot; // roba pub // riga-ok
         private RectTransform levelSelectPanelRoot; // roba pub // riga-ok
         private Text volumePercentText; // roba pub // riga-ok
@@ -73,6 +74,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         private Font cyberFont; // roba pub // riga-ok
 
         private bool isLevelSelectOpen = false; // roba pub // riga-ok
+        private bool bloccoInputAperturaMenu = false; // roba pub // riga-ok
+        private float sbloccoInputMenuAt = 0f; // roba pub // riga-ok
 
         // blocco: funzione fa cose
         private void Awake() // roba pub // riga-ok
@@ -126,6 +129,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             { // apre // riga-ok
                 CloseLevelSelect(); // chiama // riga-ok
             } // chiude // riga-ok
+
+            AggiornaBloccoInputAperturaMenu(); // chiama // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
@@ -261,6 +266,8 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
             mainCanvas = canvasGO.GetComponent<Canvas>(); // setta // riga-ok
             mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay; // setta // riga-ok
             mainCanvas.sortingOrder = canvasSortingOrder; // setta // riga-ok
+            mainCanvasGroup = canvasGO.AddComponent<CanvasGroup>(); // setta // riga-ok
+            BloccaInputMenuAppenaAperto(); // chiama // riga-ok
 
             CanvasScaler scaler = canvasGO.GetComponent<CanvasScaler>(); // setta // riga-ok
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; // setta // riga-ok
@@ -1302,6 +1309,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         public void NewGame() // roba pub // riga-ok
         { // apre // riga-ok
             Time.timeScale = 1f; // setta // riga-ok
+            NascondiMenuDuranteAvvio(); // chiama // riga-ok
             // blocco: prova safe
             try { onNewGame?.Invoke(); } catch (Exception e) { Debug.LogWarning(e.Message); } // prova // riga-ok
 
@@ -1318,6 +1326,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         public void ResumeGame() // roba pub // riga-ok
         { // apre // riga-ok
             Time.timeScale = 1f; // setta // riga-ok
+            NascondiMenuDuranteAvvio(); // chiama // riga-ok
             // blocco: prova safe
             try { onResume?.Invoke(); } catch (Exception e) { Debug.LogWarning(e.Message); } // prova // riga-ok
 
@@ -1328,6 +1337,41 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                 gmObj.AddComponent<GameManager>(); // chiama // riga-ok
             } // chiude // riga-ok
             GameManager.Instance.ResumeSavedGame(); // chiama // riga-ok
+        } // chiude // riga-ok
+
+        // blocco: spegne menu
+        private void NascondiMenuDuranteAvvio() // roba priv // riga-ok
+        { // apre // riga-ok
+            if (mainCanvas != null) mainCanvas.enabled = false; // spegne ui // riga-ok
+            if (mainCanvasGroup != null) mainCanvasGroup.blocksRaycasts = false; // stop click // riga-ok
+            if (mainCanvasGroup != null) mainCanvasGroup.interactable = false; // stop ui // riga-ok
+            if (mainPanelRoot != null) mainPanelRoot.gameObject.SetActive(false); // spegne pan // riga-ok
+            if (levelSelectPanelRoot != null) levelSelectPanelRoot.gameObject.SetActive(false); // spegne liv // riga-ok
+            if (bgVideoPlayer != null) bgVideoPlayer.Stop(); // stop video // riga-ok
+            isLevelSelectOpen = false; // setta // riga-ok
+        } // chiude // riga-ok
+
+        // blocco: blocca click
+        private void BloccaInputMenuAppenaAperto() // roba priv // riga-ok
+        { // apre // riga-ok
+            bloccoInputAperturaMenu = true; // setta // riga-ok
+            sbloccoInputMenuAt = Time.unscaledTime + 0.35f; // setta // riga-ok
+            if (mainCanvasGroup == null) return; // se ok // riga-ok
+            mainCanvasGroup.alpha = 1f; // setta // riga-ok
+            mainCanvasGroup.interactable = false; // stop ui // riga-ok
+            mainCanvasGroup.blocksRaycasts = false; // stop click // riga-ok
+        } // chiude // riga-ok
+
+        // blocco: riattiva click
+        private void AggiornaBloccoInputAperturaMenu() // roba priv // riga-ok
+        { // apre // riga-ok
+            if (!bloccoInputAperturaMenu) return; // se ok // riga-ok
+            if (Time.unscaledTime < sbloccoInputMenuAt) return; // se presto // riga-ok
+            if (Input.GetMouseButton(0)) return; // aspetta up // riga-ok
+            bloccoInputAperturaMenu = false; // setta // riga-ok
+            if (mainCanvasGroup == null) return; // se ok // riga-ok
+            mainCanvasGroup.interactable = true; // abilita ui // riga-ok
+            mainCanvasGroup.blocksRaycasts = true; // abilita click // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
