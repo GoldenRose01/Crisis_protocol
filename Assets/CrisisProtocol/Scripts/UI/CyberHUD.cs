@@ -8,6 +8,7 @@
 // ============================================================================
 using System.Collections; // usa lib // riga-ok
 using System.Collections.Generic; // usa lib // riga-ok
+using CrisisProtocol.UI; // usa hud // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.UI; // usa lib // riga-ok
 
@@ -118,6 +119,13 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     private Text testoTimerValore; // roba pub // riga-ok
     private Text testoTimerStatus; // roba pub // riga-ok
     private float tempoRimanenteCountdown = 300f; // roba pub // riga-ok
+
+    // 7. Pulsante tutorial rapido (ingranaggio HUD)
+    private const string TutorialModalOwner = "HudTutorial"; // roba pub // riga-ok
+    private RectTransform tutorialButtonContainer; // roba pub // riga-ok
+    private RectTransform tutorialPanel; // roba pub // riga-ok
+    private CanvasGroup tutorialPanelGroup; // roba pub // riga-ok
+    private bool tutorialAperto = false; // roba pub // riga-ok
 
     public float TempoRimanente => tempoRimanenteCountdown; // roba pub // riga-ok
     // blocco: funzione fa cose
@@ -406,6 +414,177 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
 
         // 7. Flash Visivo Impatto Danno Schermo
         CostruisciDamageFlash(solidSprite); // chiama // riga-ok
+
+        // 8. Bottone ingranaggio + tutorial testuale del gioco
+        CostruisciTutorialHUD(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: funzione fa cose
+    private void CostruisciTutorialHUD(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
+    { // apre // riga-ok
+        GameObject buttonGO = new GameObject("HUD_Tutorial_GearButton"); // setta // riga-ok
+        buttonGO.transform.SetParent(transform, false); // chiama // riga-ok
+        tutorialButtonContainer = buttonGO.AddComponent<RectTransform>(); // setta // riga-ok
+        tutorialButtonContainer.anchorMin = new Vector2(1f, 1f); // setta // riga-ok
+        tutorialButtonContainer.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
+        tutorialButtonContainer.pivot = new Vector2(1f, 1f); // setta // riga-ok
+        tutorialButtonContainer.anchoredPosition = new Vector2(-340f, -34f); // setta // riga-ok
+        tutorialButtonContainer.sizeDelta = new Vector2(58f, 58f); // setta // riga-ok
+
+        Image buttonBg = buttonGO.AddComponent<Image>(); // setta // riga-ok
+        buttonBg.sprite = border; // setta // riga-ok
+        buttonBg.type = Image.Type.Sliced; // setta // riga-ok
+        buttonBg.color = new Color(0.02f, 0.12f, 0.13f, 0.92f); // setta // riga-ok
+        buttonBg.raycastTarget = true; // setta // riga-ok
+
+        Button button = buttonGO.AddComponent<Button>(); // setta // riga-ok
+        button.targetGraphic = buttonBg; // setta // riga-ok
+        button.onClick.AddListener(ToggleTutorialPanel); // chiama // riga-ok
+
+        GameObject iconGO = new GameObject("Gear_Icon"); // setta // riga-ok
+        iconGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
+        Text iconText = iconGO.AddComponent<Text>(); // setta // riga-ok
+        iconText.font = font; // setta // riga-ok
+        iconText.text = "⚙"; // setta // riga-ok
+        iconText.fontSize = 32; // setta // riga-ok
+        iconText.fontStyle = FontStyle.Bold; // setta // riga-ok
+        iconText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
+        iconText.color = textCyan; // setta // riga-ok
+        iconText.raycastTarget = false; // setta // riga-ok
+        RectTransform iconRect = iconGO.GetComponent<RectTransform>(); // setta // riga-ok
+        iconRect.anchorMin = Vector2.zero; // setta // riga-ok
+        iconRect.anchorMax = Vector2.one; // setta // riga-ok
+        iconRect.offsetMin = Vector2.zero; // setta // riga-ok
+        iconRect.offsetMax = Vector2.zero; // setta // riga-ok
+
+        GameObject panelGO = new GameObject("HUD_Tutorial_Panel"); // setta // riga-ok
+        panelGO.transform.SetParent(transform, false); // chiama // riga-ok
+        tutorialPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
+        tutorialPanel.anchorMin = new Vector2(0.5f, 0.5f); // setta // riga-ok
+        tutorialPanel.anchorMax = new Vector2(0.5f, 0.5f); // setta // riga-ok
+        tutorialPanel.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
+        tutorialPanel.anchoredPosition = Vector2.zero; // setta // riga-ok
+        tutorialPanel.sizeDelta = new Vector2(820f, 560f); // setta // riga-ok
+
+        Image panelBg = panelGO.AddComponent<Image>(); // setta // riga-ok
+        panelBg.sprite = border; // setta // riga-ok
+        panelBg.type = Image.Type.Sliced; // setta // riga-ok
+        panelBg.color = new Color(0.01f, 0.05f, 0.055f, 0.96f); // setta // riga-ok
+        panelBg.raycastTarget = true; // setta // riga-ok
+        tutorialPanelGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
+        tutorialPanelGroup.alpha = 0f; // setta // riga-ok
+        tutorialPanelGroup.interactable = false; // setta // riga-ok
+        tutorialPanelGroup.blocksRaycasts = false; // setta // riga-ok
+
+        GameObject titleGO = new GameObject("Tutorial_Title"); // setta // riga-ok
+        titleGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
+        Text titleText = titleGO.AddComponent<Text>(); // setta // riga-ok
+        titleText.font = font; // setta // riga-ok
+        titleText.text = "TUTORIAL OPERATORE // COME SI GIOCA"; // setta // riga-ok
+        titleText.fontSize = 28; // setta // riga-ok
+        titleText.fontStyle = FontStyle.Bold; // setta // riga-ok
+        titleText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
+        titleText.color = textCyan; // setta // riga-ok
+        titleText.raycastTarget = false; // setta // riga-ok
+        RectTransform titleRect = titleGO.GetComponent<RectTransform>(); // setta // riga-ok
+        titleRect.anchorMin = new Vector2(0f, 1f); // setta // riga-ok
+        titleRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
+        titleRect.pivot = new Vector2(0.5f, 1f); // setta // riga-ok
+        titleRect.anchoredPosition = new Vector2(0f, -28f); // setta // riga-ok
+        titleRect.sizeDelta = new Vector2(-52f, 46f); // setta // riga-ok
+
+        GameObject bodyGO = new GameObject("Tutorial_Body"); // setta // riga-ok
+        bodyGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
+        Text bodyText = bodyGO.AddComponent<Text>(); // setta // riga-ok
+        bodyText.font = font; // setta // riga-ok
+        bodyText.text =
+            "1. OBIETTIVO\\n" +
+            "   Ripristina il settore in emergenza, trova le keycard e completa le procedure prima che il timer arrivi a zero.\\n\\n" +
+            "2. ESPLORAZIONE\\n" +
+            "   Muoviti nei settori, osserva gli indizi luminosi e avvicinati agli oggetti interattivi quando compare il prompt [E].\\n\\n" +
+            "3. INTERAZIONI\\n" +
+            "   Usa i terminali, recupera strumenti e ripara i sistemi segnalati dalla HUD. Le keycard sbloccano nuove zone.\\n\\n" +
+            "4. PERICOLO\\n" +
+            "   Tieni d'occhio batteria/vita e countdown. Se subisci danni la HUD lampeggia, quindi cerca riparo o cambia percorso.\\n\\n" +
+            "5. COMANDI RAPIDI\\n" +
+            "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | ESC/M: pausa"; // setta // riga-ok
+        bodyText.fontSize = 20; // setta // riga-ok
+        bodyText.lineSpacing = 1.12f; // setta // riga-ok
+        bodyText.alignment = TextAnchor.UpperLeft; // setta // riga-ok
+        bodyText.color = new Color(0.78f, 1f, 0.95f, 1f); // setta // riga-ok
+        bodyText.raycastTarget = false; // setta // riga-ok
+        RectTransform bodyRect = bodyGO.GetComponent<RectTransform>(); // setta // riga-ok
+        bodyRect.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
+        bodyRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
+        bodyRect.offsetMin = new Vector2(48f, 104f); // setta // riga-ok
+        bodyRect.offsetMax = new Vector2(-48f, -96f); // setta // riga-ok
+
+        GameObject closeGO = new GameObject("Tutorial_Close_Button"); // setta // riga-ok
+        closeGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
+        RectTransform closeRect = closeGO.AddComponent<RectTransform>(); // setta // riga-ok
+        closeRect.anchorMin = new Vector2(0.5f, 0f); // setta // riga-ok
+        closeRect.anchorMax = new Vector2(0.5f, 0f); // setta // riga-ok
+        closeRect.pivot = new Vector2(0.5f, 0f); // setta // riga-ok
+        closeRect.anchoredPosition = new Vector2(0f, 28f); // setta // riga-ok
+        closeRect.sizeDelta = new Vector2(260f, 54f); // setta // riga-ok
+        Image closeBg = closeGO.AddComponent<Image>(); // setta // riga-ok
+        closeBg.sprite = border; // setta // riga-ok
+        closeBg.type = Image.Type.Sliced; // setta // riga-ok
+        closeBg.color = new Color(0.03f, 0.16f, 0.14f, 0.95f); // setta // riga-ok
+        closeBg.raycastTarget = true; // setta // riga-ok
+        Button closeButton = closeGO.AddComponent<Button>(); // setta // riga-ok
+        closeButton.targetGraphic = closeBg; // setta // riga-ok
+        closeButton.onClick.AddListener(ChiudiTutorialPanel); // chiama // riga-ok
+
+        GameObject closeLabelGO = new GameObject("Close_Label"); // setta // riga-ok
+        closeLabelGO.transform.SetParent(closeRect, false); // chiama // riga-ok
+        Text closeLabel = closeLabelGO.AddComponent<Text>(); // setta // riga-ok
+        closeLabel.font = font; // setta // riga-ok
+        closeLabel.text = "CHIUDI TUTORIAL"; // setta // riga-ok
+        closeLabel.fontSize = 18; // setta // riga-ok
+        closeLabel.fontStyle = FontStyle.Bold; // setta // riga-ok
+        closeLabel.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
+        closeLabel.color = textCyan; // setta // riga-ok
+        closeLabel.raycastTarget = false; // setta // riga-ok
+        RectTransform closeLabelRect = closeLabelGO.GetComponent<RectTransform>(); // setta // riga-ok
+        closeLabelRect.anchorMin = Vector2.zero; // setta // riga-ok
+        closeLabelRect.anchorMax = Vector2.one; // setta // riga-ok
+        closeLabelRect.offsetMin = Vector2.zero; // setta // riga-ok
+        closeLabelRect.offsetMax = Vector2.zero; // setta // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: apre/chiude tutorial
+    private void ToggleTutorialPanel() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (tutorialAperto) // se ok // riga-ok
+        { // apre // riga-ok
+            ChiudiTutorialPanel(); // chiama // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
+
+        ApriTutorialPanel(); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: mostra tutorial
+    private void ApriTutorialPanel() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (tutorialPanelGroup == null) return; // se ok // riga-ok
+        if (!ModalUIState.TryOpen(TutorialModalOwner)) return; // se ok // riga-ok
+        tutorialAperto = true; // setta // riga-ok
+        tutorialPanelGroup.alpha = 1f; // setta // riga-ok
+        tutorialPanelGroup.interactable = true; // setta // riga-ok
+        tutorialPanelGroup.blocksRaycasts = true; // setta // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: nasconde tutorial
+    private void ChiudiTutorialPanel() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (tutorialPanelGroup == null) return; // se ok // riga-ok
+        tutorialAperto = false; // setta // riga-ok
+        tutorialPanelGroup.alpha = 0f; // setta // riga-ok
+        tutorialPanelGroup.interactable = false; // setta // riga-ok
+        tutorialPanelGroup.blocksRaycasts = false; // setta // riga-ok
+        ModalUIState.Close(TutorialModalOwner); // chiama // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose
