@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Dati configurabili
+// File: .\Assets\CrisisProtocol\Scripts\Data\EmergencyKeyData.cs
+// Responsabilita': espone ScriptableObject o contenitori dati per configurare il gameplay senza modificare codice.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using UnityEngine;
 using UnityEngine.Video;
 

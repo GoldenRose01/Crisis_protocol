@@ -1,10 +1,18 @@
-using GoldenCast.UI;
+// ============================================================================
+// Crisis Protocol / Sector Containment - Interfaccia utente
+// File: .\Assets\CrisisProtocol\Scripts\UI\MenuAudioSilencer.cs
+// Responsabilita': aggiorna HUD, menu, overlay, gauge, notifiche o schermate di supporto in base agli eventi gameplay.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
+using CrisisProtocol.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.Video;
 
-namespace GoldenCast.UI
+namespace CrisisProtocol.UI
 {
     public sealed class MenuAudioSilencer : MonoBehaviour
     {
@@ -17,7 +25,7 @@ namespace GoldenCast.UI
             if (instance)
                 return;
 
-            GameObject root = new GameObject("GoldenCast Menu Audio Silencer");
+            GameObject root = new GameObject("Crisis Protocol Menu Audio Silencer");
             DontDestroyOnLoad(root);
             instance = root.AddComponent<MenuAudioSilencer>();
         }

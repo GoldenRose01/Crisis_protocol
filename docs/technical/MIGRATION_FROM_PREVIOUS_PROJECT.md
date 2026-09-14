@@ -1,8 +1,8 @@
-# Migrazione da GoldenCast a Sector Containment
+# Migrazione da progetto-precedente a Sector Containment
 
 ## Scopo
 
-Questo documento traccia cosa e' stato cambiato rispetto al prototipo precedente `ep2526-tt-goldencast` / GoldenCast per allineare il progetto al nuovo GDD `Sector Containment: Emergency` (`Crisis Protocol: Red Line`).
+Questo documento traccia cosa e' stato cambiato rispetto al prototipo precedente `progetto precedente` / progetto-precedente per allineare il progetto al nuovo GDD `Sector Containment: Emergency` (`Crisis Protocol: Red Line`).
 
 ## Direzione di design
 
@@ -20,10 +20,10 @@ Il progetto non e' piu' centrato su viaggi temporali, tag temporali e anacronism
 
 ### `Assets/script/GameManager.cs`
 
-Il `GameManager` e' stato convertito da registro temporale GoldenCast a stato globale Sector Containment:
+Il `GameManager` e' stato convertito da registro temporale progetto-precedente a stato globale Sector Containment:
 
 - nuovo salvataggio `SectorContainment_Save.json`;
-- migrazione automatica dai vecchi campi di `GoldenCast_Save.json`;
+- migrazione automatica dai vecchi campi di `PreviousProject_Save.json`;
 - nuove collezioni persistenti per firme di sicurezza, incidenti risolti e storico autorizzazioni;
 - nuovi eventi `OnSecuritySignatureAcquired` e `OnIncidentResolved`;
 - nuove API `RegisterSecuritySignature`, `ResolveIncident`, `IsSecuritySignatureUnlocked`, `AuthorizeReturnChannel` e `ConsumeReturnChannel`;
@@ -76,13 +76,13 @@ Questi sistemi sono ora collegati meglio al `GameManager` tramite registrazione 
 
 ## Cosa resta legacy
 
-Restano nomi e asset GoldenCast in alcune aree:
+Restano nomi e asset progetto-precedente in alcune aree:
 
 - classi e file Unity gia' referenziati da scene/prefab;
-- namespace UI come `GoldenCast.UI`;
+- namespace UI come `CrisisProtocol.UI`;
 - UI AsyncronQuest con naming `Anachronism`;
 - scene legacy come `Passato_1961`;
-- documenti Word storici GoldenCast.
+- documenti Word storici progetto-precedente.
 
 Questi elementi non sono stati rinominati in massa per evitare rotture di riferimenti Unity. La rinomina fisica va fatta in una fase dedicata, da Unity Editor, verificando subito scene, prefab e `.meta`.
 

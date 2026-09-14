@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Core runtime
+// File: .\Assets\CrisisProtocol\Scripts\Core\SceneAudioAmbience.cs
+// Responsabilita': coordina stato globale, salvataggi, avanzamento partita o servizi persistenti condivisi tra scene.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using UnityEngine;
 
 /// <summary>

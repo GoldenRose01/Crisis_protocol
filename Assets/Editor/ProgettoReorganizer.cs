@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Utility editor
+// File: .\Assets\Editor\ProgettoReorganizer.cs
+// Responsabilita': automatizza setup, popolamento scena, salvataggio, validazione o manutenzione direttamente dentro Unity Editor.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
@@ -36,7 +44,7 @@ public class ProgettoReorganizer : EditorWindow
     //  │   ├── Materials/         tutti i .mat del progetto
     //  │   ├── Animations/        controller + clip di animazione
     //  │   └── Models/            FBX/GLB/OBJ usati nel gioco
-    //  ├── _Legacy/               tutto ciò che viene da GoldenCast
+    //  ├── _Legacy/               tutto ciò che viene da progetto-precedente
     //  │   ├── Scenes/
     //  │   ├── Prefabs/
     //  │   ├── Models/
@@ -163,7 +171,7 @@ public class ProgettoReorganizer : EditorWindow
         log.Add("── SCRIPT UI ────────────────────────────────────────────");
         Sposta("Assets/script/HUDManager.cs",                    "Assets/CrisisProtocol/Scripts/UI/HUDManager.cs", dryRun);
         Sposta("Assets/script/MainMenuManager.cs",               "Assets/CrisisProtocol/Scripts/UI/MainMenuManager.cs", dryRun);
-        Sposta("Assets/script/GoldenCastUIController.cs",        "Assets/CrisisProtocol/Scripts/UI/GoldenCastUIController.cs", dryRun);
+        Sposta("Assets/script/CrisisProtocolUIController.cs",        "Assets/CrisisProtocol/Scripts/UI/CrisisProtocolUIController.cs", dryRun);
         Sposta("Assets/script/ModalUIState.cs",                  "Assets/CrisisProtocol/Scripts/UI/ModalUIState.cs", dryRun);
         Sposta("Assets/script/MenuAudioSilencer.cs",             "Assets/CrisisProtocol/Scripts/UI/MenuAudioSilencer.cs", dryRun);
         Sposta("Assets/script/AutoCommitMenu.cs",                "Assets/CrisisProtocol/Scripts/UI/AutoCommitMenu.cs", dryRun);

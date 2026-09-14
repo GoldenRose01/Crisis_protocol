@@ -1,9 +1,22 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Core runtime
+// File: .\Assets\CrisisProtocol\Scripts\Core\MissionManager.cs
+// Responsabilita': coordina stato globale, salvataggi, avanzamento partita o servizi persistenti condivisi tra scene.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Controller runtime della missione corrente.
+/// Tiene insieme obiettivi, credenziali, focolai, collasso strutturale,
+/// scoring e condizioni di vittoria/sconfitta per il settore attivo.
+/// </summary>
 public class MissionManager : MonoBehaviour
 {
     public enum MissionOutcome { Victory, Defeat }
@@ -86,6 +99,8 @@ public class MissionManager : MonoBehaviour
 
     private void Start()
     {
+        // Calcola gli obiettivi partendo dagli hotspot effettivamente presenti
+        // nella scena, cosi' il designer puo' modificare il livello senza toccare codice.
         obiettivi.InitializeFromScene();
 
         collassoCorrente = collassoStrutturale.Clamp(collassoStrutturale.CollassoIniziale);
@@ -116,12 +131,16 @@ public class MissionManager : MonoBehaviour
         if (missioneTerminata)
             return;
 
+        // Il collasso cresce continuamente finche' la missione e' attiva.
+        // Eventi, danni e allarmi possono aumentarlo; contenimenti riusciti possono ridurlo.
         tempoMissione += Time.deltaTime;
         AggiungiCollasso(collassoStrutturale.IncrementoPerSecondo * Time.deltaTime);
     }
 
     public bool RegistraCredenziale(string credentialId)
     {
+        // Le credenziali sono risorse di accesso: vengono contate per UI/punteggio
+        // e abilitate per hotspot che richiedono una keycard specifica.
         if (missioneTerminata || string.IsNullOrWhiteSpace(credentialId))
             return false;
 
@@ -164,6 +183,8 @@ public class MissionManager : MonoBehaviour
 
     public bool ContieniFocolaio(string hotspotId, string requiredCredentialId)
     {
+        // Contenimento atomico del focolaio: verifica autorizzazione, assegna punti,
+        // riduce collasso, notifica GameManager e aggiorna lo stato estrazione.
         if (missioneTerminata || string.IsNullOrWhiteSpace(hotspotId))
             return false;
 
@@ -197,6 +218,8 @@ public class MissionManager : MonoBehaviour
 
     public void TentaEstrazione()
     {
+        // L'estrazione e' valida solo dopo aver soddisfatto gli obiettivi del settore.
+        // La porta puo' chiamare questo metodo senza conoscere i dettagli della missione.
         if (missioneTerminata)
             return;
 
@@ -343,6 +366,8 @@ public class MissionManager : MonoBehaviour
 
     private void AggiungiCollasso(float quantita)
     {
+        // Tutte le variazioni di collasso passano da qui per mantenere clamp,
+        // notifiche UI e game over strutturale in un unico punto.
         float valorePrecedente = collassoCorrente;
         collassoCorrente = collassoStrutturale.Clamp(collassoCorrente + quantita);
 
@@ -358,6 +383,8 @@ public class MissionManager : MonoBehaviour
 
     private void AggiornaEstrazione()
     {
+        // L'obiettivo decide quando il portellone puo' aprirsi; MissionManager
+        // si limita a tradurre il conteggio dei focolai in evento per UI e porta.
         bool nuovoStato = obiettivi.IsQuarantineGateUnlocked(focolaiContenuti.Count);
         if (estrazioneSbloccata == nuovoStato)
             return;
@@ -391,6 +418,8 @@ public class MissionManager : MonoBehaviour
 
     private void TerminaMissione(MissionOutcome outcome, string reason)
     {
+        // Finalizzazione unica: calcola score, emette evento finale e decide
+        // se avanzare settore, mostrare crediti o lasciare la gestione alla death screen.
         if (missioneTerminata)
             return;
 

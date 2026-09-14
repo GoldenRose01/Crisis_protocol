@@ -33,7 +33,7 @@ Responsabilita':
 - firme di sicurezza e credenziali acquisite;
 - incidenti/focolai risolti;
 - canali operativi temporanei;
-- migrazione dai salvataggi legacy GoldenCast.
+- migrazione dai salvataggi legacy progetto-precedente.
 
 Script principali:
 
@@ -108,7 +108,7 @@ Responsabilita':
 Script principali:
 
 - `Assets/script/HUDManager.cs`
-- `Assets/script/GoldenCastUIController.cs`
+- `Assets/script/CrisisProtocolUIController.cs`
 - `Assets/AsyncronQuest/Death/Scripts/DeathScreenController.cs`
 - `Assets/AsyncronQuest/Tooltips/Scripts/*.cs`
 - `Assets/AsyncronQuest/SteampunkUI/Scripts/*.cs`
@@ -154,7 +154,7 @@ Assets/script/
 
 Gli spostamenti degli script esistenti vanno fatti da Unity o in una PR dedicata, verificando scene e prefab subito dopo.
 
-## Compatibilita' GoldenCast
+## Compatibilita' progetto-precedente
 
 La migrazione al GDD `Sector Containment: Emergency` e' stata applicata prima al comportamento dei sistemi core. Alcuni nomi di classi, file e namespace restano volutamente legacy, perche' Unity serializza i riferimenti a script, prefab e scene. Rinominare `ScannerTemporale`, `TemporalTagData`, `testAnacronismo` o parti della UI senza un passaggio in editor rischierebbe riferimenti mancanti.
 

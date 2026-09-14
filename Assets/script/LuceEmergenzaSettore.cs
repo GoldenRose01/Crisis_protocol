@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Feedback ambientale
+// File: .\Assets\script\LuceEmergenzaSettore.cs
+// Responsabilita': controlla luci e segnali di emergenza collegati allo stato della missione.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;

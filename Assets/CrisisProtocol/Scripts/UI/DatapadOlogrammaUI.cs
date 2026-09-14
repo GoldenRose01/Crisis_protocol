@@ -1,8 +1,16 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Interfaccia utente
+// File: .\Assets\CrisisProtocol\Scripts\UI\DatapadOlogrammaUI.cs
+// Responsabilita': aggiorna HUD, menu, overlay, gauge, notifiche o schermate di supporto in base agli eventi gameplay.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
-using GoldenCast.UI;
+using CrisisProtocol.UI;
 
 /// <summary>
 /// Gestore dell'interfaccia olografica LED verde acqua / ciano per la lettura dei codici di sicurezza e PIN delle porte.

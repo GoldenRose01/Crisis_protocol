@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - UI e feedback AsyncronQuest
+// File: .\Assets\AsyncronQuest\SteampunkUI\Editor\AsyncronQuestSteampunkUIBuilder.cs
+// Responsabilita': fornisce schermate, tooltip, transizioni, menu e feedback visivi integrati nel progetto Crisis Protocol.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using AsyncronQuest.SteampunkUI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -9,7 +17,7 @@ namespace AsyncronQuest.SteampunkUI.Editor
     {
         private const string PrefabFolder = "Assets/AsyncronQuest/SteampunkUI/Prefabs";
         private const string PrefabPath = PrefabFolder + "/AsyncronQuestSteampunkUI.prefab";
-        private const string PauseMenuPrefabPath = PrefabFolder + "/GoldenCastPauseMenu.prefab";
+        private const string PauseMenuPrefabPath = PrefabFolder + "/CrisisProtocolPauseMenu.prefab";
         private const string StartMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Start_menu.png";
         private const string PauseMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Option_menu.png";
 
@@ -38,9 +46,9 @@ namespace AsyncronQuest.SteampunkUI.Editor
             EnsureFolder("Assets/AsyncronQuest/SteampunkUI");
             EnsureFolder(PrefabFolder);
 
-            GameObject root = new GameObject("GoldenCastPauseMenu");
+            GameObject root = new GameObject("CrisisProtocolPauseMenu");
             root.layer = 5;
-            GoldenCastPauseMenu ui = root.AddComponent<GoldenCastPauseMenu>();
+            CrisisProtocolPauseMenu ui = root.AddComponent<CrisisProtocolPauseMenu>();
             AssignSprite(ui, "pauseMenuBackgroundSprite", PauseMenuBackgroundPath);
             ui.RebuildPauseMenu();
             PrefabUtility.SaveAsPrefabAsset(root, PauseMenuPrefabPath);
@@ -91,20 +99,20 @@ namespace AsyncronQuest.SteampunkUI.Editor
         [MenuItem("Tools/Asyncron Quest/Add Pause Menu To Current Scene")]
         public static void AddPauseMenuToCurrentScene()
         {
-            GoldenCastPauseMenu existing = Object.FindFirstObjectByType<GoldenCastPauseMenu>();
+            CrisisProtocolPauseMenu existing = Object.FindFirstObjectByType<CrisisProtocolPauseMenu>();
             if (existing != null)
             {
                 Selection.activeGameObject = existing.gameObject;
-                EditorUtility.DisplayDialog("Asyncron Quest", "The scene already contains GoldenCastPauseMenu.", "OK");
+                EditorUtility.DisplayDialog("Asyncron Quest", "The scene already contains CrisisProtocolPauseMenu.", "OK");
                 return;
             }
 
-            GameObject root = new GameObject("GoldenCastPauseMenu");
+            GameObject root = new GameObject("CrisisProtocolPauseMenu");
             root.layer = 5;
-            GoldenCastPauseMenu ui = root.AddComponent<GoldenCastPauseMenu>();
+            CrisisProtocolPauseMenu ui = root.AddComponent<CrisisProtocolPauseMenu>();
             AssignSprite(ui, "pauseMenuBackgroundSprite", PauseMenuBackgroundPath);
             ui.RebuildPauseMenu();
-            Undo.RegisterCreatedObjectUndo(root, "Add GoldenCast Pause Menu");
+            Undo.RegisterCreatedObjectUndo(root, "Add Crisis Protocol Pause Menu");
             Selection.activeGameObject = root;
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }

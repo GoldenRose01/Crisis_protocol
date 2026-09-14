@@ -1,7 +1,15 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Nemici e minacce
+// File: .\Assets\CrisisProtocol\Scripts\Enemy\npc.cs
+// Responsabilita': definisce pattugliamento, inseguimento, attacco o comportamento di droni, guardie e bot ostili.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
-using GoldenCast.UI;
+using CrisisProtocol.UI;
 
 [RequireComponent(typeof(NavMeshAgent), typeof(Animator))]
 public class NPC : MonoBehaviour, IDamageable

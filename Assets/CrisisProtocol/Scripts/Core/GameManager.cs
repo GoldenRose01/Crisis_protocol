@@ -1,9 +1,22 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Core runtime
+// File: .\Assets\CrisisProtocol\Scripts\Core\GameManager.cs
+// Responsabilita': coordina stato globale, salvataggi, avanzamento partita o servizi persistenti condivisi tra scene.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Struttura serializzabile scritta su disco in JSON.
+/// Contiene sia dati di progressione generale (score, settore, missioni completate)
+/// sia dati di sicurezza usati dallo scanner e dai sistemi di accesso.
+/// </summary>
 [System.Serializable]
 public class SaveDataWrapper
 {
@@ -21,7 +34,9 @@ public class SaveDataWrapper
 }
 
 /// <summary>
-/// GameManager: gestisce lo stato globale persistente tra scene e sessioni.
+/// Singleton persistente dell'intera partita.
+/// Mantiene lo stato che deve sopravvivere ai cambi scena: progressione dei settori,
+/// punteggio totale, credenziali/firme di sicurezza, incidenti risolti e salvataggio JSON.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -68,6 +83,8 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        // Enforce del singleton: deve esistere un solo GameManager persistente,
+        // altrimenti eventi e salvataggi verrebbero duplicati tra scene.
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -80,7 +97,8 @@ public class GameManager : MonoBehaviour
         saveFilePath = Path.Combine(Application.persistentDataPath, SaveFileName);
         LoadGameState();
 
-        // Sincronizza l'indice con la scena attualmente aperta (utile se si avvia il gioco direttamente da un settore nell'Editor Unity)
+        // Sincronizza l'indice con la scena attualmente aperta. Questo permette
+        // di avviare Play Mode direttamente da un settore senza rompere la progressione.
         string nomeScenaAttuale = SceneManager.GetActiveScene().name;
         if (livelliInOrdine != null && livelliInOrdine.Contains(nomeScenaAttuale))
         {
@@ -99,6 +117,8 @@ public class GameManager : MonoBehaviour
 
     public void AggiornaPunteggio(int punti)
     {
+        // Il punteggio globale viene salvato subito per non perdere progressi
+        // quando una scena di settore viene completata o ricaricata.
         punteggioTotale += punti;
         SaveGameState();
         OnPunteggioAggiornato?.Invoke(punteggioTotale);
@@ -107,6 +127,8 @@ public class GameManager : MonoBehaviour
 
     public bool RegistraMissioneCompletata(string missioneId)
     {
+        // HashSet evita doppi conteggi se un hotspot o una missione notificano
+        // piu' volte lo stesso ID durante reload, debug o interazioni ripetute.
         if (string.IsNullOrWhiteSpace(missioneId)) return false;
         if (!missioniCompletate.Add(missioneId)) return false;
 
@@ -120,7 +142,9 @@ public class GameManager : MonoBehaviour
 
     public bool IsHotspotResolved(string id) => volatileContainmentState.Contains(id);
 
-    // Legacy wrappers for OstacoloCausale compatibility
+    // Ponte di compatibilita' per OstacoloCausale: lo script puo' continuare
+    // a chiamare una semantica "causale", ma il dato viene trattato come stato
+    // volatile di contenimento/risoluzione del settore.
     public bool GetCausalState(string id) => IsHotspotResolved(id);
     public void SetCausalState(string id, bool state) => SetHotspotResolved(id, state);
 
@@ -133,6 +157,9 @@ public class GameManager : MonoBehaviour
 
     public void RegisterSecuritySignature(string signatureId)
     {
+        // Una firma di sicurezza rappresenta keycard, frequenza, autorizzazione
+        // o dato scanner acquisito. Viene registrata anche nel MissionManager
+        // per sbloccare hotspot/porte collegati alla credenziale.
         if (string.IsNullOrWhiteSpace(signatureId)) return;
 
         currentCredentialID = signatureId;
@@ -152,6 +179,8 @@ public class GameManager : MonoBehaviour
 
     public bool ResolveIncident(string incidentId)
     {
+        // Gli incidenti risolti vengono persistiti per distinguere contenimenti
+        // gia' completati da problemi ancora attivi dopo cambi scena o reload.
         if (string.IsNullOrWhiteSpace(incidentId)) return false;
         if (!incidentsResolved.Add(incidentId)) return false;
 
@@ -182,6 +211,8 @@ public class GameManager : MonoBehaviour
 
     public void SaveGameState()
     {
+        // JsonUtility richiede un oggetto wrapper concreto: copiamo gli HashSet
+        // in liste serializzabili e lasciamo fuori solo lo stato volutamente volatile.
         SaveDataWrapper data = new SaveDataWrapper
         {
             punteggioTotale = this.punteggioTotale,
@@ -200,6 +231,8 @@ public class GameManager : MonoBehaviour
 
     public void LoadGameState()
     {
+        // Le collezioni volatili vengono azzerate a ogni boot: rappresentano
+        // effetti di scena/sessione e non progressione permanente.
         volatileContainmentState.Clear();
         authorizedReturnChannels = new HashSet<string>();
 
@@ -235,6 +268,8 @@ public class GameManager : MonoBehaviour
 
     public void NuovaPartita()
     {
+        // Reset completo della progressione persistente prima del briefing.
+        // Il briefing decide poi quando caricare il primo settore giocabile.
         punteggioTotale = 0;
         indiceSettoreCorrente = 0;
         missioniCompletate.Clear();
@@ -258,6 +293,8 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void CaricaSettore(int indice)
     {
+        // Centralizza il caricamento dei settori: tutte le uscite/vittorie passano
+        // da qui, cosi' indice e salvataggio restano coerenti con la scena caricata.
         if (livelliInOrdine == null || livelliInOrdine.Count == 0)
         {
             Debug.LogError("[GAMEMANAGER] Lista livelli vuota. Aggiungila nell'Inspector.");
@@ -296,6 +333,8 @@ public class GameManager : MonoBehaviour
     [ContextMenu("RESETTA DATI DEBUG (CANCELLA JSON)")]
     public void ResetDatiDebug()
     {
+        // Reset pensato per testing rapido in editor: pulisce runtime + salvataggio
+        // e ricarica la scena corrente senza richiedere riavvio di Unity.
         volatileContainmentState.Clear();
         securitySignaturesAcquired.Clear();
         incidentsResolved.Clear();

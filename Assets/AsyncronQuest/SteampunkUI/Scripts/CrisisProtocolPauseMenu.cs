@@ -1,5 +1,13 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - UI e feedback AsyncronQuest
+// File: .\Assets\AsyncronQuest\SteampunkUI\Scripts\CrisisProtocolPauseMenu.cs
+// Responsabilita': fornisce schermate, tooltip, transizioni, menu e feedback visivi integrati nel progetto Crisis Protocol.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System;
-using GoldenCast.UI;
+using CrisisProtocol.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -14,7 +22,7 @@ using UnityEditor;
 
 namespace AsyncronQuest.SteampunkUI
 {
-    public sealed class GoldenCastPauseMenu : MonoBehaviour
+    public sealed class CrisisProtocolPauseMenu : MonoBehaviour
     {
         private const string MainMenuSceneName = "MainMenu-Scene";
         private const string ModalOwner = "PauseMenu";
@@ -22,7 +30,7 @@ namespace AsyncronQuest.SteampunkUI
 #if UNITY_EDITOR
         private const string DefaultPauseMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Option_menu.png";
         private const string DefaultMapFramePath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/TacticalMap_Frame.jpg";
-        private const string PauseMenuPrefabPath = "Assets/AsyncronQuest/SteampunkUI/Prefabs/GoldenCastPauseMenu.prefab";
+        private const string PauseMenuPrefabPath = "Assets/AsyncronQuest/SteampunkUI/Prefabs/CrisisProtocolPauseMenu.prefab";
         private const string DefaultLoadingVideoPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Caricamento.mp4";
 #endif
 
@@ -99,23 +107,23 @@ namespace AsyncronQuest.SteampunkUI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsurePauseMenu()
         {
-            if (FindFirstObjectByType<GoldenCastPauseMenu>())
+            if (FindFirstObjectByType<CrisisProtocolPauseMenu>())
                 return;
 
 #if UNITY_EDITOR
-            GoldenCastPauseMenu prefab = AssetDatabase.LoadAssetAtPath<GoldenCastPauseMenu>(PauseMenuPrefabPath);
+            CrisisProtocolPauseMenu prefab = AssetDatabase.LoadAssetAtPath<CrisisProtocolPauseMenu>(PauseMenuPrefabPath);
             if (prefab)
             {
                 GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject);
-                instance.name = "GoldenCast Pause Menu";
+                instance.name = "Crisis Protocol Pause Menu";
                 DontDestroyOnLoad(instance);
                 return;
             }
 #endif
 
-            GameObject root = new GameObject("GoldenCast Pause Menu");
+            GameObject root = new GameObject("Crisis Protocol Pause Menu");
             DontDestroyOnLoad(root);
-            root.AddComponent<GoldenCastPauseMenu>();
+            root.AddComponent<CrisisProtocolPauseMenu>();
         }
 
         private void Awake()
@@ -293,7 +301,7 @@ namespace AsyncronQuest.SteampunkUI
             ClearGeneratedInterface();
             EnsureEventSystem();
 
-            Canvas canvas = new GameObject("GoldenCast Pause Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster)).GetComponent<Canvas>();
+            Canvas canvas = new GameObject("Crisis Protocol Pause Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster)).GetComponent<Canvas>();
             canvas.transform.SetParent(transform, false);
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = canvasSortingOrder;

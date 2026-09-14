@@ -205,7 +205,7 @@ Riferimento per la resa scenica delle riparazioni d'emergenza, dei guasti strutt
 Il prototipo corrente implementa gia' diversi pilastri del GDD:
 
 - `MissionManager`: gestione missione, collasso, punteggio e win/lose condition.
-- `GameManager`: persistenza, stato globale, firme di sicurezza acquisite e incidenti risolti. Mantiene wrapper legacy GoldenCast per non rompere prefab e UI esistenti.
+- `GameManager`: persistenza, stato globale, firme di sicurezza acquisite e incidenti risolti. Mantiene wrapper legacy progetto-precedente per non rompere prefab e UI esistenti.
 - `EmergencyHotspot`: focolai d'emergenza da contenere.
 - `AccessCredentialPickup`: raccolta credenziali.
 - `QuarantineGate`: estrazione dopo completamento obiettivi.

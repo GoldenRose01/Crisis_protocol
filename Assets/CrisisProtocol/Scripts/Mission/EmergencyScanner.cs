@@ -1,9 +1,22 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Missione
+// File: .\Assets\CrisisProtocol\Scripts\Mission\EmergencyScanner.cs
+// Responsabilita': gestisce scansione, flusso missione, anomalie operative e collegamento tra interazioni di scena e stato globale.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using GoldenCast.UI;
+using CrisisProtocol.UI;
 
+/// <summary>
+/// Scanner operativo del giocatore.
+/// Gestisce input Q, raycast diagnostico, suono sonar, marcatori HUD e beacons
+/// olografici per guidare il player verso credenziali, focolai e vie di evacuazione.
+/// </summary>
 public class EmergencyScanner : MonoBehaviour
 {
     [Header("Scanner di Emergenza")]
@@ -60,6 +73,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void HandleNuovaCredenzialeRaccolta(string credentialId, int totalCount)
     {
+        // Feedback immediato dopo raccolta: il giocatore capisce che la keycard
+        // appena presa ha sbloccato informazioni utili sugli hotspot collegati.
         Debug.Log($"<color=lime>[SCANNER]</color> Chiave <b>{credentialId}</b> acquisita. Evidenziazione automatica focolaio corrispondente per {durataEvidenziazioneProblemi}s.");
         AvviaEvidenziazioneProblemi(durataEvidenziazioneProblemi, $"CHIAVE ACQUISITA: {credentialId} // FOCOLAIO EVIDENZIATO");
     }
@@ -72,6 +87,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void Update()
     {
+        // Non leggiamo input gameplay mentre una UI modale e' aperta: evita scansioni
+        // involontarie durante menu, pausa o schermate overlay.
         if (ModalUIState.IsModalOpen)
             return;
 
@@ -109,6 +126,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private AudioClip CreateSonarClip()
     {
+        // Generazione sintetica del ping: evita dipendenze da asset audio esterni
+        // e permette allo scanner di funzionare anche in scene di test minimal.
         int sampleRate = 44100;
         float duration = 0.35f;
         int sampleCount = (int)(sampleRate * duration);
@@ -130,6 +149,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void EseguiScansioneInput()
     {
+        // La pressione di Q ha due comportamenti: se esiste una chiave utile,
+        // rinnova l'evidenziazione globale; in ogni caso analizza il bersaglio in mira.
         if (Keyboard.current == null || !Keyboard.current.qKey.wasPressedThisFrame)
             return;
 
@@ -177,6 +198,8 @@ public class EmergencyScanner : MonoBehaviour
     /// </summary>
     public bool HaChiaveAcquisita()
     {
+        // Cerca almeno un hotspot attivo per cui il giocatore possiede gia'
+        // la credenziale richiesta. Questo evita di mostrare soluzioni premature.
         if (MissionManager.Instance == null) return false;
 
         EmergencyHotspot[] hotspots = Object.FindObjectsByType<EmergencyHotspot>(FindObjectsSortMode.None);
@@ -196,6 +219,8 @@ public class EmergencyScanner : MonoBehaviour
     /// </summary>
     public void AvviaEvidenziazioneProblemi(float durata = 5.0f, string messaggioHUD = "")
     {
+        // Riavviare la coroutine consente di estendere la finestra di evidenziazione
+        // se il player preme Q piu' volte o raccoglie una nuova credenziale.
         if (highlightCoroutine != null)
             StopCoroutine(highlightCoroutine);
 
@@ -227,6 +252,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void RaccogliProblemiAttivi()
     {
+        // Popola la lista temporanea di bersagli visibili: solo focolai non contenuti
+        // con keycard posseduta, oppure la porta di evacuazione se tutto e' risolto.
         activeTargetHighlights.Clear();
 
         // 1. Trova SOLO gli EmergencyHotspot non contenuti per i quali il giocatore possiede SPECIFICATAMENTE la chiave richiesta
@@ -292,6 +319,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void GeneraBeaconsOlografici()
     {
+        // I beacon sono oggetti runtime temporanei: luce + colonna trasparente.
+        // Vengono distrutti alla fine della scansione per non sporcare la scena.
         ClearVisualBeacons();
 
         foreach (HighlightTargetInfo target in activeTargetHighlights)
@@ -346,6 +375,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void AnalizzaBersaglio(Collider target)
     {
+        // Analisi ordinata dal caso piu' specifico al piu' generico:
+        // credenziale, hotspot, anomalia operativa, qualsiasi IInteractable.
         if (target == null)
             return;
 
@@ -423,6 +454,8 @@ public class EmergencyScanner : MonoBehaviour
 
     private void OnGUI()
     {
+        // Overlay leggero e immediato per prototipo: mirino centrale e marker 2D.
+        // In una UI finale potrebbe essere sostituito da Canvas/HUD dedicato.
         // 1. Mirino centrale (puntino ciano/giallo a seconda dello stato)
         float size = isHighlightActive ? 6f : 4f;
         float x = (Screen.width / 2f) - (size / 2f);

@@ -1,9 +1,17 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Interfaccia utente
+// File: .\Assets\CrisisProtocol\Scripts\UI\CrisisProtocolUIController.cs
+// Responsabilita': aggiorna HUD, menu, overlay, gauge, notifiche o schermate di supporto in base agli eventi gameplay.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace GoldenCast.UI
+namespace CrisisProtocol.UI
 {
-    public class GoldenCastUIController : MonoBehaviour
+    public class CrisisProtocolUIController : MonoBehaviour
     {
         [Header("Panels")]
         [SerializeField] private GameObject mainMenuPanel;
@@ -48,7 +56,7 @@ namespace GoldenCast.UI
 
         public void OpenOptions()
         {
-            Debug.Log("GoldenCast: open options panel here.");
+            Debug.Log("Crisis Protocol: open options panel here.");
         }
 
         public void OpenCredits()
@@ -56,7 +64,7 @@ namespace GoldenCast.UI
             if (!string.IsNullOrWhiteSpace(creditsSceneName))
                 SceneManager.LoadScene(creditsSceneName);
             else
-                Debug.Log("GoldenCast credits.");
+                Debug.Log("Crisis Protocol credits.");
         }
 
         public void ExitGame()
@@ -69,12 +77,12 @@ namespace GoldenCast.UI
 
         public void SaveGame()
         {
-            Debug.Log("GoldenCast: connect your save system here.");
+            Debug.Log("Crisis Protocol: connect your save system here.");
         }
 
         public void LoadGame()
         {
-            Debug.Log("GoldenCast: connect your load system here.");
+            Debug.Log("Crisis Protocol: connect your load system here.");
         }
 
         public void ShowMainMenu(bool value)

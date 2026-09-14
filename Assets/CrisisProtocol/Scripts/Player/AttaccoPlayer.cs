@@ -1,6 +1,14 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Player
+// File: .\Assets\CrisisProtocol\Scripts\Player\AttaccoPlayer.cs
+// Responsabilita': gestisce input, movimento, combattimento, interazione, salute o strumenti controllati dal giocatore.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using UnityEngine;
 using UnityEngine.InputSystem;
-using GoldenCast.UI;
+using CrisisProtocol.UI;
 
 public class AttaccoPlayer : MonoBehaviour
 {

@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - UI e feedback AsyncronQuest
+// File: .\Assets\AsyncronQuest\Death\Scripts\DeathScreenController.cs
+// Responsabilita': fornisce schermate, tooltip, transizioni, menu e feedback visivi integrati nel progetto Crisis Protocol.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -47,7 +55,7 @@ public sealed class DeathScreenController : MonoBehaviour
         if (Instance || FindFirstObjectByType<DeathScreenController>())
             return;
 
-        GameObject root = new GameObject("GoldenCast Death Screen Controller");
+        GameObject root = new GameObject("progetto-precedente Death Screen Controller");
         DontDestroyOnLoad(root);
         root.AddComponent<DeathScreenController>();
     }
@@ -121,7 +129,7 @@ public sealed class DeathScreenController : MonoBehaviour
         DeathScreenController controller = Instance ? Instance : FindFirstObjectByType<DeathScreenController>();
         if (!controller)
         {
-            GameObject root = new GameObject("GoldenCast Death Screen Controller");
+            GameObject root = new GameObject("progetto-precedente Death Screen Controller");
             DontDestroyOnLoad(root);
             controller = root.AddComponent<DeathScreenController>();
         }

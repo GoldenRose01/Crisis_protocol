@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - Missione e contenimento
+// File: .\Assets\CrisisProtocol\Scripts\Mission\SectorEmergency\SectorObjectiveSettings.cs
+// Responsabilita': modella credenziali, focolai, portelloni, hazard o parametri di bilanciamento del loop emergenza -> contenimento -> estrazione.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System;
 using UnityEngine;
 

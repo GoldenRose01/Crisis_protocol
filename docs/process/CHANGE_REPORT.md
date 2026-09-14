@@ -2,7 +2,7 @@
 
 ## Scope
 
-Questo documento elenca una per una le modifiche applicate per trasformare il progetto precedente `ep2526-tt-goldencast` / GoldenCast nel progetto conforme al GDD `Sector Containment: Emergency`.
+Questo documento elenca una per una le modifiche applicate per trasformare il progetto precedente `progetto precedente` / progetto-precedente nel progetto conforme al GDD `Sector Containment: Emergency`.
 
 Commit principali:
 
@@ -34,7 +34,7 @@ Aggiunto:
 - `public List<string> incidentsResolved = new List<string>();`
 - `public List<string> unlockedSecurityHistory = new List<string>();`
 
-Mantenuto per compatibilita' GoldenCast:
+Mantenuto per compatibilita' Crisis Protocol:
 
 - `public string savedTagID;`
 - `public List<string> tagTemporaliAcquisiti = new List<string>();`
@@ -55,11 +55,11 @@ Rimosso:
 Aggiunto:
 
 - `private const string SaveFileName = "SectorContainment_Save.json";`
-- `private const string LegacySaveFileName = "GoldenCast_Save.json";`
+- `private const string LegacySaveFileName = "PreviousProject_Save.json";`
 
 Sostituito:
 
-- percorso hardcoded `GoldenCast_Save.json` con costante `SaveFileName`;
+- percorso hardcoded `PreviousProject_Save.json` con costante `SaveFileName`;
 - aggiunto percorso legacy separato per leggere vecchi salvataggi.
 
 ### 1.3 Stato pubblico corrente
@@ -131,7 +131,7 @@ Sostituito:
 
 - `Destroy(this.gameObject);` con `Destroy(gameObject);`
 - `DontDestroyOnLoad(this.gameObject);` con `DontDestroyOnLoad(gameObject);`
-- `Path.Combine(Application.persistentDataPath, "GoldenCast_Save.json")` con `Path.Combine(Application.persistentDataPath, SaveFileName)`.
+- `Path.Combine(Application.persistentDataPath, "PreviousProject_Save.json")` con `Path.Combine(Application.persistentDataPath, SaveFileName)`.
 
 Aggiunto:
 
@@ -145,7 +145,7 @@ Rimosso:
 
 Sostituito:
 
-- log debug F5 da messaggio GoldenCast/generico a `Reset completo dei dati di Sector Containment`.
+- log debug F5 da messaggio progetto-precedente/generico a `Reset completo dei dati di Sector Containment`.
 
 Mantenuto:
 
@@ -263,14 +263,14 @@ public bool ConsumaVarcoRitorno(string tagID) => ConsumeReturnChannel(tagID);
 
 Motivo:
 
-- mantenere compatibile il codice che chiama ancora le API GoldenCast.
+- mantenere compatibile il codice che chiama ancora le API progetto-precedente.
 
 ### 1.17 `SaveGameState()`
 
 Sostituito:
 
 - costruzione manuale del wrapper con object initializer;
-- salvataggio di soli campi GoldenCast con salvataggio sia dei campi nuovi sia dei campi legacy.
+- salvataggio di soli campi progetto-precedente con salvataggio sia dei campi nuovi sia dei campi legacy.
 
 Ora scrive:
 
@@ -299,7 +299,7 @@ Aggiunto:
 
 - `pathToLoad`, che sceglie:
   - `SectorContainment_Save.json` se esiste;
-  - `GoldenCast_Save.json` se il nuovo non esiste;
+  - `PreviousProject_Save.json` se il nuovo non esiste;
   - stringa vuota se non esistono salvataggi.
 
 Aggiunto ripristino compatibile:
@@ -331,7 +331,7 @@ Sostituito reset di:
 Aggiunto:
 
 - cancellazione di `SectorContainment_Save.json`;
-- cancellazione di `GoldenCast_Save.json`;
+- cancellazione di `PreviousProject_Save.json`;
 - uso helper `DeleteSaveFile`.
 
 Mantenuto:
@@ -617,7 +617,7 @@ Con:
 
 Aggiunto link:
 
-- `docs/technical/MIGRATION_FROM_GOLDENCAST.md`.
+- `docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`.
 
 ### 5.3 Sezione persistenza
 
@@ -636,12 +636,12 @@ Sostituiti bullet:
 
 Sostituito path salvataggio:
 
-- `Application.persistentDataPath/GoldenCast_Save.json`;
+- `Application.persistentDataPath/PreviousProject_Save.json`;
 - con `Application.persistentDataPath/SectorContainment_Save.json`.
 
 Aggiunta nota:
 
-- se esiste `GoldenCast_Save.json`, viene letto come salvataggio legacy.
+- se esiste `PreviousProject_Save.json`, viene letto come salvataggio legacy.
 
 ### 5.4 Sezione scanner
 
@@ -671,7 +671,7 @@ Sostituito:
 
 Aggiunto:
 
-- `docs/technical/MIGRATION_FROM_GOLDENCAST.md`.
+- `docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`.
 
 ### 5.7 Troubleshooting scanner
 
@@ -686,8 +686,8 @@ Sostituito controllo bersaglio:
 
 Aggiunto:
 
-- link a `technical/MIGRATION_FROM_GOLDENCAST.md`;
-- descrizione: differenze tra GoldenCast e versione allineata al nuovo GDD.
+- link a `technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`;
+- descrizione: differenze tra progetto-precedente e versione allineata al nuovo GDD.
 
 ### 6.2 Sezione Process
 
@@ -704,7 +704,7 @@ Sostituito bullet `GameManager`:
 
 - da `persistenza, stato globale e anacronismi risolti`;
 - a `persistenza, stato globale, firme di sicurezza acquisite e incidenti risolti`;
-- aggiunta nota sui wrapper legacy GoldenCast.
+- aggiunta nota sui wrapper legacy progetto-precedente.
 
 Sostituito bullet `ScannerTemporale`:
 
@@ -721,7 +721,7 @@ Sostituiti bullet responsabilita':
 - `tag temporali acquisiti` -> `firme di sicurezza e credenziali acquisite`;
 - `anacronismi risolti` -> `incidenti/focolai risolti`;
 - `varchi temporali temporanei` -> `canali operativi temporanei`;
-- aggiunto `migrazione dai salvataggi legacy GoldenCast`.
+- aggiunto `migrazione dai salvataggi legacy progetto-precedente`.
 
 ### 8.2 Sezione `Player Interaction`
 
@@ -737,7 +737,7 @@ Sostituito:
 - `feedback scanner/anomalie`;
 - con `feedback scanner/anomalie legacy`.
 
-### 8.4 Nuova sezione `Compatibilita' GoldenCast`
+### 8.4 Nuova sezione `Compatibilita' progetto-precedente`
 
 Aggiunto testo che specifica:
 
@@ -755,7 +755,7 @@ Wrapper elencati:
 - `ApriVarcoRitorno`;
 - `ConsumaVarcoRitorno`.
 
-## 9. `docs/technical/MIGRATION_FROM_GOLDENCAST.md`
+## 9. `docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`
 
 File nuovo.
 
@@ -763,7 +763,7 @@ File nuovo.
 
 Aggiunto:
 
-- spiegazione del passaggio da `ep2526-tt-goldencast` / GoldenCast a `Sector Containment: Emergency`.
+- spiegazione del passaggio da `progetto precedente` / progetto-precedente a `Sector Containment: Emergency`.
 
 ### 9.2 Sezione `Direzione di design`
 
@@ -802,10 +802,10 @@ Aggiunto elenco:
 Aggiunto elenco:
 
 - classi e file gia' referenziati da scene/prefab;
-- namespace UI come `GoldenCast.UI`;
+- namespace UI come `CrisisProtocol.UI`;
 - UI AsyncronQuest con naming `Anachronism`;
 - scena `Passato_1961`;
-- documenti Word storici GoldenCast.
+- documenti Word storici progetto-precedente.
 
 ### 9.6 Sezione `Verifica`
 
@@ -895,7 +895,7 @@ Non sono stati rinominati fisicamente:
 - `TemporalTagData.cs`;
 - `TestAnacronismo.cs`;
 - classe `testAnacronismo`;
-- namespace `GoldenCast.UI`;
+- namespace `CrisisProtocol.UI`;
 - UI `AnachronismScannerUI`;
 - scene legacy come `Passato_1961`.
 

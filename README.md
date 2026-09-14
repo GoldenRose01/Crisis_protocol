@@ -27,7 +27,7 @@ La documentazione completa e' organizzata in [`docs/README.md`](docs/README.md):
 - [`docs/technical/ARCHITECTURE.md`](docs/technical/ARCHITECTURE.md): moduli e responsabilita' tecniche.
 - [`docs/technical/DEPENDENCIES.md`](docs/technical/DEPENDENCIES.md): dipendenze Unity e Git LFS.
 - [`docs/technical/MAINTENANCE.md`](docs/technical/MAINTENANCE.md): checklist di manutenzione.
-- [`docs/technical/MIGRATION_FROM_GOLDENCAST.md`](docs/technical/MIGRATION_FROM_GOLDENCAST.md): trasformazione dal prototipo GoldenCast al nuovo GDD.
+- [`docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`](docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md): trasformazione dal prototipo progetto-precedente al nuovo GDD.
 - [`docs/process/RELEASE_CHECKLIST.md`](docs/process/RELEASE_CHECKLIST.md): controlli prima di consegna o push.
 
 ## Gameplay
@@ -80,7 +80,7 @@ Il salvataggio viene scritto in:
 Application.persistentDataPath/SectorContainment_Save.json
 ```
 
-Se esiste ancora un vecchio `GoldenCast_Save.json`, viene letto come salvataggio legacy e convertito in memoria ai nuovi campi. Nota importante: il registro degli ostacoli causali e' volutamente volatile. Gli ostacoli possono cambiare durante la sessione, ma vengono ripristinati al riavvio del gioco.
+Se esiste ancora un vecchio `PreviousProject_Save.json`, viene letto come salvataggio legacy e convertito in memoria ai nuovi campi. Nota importante: il registro degli ostacoli causali e' volutamente volatile. Gli ostacoli possono cambiare durante la sessione, ma vengono ripristinati al riavvio del gioco.
 
 ### Scanner di emergenza
 
@@ -241,14 +241,14 @@ Gli asset Unity devono invece mantenere il proprio file `.meta` quando sono trac
 
 Sono presenti documenti di progetto in formato Word:
 
-- `GoldenCast_Base_Info_Game_Design_Document.docx`
-- `GoldenCast_Game_Design_Document_Task_Force_Temporale.docx`
-- `Mini_Report_Struttura_GoldenCast.docx`
+- `progetto-precedente_Base_Info_Game_Design_Document.docx`
+- `progetto-precedente_Game_Design_Document_Task_Force_Temporale.docx`
+- `Mini_Report_Struttura_progetto-precedente.docx`
 - `docs/design/GDD.md`
 - `docs/technical/ARCHITECTURE.md`
 - `docs/technical/DEPENDENCIES.md`
 - `docs/technical/MAINTENANCE.md`
-- `docs/technical/MIGRATION_FROM_GOLDENCAST.md`
+- `docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`
 - `docs/process/RELEASE_CHECKLIST.md`
 
 Questi file descrivono concept, struttura, direzione di design e manutenzione tecnica del progetto. Il file `docs/design/GDD.md` contiene la versione Markdown pulita e leggibile del GDD allegato.

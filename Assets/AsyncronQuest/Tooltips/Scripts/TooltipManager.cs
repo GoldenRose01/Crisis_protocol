@@ -1,3 +1,11 @@
+// ============================================================================
+// Crisis Protocol / Sector Containment - UI e feedback AsyncronQuest
+// File: .\Assets\AsyncronQuest\Tooltips\Scripts\TooltipManager.cs
+// Responsabilita': fornisce schermate, tooltip, transizioni, menu e feedback visivi integrati nel progetto Crisis Protocol.
+// Note di manutenzione: i commenti in questo file chiariscono il ruolo dello
+// script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
+// attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
+// ============================================================================
 using System.Collections;
 using AsyncronQuest.SteampunkUI;
 using TMPro;
@@ -53,7 +61,7 @@ namespace AsyncronQuest.Tooltips
             if (Instance || FindFirstObjectByType<TooltipManager>())
                 return;
 
-            GameObject root = new GameObject("GoldenCast Tooltip Manager");
+            GameObject root = new GameObject("progetto-precedente Tooltip Manager");
             DontDestroyOnLoad(root);
             root.AddComponent<TooltipManager>();
         }
@@ -92,7 +100,7 @@ namespace AsyncronQuest.Tooltips
             TooltipManager manager = Instance ? Instance : FindFirstObjectByType<TooltipManager>();
             if (!manager)
             {
-                GameObject root = new GameObject("GoldenCast Tooltip Manager");
+                GameObject root = new GameObject("progetto-precedente Tooltip Manager");
                 DontDestroyOnLoad(root);
                 manager = root.AddComponent<TooltipManager>();
             }
