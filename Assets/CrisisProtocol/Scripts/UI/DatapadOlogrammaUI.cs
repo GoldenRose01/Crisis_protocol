@@ -569,13 +569,20 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
 
         System.Type inputSystemModuleType = System.Type.GetType(InputSystemUiModuleTypeName); // setta // riga-ok
         // blocco: controlla se va
-        if (inputSystemModuleType != null && eventSystem.GetComponent(inputSystemModuleType) == null) // se ok // riga-ok
+        if (inputSystemModuleType != null) // se ok // riga-ok
         { // apre // riga-ok
-            eventSystem.gameObject.AddComponent(inputSystemModuleType); // chiama // riga-ok
+            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // setta // riga-ok
+            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
+            
+            Component newModule = eventSystem.GetComponent(inputSystemModuleType); // setta // riga-ok
+            if (newModule == null) // se ok // riga-ok
+            { // apre // riga-ok
+                newModule = eventSystem.gameObject.AddComponent(inputSystemModuleType); // chiama // riga-ok
+                System.Reflection.MethodInfo m = inputSystemModuleType.GetMethod("AssignDefaultActions"); // setta // riga-ok
+                if (m != null) m.Invoke(newModule, null); // chiama // riga-ok
+            } // chiude // riga-ok
         } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (inputSystemModuleType == null && eventSystem.GetComponent<StandaloneInputModule>() == null) // se ok // riga-ok
+        else if (eventSystem.GetComponent<StandaloneInputModule>() == null) // se ok // riga-ok
         { // apre // riga-ok
             eventSystem.gameObject.AddComponent<StandaloneInputModule>(); // chiama // riga-ok
         } // chiude // riga-ok
@@ -583,3 +590,4 @@ public class DatapadOlogrammaUI : MonoBehaviour // classe qui // riga-ok
 
     #endregion // prep ok // riga-ok
 } // chiude // riga-ok
+

@@ -11,6 +11,7 @@ using System.Collections.Generic; // usa lib // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.InputSystem; // usa lib // riga-ok
 using CrisisProtocol.UI; // usa lib // riga-ok
+using AsyncronQuest.SteampunkUI; // usa lib per CleanObjectName
 
 /// <summary>
 /// Scanner operativo del giocatore.
@@ -314,10 +315,13 @@ public class EmergencyScanner : MonoBehaviour // classe qui // riga-ok
                 // blocco: controlla se va
                 if (possiedeChiave) // se ok // riga-ok
                 { // apre // riga-ok
+                    // ESTRAI NOME PULITO UGUALE ALLA MAPPA
+                    string cleanName = SceneTopDownMapUI.CleanObjectName(h.name);
+                    
                     activeTargetHighlights.Add(new HighlightTargetInfo // ok qua // riga-ok
                     { // apre // riga-ok
                         worldPosition = h.transform.position, // setta // riga-ok
-                        label = $"⚠️ FOCOLAIO // [{reqKey}]", // setta // riga-ok
+                        label = $"⚠️ {cleanName}", // setta // riga-ok
                         color = neonYellow, // setta // riga-ok
                         targetTransform = h.transform // setta // riga-ok
                     }); // chiama // riga-ok
@@ -351,10 +355,12 @@ public class EmergencyScanner : MonoBehaviour // classe qui // riga-ok
                     // blocco: controlla se va
                     if (p != null) // se ok // riga-ok
                     { // apre // riga-ok
+                        string cleanDoor = SceneTopDownMapUI.CleanDoorName(p.gameObject.name);
+                        
                         activeTargetHighlights.Add(new HighlightTargetInfo // ok qua // riga-ok
                         { // apre // riga-ok
                             worldPosition = p.transform.position, // setta // riga-ok
-                            label = "🚪 PORTA SETTORE / EVACUAZIONE", // setta // riga-ok
+                            label = $"🚪 {cleanDoor} / EVACUAZIONE", // setta // riga-ok
                             color = Color.green, // setta // riga-ok
                             targetTransform = p.transform // setta // riga-ok
                         }); // chiama // riga-ok
@@ -463,11 +469,12 @@ public class EmergencyScanner : MonoBehaviour // classe qui // riga-ok
             if (possiedeChiave) // se ok // riga-ok
             { // apre // riga-ok
                 string stato = hotspot.Contenuto ? "CONTENUTO / RIPARATO" : "CRITICO // GUASTO ATTIVO"; // setta // riga-ok
-                Debug.Log($"<color=yellow>[SCANNER]</color> Focolaio analizzato: <b>{hotspot.name}</b> [{stato}] - Chiave [{reqKey}] abilitata."); // logga // riga-ok
+                string cleanName = SceneTopDownMapUI.CleanObjectName(hotspot.name).ToUpper();
+                Debug.Log($"<color=yellow>[SCANNER]</color> Focolaio analizzato: <b>{cleanName}</b> [{stato}] - Chiave [{reqKey}] abilitata."); // logga // riga-ok
                 // blocco: controlla se va
                 if (CyberHUD.Instance != null) // se ok // riga-ok
                 { // apre // riga-ok
-                    CyberHUD.Instance.MostraNotificaAcquisizione("⚠️ FOCOLAIO ANALIZZATO", $"{hotspot.name.ToUpper()} // {stato}"); // chiama // riga-ok
+                    CyberHUD.Instance.MostraNotificaAcquisizione($"⚠️ {cleanName}", $"{stato}"); // chiama // riga-ok
                 } // chiude // riga-ok
             } // chiude // riga-ok
             // blocco: caso diverso

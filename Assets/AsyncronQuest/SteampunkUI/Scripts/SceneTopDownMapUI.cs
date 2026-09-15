@@ -519,17 +519,11 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                     isInteractable = true; // setta // riga-ok
                     nomeTattico = "CANCELLO QUARANTENA"; // setta // riga-ok
                 } // chiude // riga-ok
+                // blocco: rimosso controllo TerminalePorta e DatapadCodiciPorte per non mostrarli sulla mappa
                 // blocco: controlla se va
-                else if (mb is TerminalePorta term) // se ok // riga-ok
+                else if (mb is TerminalePorta || mb is DatapadCodiciPorte) // se ok // riga-ok
                 { // apre // riga-ok
-                    isInteractable = true; // setta // riga-ok
-                    nomeTattico = string.IsNullOrEmpty(term.nomeTerminale) ? "TERMINALE PORTA" : term.nomeTerminale; // setta // riga-ok
-                } // chiude // riga-ok
-                // blocco: controlla se va
-                else if (mb is DatapadCodiciPorte datapad) // se ok // riga-ok
-                { // apre // riga-ok
-                    isInteractable = true; // setta // riga-ok
-                    nomeTattico = string.IsNullOrEmpty(datapad.titoloDatapad) ? "DATAPAD SICUREZZA" : datapad.titoloDatapad; // setta // riga-ok
+                    continue; // salta, non tracciare i pannelli sulla mappa // riga-ok
                 } // chiude // riga-ok
                 // blocco: rimosso controllo CuboNeroTeletrasporto (la mappa non deve mostrare l'uscita in anticipo)
                 // blocco: controlla se va
@@ -537,7 +531,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                 { // apre // riga-ok
                     string rawLower = t.gameObject.name.ToLower(); // setta // riga-ok
                     // blocco: controlla se va
-                    if (!rawLower.Contains("light") && !rawLower.Contains("cam") && !rawLower.Contains("audio") && !rawLower.Contains("sound") && !rawLower.Contains("volume") && !rawLower.Contains("vfx")) // se ok // riga-ok
+                    if (!rawLower.Contains("light") && !rawLower.Contains("cam") && !rawLower.Contains("audio") && !rawLower.Contains("sound") && !rawLower.Contains("volume") && !rawLower.Contains("vfx") && !rawLower.Contains("particle") && !rawLower.Contains("particelle") && !rawLower.Contains("fx") && !rawLower.Contains("spark")) // se ok // riga-ok
                     { // apre // riga-ok
                         isInteractable = true; // setta // riga-ok
                         nomeTattico = CleanObjectName(t.gameObject.name); // setta // riga-ok
@@ -546,8 +540,12 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                 // blocco: controlla se va
                 else if (t.CompareTag("Interactable") || t.gameObject.layer == LayerMask.NameToLayer("Interactable")) // se ok // riga-ok
                 { // apre // riga-ok
-                    isInteractable = true; // setta // riga-ok
-                    nomeTattico = CleanObjectName(t.gameObject.name); // setta // riga-ok
+                    string rawLower = t.gameObject.name.ToLower(); // setta // riga-ok
+                    if (!rawLower.Contains("light") && !rawLower.Contains("cam") && !rawLower.Contains("audio") && !rawLower.Contains("sound") && !rawLower.Contains("vfx") && !rawLower.Contains("particle") && !rawLower.Contains("particelle") && !rawLower.Contains("fx") && !rawLower.Contains("spark")) // se ok // riga-ok
+                    { // apre // riga-ok
+                        isInteractable = true; // setta // riga-ok
+                        nomeTattico = CleanObjectName(t.gameObject.name); // setta // riga-ok
+                    } // chiude // riga-ok
                 } // chiude // riga-ok
 
                 // blocco: controlla se va
@@ -573,8 +571,9 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                     { // apre // riga-ok
                         processedRoots.Add(t); // chiama // riga-ok
                         cachedInteractables.Add(t); // chiama // riga-ok
-                        // blocco: controlla se va
-                        if (nomeTattico.Length > 24) nomeTattico = nomeTattico.Substring(0, 24); // se ok // riga-ok
+                        // FIX LUNGHEZZA: Le etichette della mappa devono essere compatte altrimenti sbordano e si sovrappongono.
+                        // Limite abbassato a 18 caratteri massimi (es: "[E] PAN. CTRL PRINC.")
+                        if (nomeTattico.Length > 18) nomeTattico = nomeTattico.Substring(0, 18).Trim(); // se ok // riga-ok
                         cachedInteractableNames.Add(nomeTattico.ToUpper()); // chiama // riga-ok
                     } // chiude // riga-ok
                 } // chiude // riga-ok
@@ -610,29 +609,91 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
-        private static string CleanDoorName(string raw) // roba pub // riga-ok
+        public static string CleanDoorName(string raw) // roba pub // riga-ok
         { // apre // riga-ok
             // blocco: controlla se va
-            if (string.IsNullOrWhiteSpace(raw)) return "PORTA"; // se ok // riga-ok
+            if (string.IsNullOrWhiteSpace(raw)) return "PRT"; // se ok // riga-ok
             string n = raw.ToUpper().Replace("(CLONE)", "").Replace("_", " ").Trim(); // setta // riga-ok
             n = System.Text.RegularExpressions.Regex.Replace(n, @"(?i)(DEFAULTMATERIAL|MATERIAL|MESH|PREFAB|LOD\d*|\(\d+\))", "").Trim(); // setta // riga-ok
             n = System.Text.RegularExpressions.Regex.Replace(n, @"\s+", " ").Trim(); // setta // riga-ok
+            
+            n = AbbreviaTestoTattico(n); // comprime test // riga-ok
+            
             // blocco: controlla se va
-            if (n.Contains("PORTA") || n.Contains("DOOR") || n.Contains("GATE") || n.Contains("SETTORE")) return n; // se ok // riga-ok
-            return "PORTA " + n; // torna val // riga-ok
+            if (n.Contains("PORTA") || n.Contains("PRT") || n.Contains("DOOR") || n.Contains("GATE") || n.Contains("SET.")) return n; // se ok // riga-ok
+            return "PRT " + n; // torna val // riga-ok
         } // chiude // riga-ok
 
         // blocco: funzione fa cose
-        private static string CleanObjectName(string raw) // roba pub // riga-ok
+        public static string CleanObjectName(string raw) // roba pub // riga-ok
         { // apre // riga-ok
             // blocco: controlla se va
             if (string.IsNullOrWhiteSpace(raw)) return "INTERAGIBILE"; // se ok // riga-ok
-            string n = raw.ToUpper().Replace("(CLONE)", "").Replace("_", " ").Trim(); // setta // riga-ok
-            n = System.Text.RegularExpressions.Regex.Replace(n, @"(?i)(DEFAULTMATERIAL|MATERIAL|MESH|PREFAB|LOD\d*|\(\d+\))", "").Trim(); // setta // riga-ok
+            
+            // Rimuove prefissi e suffissi tipici dei modelli 3D e unity
+            string n = raw.ToUpper().Replace("(CLONE)", "").Replace("_", " ").Replace("-", " ").Trim(); // setta // riga-ok
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"(?i)\b(DEFAULTMATERIAL|MATERIAL|MESH|PREFAB|LOD\d*|SM|ENV|PROP|POLY|LOWPOLY)\b|\(\d+\)", "").Trim(); // setta // riga-ok
+
+            // Traduzione termini comuni inglesi/tecnici -> italiani tattici
+            n = n.Replace("CUBE", "CASSA")
+                 .Replace("CYLINDER", "SERBATOIO")
+                 .Replace("SPHERE", "NUCLEO")
+                 .Replace("CRATE", "CASSA MATERIALI")
+                 .Replace("BOX", "CONTENITORE")
+                 .Replace("DESK", "SCRIVANIA")
+                 .Replace("TABLE", "TAVOLO")
+                 .Replace("CHAIR", "SEDIA")
+                 .Replace("SERVER", "UNITÀ SERVER")
+                 .Replace("COMPUTER", "TERMINALE PC")
+                 .Replace("LAPTOP", "DATAPAD PORTATILE")
+                 .Replace("TERMINAL", "TERMINALE")
+                 .Replace("SCREEN", "SCHERMO")
+                 .Replace("MONITOR", "MONITOR")
+                 .Replace("PANEL", "PANNELLO CONTROLLO")
+                 .Replace("DOOR", "PORTA")
+                 .Replace("GATE", "CANCELLO")
+                 .Replace("RACK", "RACK DATI")
+                 .Replace("GENERATOR", "GENERATORE")
+                 .Replace("REACTOR", "REATTORE")
+                 .Replace("CONSOLE", "CONSOLLE")
+                 .Replace("CABINET", "ARMADIETTO")
+                 .Replace("SHELF", "SCAFFALE")
+                 .Replace("LOCKER", "ARMADIETTO")
+                 .Replace("BARREL", "BARILE")
+                 .Replace("LIGHT", "ILLUMINAZIONE"); // setta // riga-ok
+
+            // Pulisce spazi doppi e numeri isolati rimasti (es. "PORTA 04" -> "PORTA")
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"\b\d{1,3}\b", "").Trim(); // setta // riga-ok
             n = System.Text.RegularExpressions.Regex.Replace(n, @"\s+", " ").Trim(); // setta // riga-ok
+            
+            n = AbbreviaTestoTattico(n); // comprime per UI // riga-ok
+            
             // blocco: controlla se va
-            if (string.IsNullOrWhiteSpace(n)) return "INTERAGIBILE"; // se ok // riga-ok
+            if (string.IsNullOrWhiteSpace(n)) return "INT."; // se ok // riga-ok
             return n; // torna val // riga-ok
+        } // chiude // riga-ok
+
+        public static string AbbreviaTestoTattico(string n) // roba priv // riga-ok
+        { // apre // riga-ok
+            return n.Replace(" DI ", " ") // rimuovi prep // riga-ok
+                    .Replace(" DEL ", " ") // rimuovi prep // riga-ok
+                    .Replace(" DELLA ", " ") // rimuovi prep // riga-ok
+                    .Replace(" DELLO ", " ") // rimuovi prep // riga-ok
+                    .Replace(" IL ", " ") // rimuovi art // riga-ok
+                    .Replace(" LA ", " ") // rimuovi art // riga-ok
+                    .Replace("PANNELLO", "PAN.") // abbrevia // riga-ok
+                    .Replace("CONTROLLO", "CTRL") // abbrevia // riga-ok
+                    .Replace("STANZA", "S.") // abbrevia // riga-ok
+                    .Replace("SETTORE", "SET.") // abbrevia // riga-ok
+                    .Replace("PRINCIPALE", "PRINC.") // abbrevia // riga-ok
+                    .Replace("SICUREZZA", "SICUR.") // abbrevia // riga-ok
+                    .Replace("GENERATORE", "GEN.") // abbrevia // riga-ok
+                    .Replace("PORTA", "PRT") // abbrevia // riga-ok
+                    .Replace("DATA KEY", "CHIAVE") // abbrevia // riga-ok
+                    .Replace("DATAPAD", "PAD") // abbrevia // riga-ok
+                    .Replace(" PORTATILE", "") // rimuovi extra // riga-ok
+                    .Replace(" MATERIALI", "") // rimuovi extra // riga-ok
+                    .Trim(); // setta // riga-ok
         } // chiude // riga-ok
 
         #endregion // prep ok // riga-ok

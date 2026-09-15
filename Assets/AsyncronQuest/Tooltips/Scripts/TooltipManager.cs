@@ -360,6 +360,9 @@ namespace AsyncronQuest.Tooltips // zona cod // riga-ok
             // blocco: controlla se va
             if (inputSystemUiModule != null) // se ok // riga-ok
             { // apre // riga-ok
+                StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // setta // riga-ok
+                if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
+
                 Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
                 // blocco: controlla se va
                 if (!inputModule) // se ok // riga-ok
@@ -379,3 +382,4 @@ namespace AsyncronQuest.Tooltips // zona cod // riga-ok
         } // chiude // riga-ok
     } // chiude // riga-ok
 } // chiude // riga-ok
+

@@ -240,6 +240,7 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         } // chiude // riga-ok
 
         tempoRimanenteCountdown = durataCountdownIniziale; // setta // riga-ok
+        if (timerContainer != null) timerContainer.gameObject.SetActive(timerAttivo); // chiama // riga-ok
 
         SalutePlayer p = Object.FindAnyObjectByType<SalutePlayer>(); // setta // riga-ok
         // blocco: controlla se va
@@ -297,8 +298,11 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         if (timerAttivo && testoTimerValore != null) // se ok // riga-ok
         { // apre // riga-ok
             // blocco: controlla se va
-            if (MissionManager.Instance != null && MissionManager.Instance.MissioneTerminata) // se ok // riga-ok
+            if (MissionManager.Instance != null && (MissionManager.Instance.MissioneTerminata || MissionManager.Instance.EstrazioneSbloccata)) // se ok // riga-ok
             { // apre // riga-ok
+                if (MissionManager.Instance.EstrazioneSbloccata && timerContainer != null && timerContainer.gameObject.activeSelf) // se ok // riga-ok
+                    timerContainer.gameObject.SetActive(false); // chiama // riga-ok
+
                 return; // torna val // riga-ok
             } // chiude // riga-ok
 
@@ -632,11 +636,42 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     private void ApriTutorialPanel() // roba pub // riga-ok
     { // apre // riga-ok
         if (tutorialPanelGroup == null) return; // se ok // riga-ok
+        EnsureEventSystem(); // FIX: assicura che il mouse funzioni! // riga-ok
         if (!ModalUIState.TryOpen(TutorialModalOwner)) return; // se ok // riga-ok
         tutorialAperto = true; // setta // riga-ok
         tutorialPanelGroup.alpha = 1f; // setta // riga-ok
         tutorialPanelGroup.interactable = true; // setta // riga-ok
         tutorialPanelGroup.blocksRaycasts = true; // setta // riga-ok
+    } // chiude // riga-ok
+
+    // blocco: prepara click ui
+    private static void EnsureEventSystem() // roba pub // riga-ok
+    { // apre // riga-ok
+        UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current; // setta // riga-ok
+        if (eventSystem == null) // se ok // riga-ok
+        { // apre // riga-ok
+            eventSystem = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem)).GetComponent<UnityEngine.EventSystems.EventSystem>(); // setta // riga-ok
+        } // chiude // riga-ok
+
+        System.Type inputSystemUiModule = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem"); // setta // riga-ok
+        if (inputSystemUiModule != null) // se ok // riga-ok
+        { // apre // riga-ok
+            UnityEngine.EventSystems.StandaloneInputModule oldModule = eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>(); // setta // riga-ok
+            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
+
+            Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
+            if (!inputModule) // se ok // riga-ok
+                inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule); // setta // riga-ok
+
+            if (inputModule is Behaviour behaviour) // se ok // riga-ok
+                behaviour.enabled = true; // setta // riga-ok
+
+            inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null); // chiama // riga-ok
+        } // chiude // riga-ok
+        else if (!eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>()) // se ok // riga-ok
+        { // apre // riga-ok
+            eventSystem.gameObject.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>(); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: nasconde tutorial

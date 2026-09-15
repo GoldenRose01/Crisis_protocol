@@ -38,6 +38,10 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
     [Tooltip("Se true, il tastierino PIN è guasto o bloccato elettronicamente: digitare il PIN fallisce ed è OBBLIGATORIO aprire la porta tramite il Minigioco di Bypass Circuiti.")] // nota unity // riga-ok
     public bool pinGuastoRichiedeBypass = false; // roba pub // riga-ok
 
+    [Header("Quarantena / Estrazione")] // nota unity // riga-ok
+    [Tooltip("Se true, la porta si rifiuterà di aprirsi (anche con PIN corretto) finché non sono state risolte tutte le emergenze nel settore.")] // nota unity // riga-ok
+    public bool richiedeEmergenzaRisolta = false; // roba pub // riga-ok
+
     [Header("Feedback Visivo Monitor")] // nota unity // riga-ok
     [Tooltip("Renderer dello schermo del monitor per cambiare colore (Rosso = Bloccato, Verde = Sbloccato).")] // nota unity // riga-ok
     public Renderer monitorRenderer; // roba pub // riga-ok

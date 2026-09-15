@@ -10,6 +10,7 @@ using System.Collections; // usa lib // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.UI; // usa lib // riga-ok
 using UnityEngine.SceneManagement; // usa lib // riga-ok
+using CrisisProtocol.UI;
 
 // blocco: classe x roba grossa
 public class SectorTitleOverlay : MonoBehaviour // classe qui // riga-ok
@@ -44,13 +45,28 @@ public class SectorTitleOverlay : MonoBehaviour // classe qui // riga-ok
         
         CostruisciUI(); // chiama // riga-ok
         SceneManager.sceneLoaded += OnSceneLoaded; // setta // riga-ok
+        ModalUIState.ModalOpened += OnModalOpened; // setta
+        ModalUIState.ModalClosed += OnModalClosed; // setta
     } // chiude // riga-ok
 
     // blocco: funzione fa cose
     private void OnDestroy() // roba pub // riga-ok
     { // apre // riga-ok
         SceneManager.sceneLoaded -= OnSceneLoaded; // setta // riga-ok
+        ModalUIState.ModalOpened -= OnModalOpened; // setta
+        ModalUIState.ModalClosed -= OnModalClosed; // setta
     } // chiude // riga-ok
+
+    // blocco: gestisce visibilita con modali
+    private void OnModalOpened(string owner)
+    {
+        if (canvas != null) canvas.enabled = false;
+    }
+
+    private void OnModalClosed(string owner)
+    {
+        if (canvas != null) canvas.enabled = true;
+    }
 
     // blocco: funzione fa cose
     private void CostruisciUI() // roba pub // riga-ok
@@ -121,31 +137,31 @@ public class SectorTitleOverlay : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     private IEnumerator EseguiFadeInFadeOut() // roba pub // riga-ok
     { // apre // riga-ok
-        // 1. Aspetta un secondo all'inizio
+        // 1. Aspetta un secondo all'inizio (usa tempo reale per non bloccarsi con mappa aperta)
         canvasGroup.alpha = 0f; // setta // riga-ok
-        yield return new WaitForSeconds(1f); // aspetta // riga-ok
+        yield return new WaitForSecondsRealtime(1f); // aspetta // riga-ok
 
         // 2. Fade In
         float timer = 0f; // setta // riga-ok
         // blocco: gira piu volte
-        while (timer < 2f) // ciclo x // riga-ok
+        while (timer < 1f) // ciclo x // riga-ok
         { // apre // riga-ok
-            timer += Time.deltaTime; // setta // riga-ok
-            canvasGroup.alpha = Mathf.Lerp(0f, 1f, timer / 2f); // setta // riga-ok
+            timer += Time.unscaledDeltaTime; // setta // riga-ok
+            canvasGroup.alpha = Mathf.Lerp(0f, 1f, timer / 1f); // setta // riga-ok
             yield return null; // aspetta // riga-ok
         } // chiude // riga-ok
         canvasGroup.alpha = 1f; // setta // riga-ok
 
         // 3. Mantieni visibile
-        yield return new WaitForSeconds(4f); // aspetta // riga-ok
+        yield return new WaitForSecondsRealtime(2.5f); // aspetta // riga-ok
 
         // 4. Fade Out
         timer = 0f; // setta // riga-ok
         // blocco: gira piu volte
-        while (timer < 2.5f) // ciclo x // riga-ok
+        while (timer < 1f) // ciclo x // riga-ok
         { // apre // riga-ok
-            timer += Time.deltaTime; // setta // riga-ok
-            canvasGroup.alpha = Mathf.Lerp(1f, 0f, timer / 2.5f); // setta // riga-ok
+            timer += Time.unscaledDeltaTime; // setta // riga-ok
+            canvasGroup.alpha = Mathf.Lerp(1f, 0f, timer / 1f); // setta // riga-ok
             yield return null; // aspetta // riga-ok
         } // chiude // riga-ok
         canvasGroup.alpha = 0f; // setta // riga-ok

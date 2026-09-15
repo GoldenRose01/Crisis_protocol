@@ -766,6 +766,14 @@ PrefabInstance:
       value: 0909
       objectReference: {fileID: 0}
     - target: {fileID: 1354384235284616342, guid: 2e802287c3278604492eaba3e1557d08, type: 3}
+      propertyPath: nomeTerminale
+      value: "PANNELLO USCIT\xE0"
+      objectReference: {fileID: 0}
+    - target: {fileID: 1354384235284616342, guid: 2e802287c3278604492eaba3e1557d08, type: 3}
+      propertyPath: richiedeEmergenzaRisolta
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1354384235284616342, guid: 2e802287c3278604492eaba3e1557d08, type: 3}
       propertyPath: porteCollegate.Array.size
       value: 2
       objectReference: {fileID: 0}
@@ -819,7 +827,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6728164403618460951, guid: 2e802287c3278604492eaba3e1557d08, type: 3}
       propertyPath: m_Name
-      value: ScifiKeypad (1)
+      value: "panello uscit\xE0"
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -7134,7 +7142,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -6689036041284674117, guid: 2325aa1dcacbd3f4eb67c597fd0cfefc, type: 3}
       propertyPath: m_Name
-      value: cistern (1)
+      value: servatoio gas rifirigernate
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: 2325aa1dcacbd3f4eb67c597fd0cfefc, type: 3}
       propertyPath: m_Layer
@@ -8393,6 +8401,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
+      propertyPath: displayName
+      value: 'Data Key servatio '
+      objectReference: {fileID: 0}
     - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
       propertyPath: credentialId
       value: KEYCARD_A22
@@ -13568,7 +13580,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1344841424702362, guid: 0148ffd7deccd8c47acc83fa5f3969da, type: 3}
       propertyPath: m_Name
-      value: Sparks
+      value: cavo eletrico scoperto
       objectReference: {fileID: 0}
     - target: {fileID: 4606042060699818, guid: 0148ffd7deccd8c47acc83fa5f3969da, type: 3}
       propertyPath: m_LocalScale.x
@@ -32392,7 +32404,7 @@ GameObject:
   - component: {fileID: 872401030}
   - component: {fileID: 872401031}
   m_Layer: 9
-  m_Name: GameObject
+  m_Name: cavo eletrico scoperto
   m_TagString: EmergencyHotspot
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -32407,7 +32419,7 @@ Transform:
   m_GameObject: {fileID: 872401028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.00314, y: -0.00166, z: 0.00282}
+  m_LocalPosition: {x: 0.00314, y: -0.00173, z: 0.00282}
   m_LocalScale: {x: 2.52, y: 2.52, z: 2.52}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -32472,6 +32484,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 632933986532392532, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
+      propertyPath: m_Name
+      value: "uscit\xE0"
+      objectReference: {fileID: 0}
+    - target: {fileID: 986176168278664205, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
+      propertyPath: m_Name
+      value: "uscit\xE0"
+      objectReference: {fileID: 0}
     - target: {fileID: 1016021537942322108, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
       propertyPath: portaId
       value: DOOR_S0_000
@@ -45452,7 +45472,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: 63f2978fa6017f245833ba3cb7a66f0d, type: 3}
       propertyPath: m_Name
-      value: server_box
+      value: Pin List
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: 63f2978fa6017f245833ba3cb7a66f0d, type: 3}
       propertyPath: m_Layer
@@ -47840,6 +47860,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
+      propertyPath: displayName
+      value: Data Key cavo eletrico
+      objectReference: {fileID: 0}
     - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
       propertyPath: credentialId
       value: KEYCARD_A21

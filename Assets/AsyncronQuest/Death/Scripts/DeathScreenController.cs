@@ -502,6 +502,9 @@ public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-
         // blocco: controlla se va
         if (inputSystemUiModule != null) // se ok // riga-ok
         { // apre // riga-ok
+            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // setta // riga-ok
+            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
+
             Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
             // blocco: controlla se va
             if (!inputModule) // se ok // riga-ok
@@ -535,3 +538,4 @@ public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-
     } // chiude // riga-ok
 #endif // prep ok // riga-ok
 } // chiude // riga-ok
+

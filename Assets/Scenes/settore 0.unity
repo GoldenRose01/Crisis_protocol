@@ -359,6 +359,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
+      propertyPath: displayName
+      value: Data Key pan. di controllo
+      objectReference: {fileID: 0}
+    - target: {fileID: 844426195757540784, guid: 3eab82f2d4e2dc04ea86b2970feb8efb, type: 3}
       propertyPath: credentialId
       value: KEYCARD_A12
       objectReference: {fileID: 0}
@@ -3180,7 +3184,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -6689036041284674117, guid: be41cc3e5a8f7f447a4b6e13cca249b9, type: 3}
       propertyPath: m_Name
-      value: futuristic_free-standing_terminal
+      value: 'Pannello di controllo '
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: be41cc3e5a8f7f447a4b6e13cca249b9, type: 3}
       propertyPath: m_TagString
@@ -3297,6 +3301,10 @@ PrefabInstance:
     - target: {fileID: 2774220344278030320, guid: be41cc3e5a8f7f447a4b6e13cca249b9, type: 3}
       propertyPath: m_ConstrainProportionsScale
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5325216810380140401, guid: be41cc3e5a8f7f447a4b6e13cca249b9, type: 3}
+      propertyPath: m_Name
+      value: 'Pannello di controllo '
       objectReference: {fileID: 0}
     - target: {fileID: 5325216810380140401, guid: be41cc3e5a8f7f447a4b6e13cca249b9, type: 3}
       propertyPath: m_TagString
@@ -6654,6 +6662,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 632933986532392532, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
+      propertyPath: m_Name
+      value: "uscit\xE0"
+      objectReference: {fileID: 0}
+    - target: {fileID: 986176168278664205, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
+      propertyPath: m_Name
+      value: "uscit\xE0"
+      objectReference: {fileID: 0}
     - target: {fileID: 1016021537942322108, guid: 6a3cd7ce7e49d3040b782cbbdd057013, type: 3}
       propertyPath: aperturaAInterazione
       value: 0
@@ -14784,7 +14800,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 843ef2d9a85f81a43bf3243e531d1a40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hotspotId: REACTOR_FAULT_12
+  hotspotId: Pannello di controllo
   requiredCredentialId: KEYCARD_A12
   applicaTagAutomatico: 1
   modalitaVisiva: 0

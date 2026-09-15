@@ -232,6 +232,14 @@ public class TerminalePortaUI : MonoBehaviour // classe qui // riga-ok
         // blocco: controlla se va
         if (terminaleAttivo == null || inAnimazioneErroreCritico) return; // se ok // riga-ok
 
+        // Verifica quarantena
+        // blocco: controlla se va
+        if (terminaleAttivo.richiedeEmergenzaRisolta && MissionManager.Instance != null && !MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
+        { // apre // riga-ok
+            StartCoroutine(SequenzaErrore("IMPOSSIBILE APRIRE // EMERGENZA IN CORSO")); // corutina // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
+
         // Se il terminale ha il tastierino guasto, fa inserire il PIN ma subito dopo scatena l'ERRORE CRITICO e passa al bypass
         // blocco: controlla se va
         if (terminaleAttivo.pinGuastoRichiedeBypass) // se ok // riga-ok
@@ -411,6 +419,15 @@ public class TerminalePortaUI : MonoBehaviour // classe qui // riga-ok
     { // apre // riga-ok
         // blocco: controlla se va
         if (!bypassInCorso || bypassCompletato) return; // se ok // riga-ok
+        if (terminaleAttivo != null && terminaleAttivo.richiedeEmergenzaRisolta && MissionManager.Instance != null && !MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
+        { // apre // riga-ok
+            StartCoroutine(FlashNodo(false)); // corutina // riga-ok
+            if (testoStatoMessaggio != null) { // apre // riga-ok
+                testoStatoMessaggio.text = "✗ IMPOSSIBILE APRIRE // EMERGENZA IN CORSO"; // setta // riga-ok
+                testoStatoMessaggio.color = Color.red; // setta // riga-ok
+            } // chiude // riga-ok
+            return; // torna val // riga-ok
+        } // chiude // riga-ok
 
         float posizioneAttuale = barraOscillatore.anchoredPosition.x; // setta // riga-ok
 

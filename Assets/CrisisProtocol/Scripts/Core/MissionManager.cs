@@ -118,9 +118,9 @@ public class MissionManager : MonoBehaviour // classe qui // riga-ok
     // blocco: funzione fa cose
     private void Update() // roba pub // riga-ok
     { // apre // riga-ok
-        // Hotkey di debug rapido
+        // Hotkey di debug rapido (DISABILITATO)
         // blocco: controlla se va
-        if (Input.GetKeyDown(KeyCode.F4)) // se ok // riga-ok
+        if (false && Input.GetKeyDown(KeyCode.F4)) // se ok // riga-ok
         { // apre // riga-ok
             Debug.LogWarning("[DEBUG] Tasto F4 premuto: Risoluzione emergenza e completamento totale task."); // logga // riga-ok
             RisolviStatoEmergenzaETuttiTaskDebug(); // chiama // riga-ok
