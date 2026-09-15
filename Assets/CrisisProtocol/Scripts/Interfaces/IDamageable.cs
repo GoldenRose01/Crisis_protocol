@@ -7,12 +7,12 @@
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
 // IDamageable.cs
-// blocco: regole x tutti
-public interface IDamageable // contratto // riga-ok
-{ // apre // riga-ok
+// Contratto minimo condiviso: ogni implementazione decide i dettagli, ma espone questa API.
+public interface IDamageable
+{
     /// <summary>
     /// Applica una quantità specifica di danno all'entità colpita.
     /// </summary>
     /// <param name="quantitaDanno">Punti vita da sottrarre.</param>
-    void SubisciDanno(float quantitaDanno); // chiama // riga-ok
-} // chiude // riga-ok
+    void SubisciDanno(float quantitaDanno);
+}

@@ -6,12 +6,11 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using System.Collections; // usa lib // riga-ok
-using System.Collections.Generic; // usa lib // riga-ok
-using CrisisProtocol.UI; // usa hud // riga-ok
-using UnityEngine; // usa lib // riga-ok
-using UnityEngine.UI; // usa lib // riga-ok
-
+using System.Collections;
+using System.Collections.Generic;
+using CrisisProtocol.UI;
+using UnityEngine;
+using UnityEngine.UI;
 /// <summary>
 /// HUD Cybernetico avanzato in stile Visore Robot:
 /// 1. Barra della Vita LCD Verde a celle (Stato di Carica Batteria).
@@ -20,536 +19,443 @@ using UnityEngine.UI; // usa lib // riga-ok
 /// 4. Notifiche Olografiche di Acquisizione Keycard a schermo.
 /// Si avvia e si mostra IMMEDIATAMENTE all'inizio di ogni scena.
 /// </summary>
-// blocco: classe x roba grossa
-public class CyberHUD : MonoBehaviour // classe qui // riga-ok
-{ // apre // riga-ok
-    private static CyberHUD instance; // roba pub // riga-ok
-    public static CyberHUD Instance // roba pub // riga-ok
-    { // apre // riga-ok
-        get // ok qua // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (instance == null) // se ok // riga-ok
-            { // apre // riga-ok
-                instance = Object.FindAnyObjectByType<CyberHUD>(); // setta // riga-ok
-                // blocco: controlla se va
-                if (instance == null) // se ok // riga-ok
-                { // apre // riga-ok
-                    GameObject go = new GameObject("CyberHUD_System"); // setta // riga-ok
-                    instance = go.AddComponent<CyberHUD>(); // setta // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-            return instance; // torna val // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
+public class CyberHUD : MonoBehaviour
+{
+    private static CyberHUD instance;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)] // nota unity // riga-ok
-    // blocco: funzione fa cose
-    private static void AutoAvviaHUDSuCaricamentoScena() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (Instance != null) // se ok // riga-ok
-        { // apre // riga-ok
-            Instance.InizializzaStatoIniziale(); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
+    // Accesso globale controllato: HUD e player possono chiamarlo senza avere
+    // riferimenti in scena. Se manca, lo crea, utile nei test avviati da scene singole.
+    public static CyberHUD Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = Object.FindAnyObjectByType<CyberHUD>();
+                if (instance == null)
+                {
+                    GameObject go = new GameObject("CyberHUD_System");
+                    instance = go.AddComponent<CyberHUD>();
+                }
+            }
+            return instance;
+        }
+    }
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void AutoAvviaHUDSuCaricamentoScena()
+    {
+        // Unity chiama questo dopo ogni load: ci garantisce che HUD e stato scena
+        // tornino coerenti anche quando si salta direttamente da menu a settore.
+        if (Instance != null)
+        {
+            Instance.InizializzaStatoIniziale();
+        }
+    }
+    [Header("Colori Palette Cyber/Neon")]
+    public Color neonGreen = new Color(0.15f, 1f, 0.25f, 1f);
+    public Color neonGreenDim = new Color(0.1f, 0.5f, 0.15f, 0.35f);
+    public Color darkGlass = new Color(0.02f, 0.06f, 0.04f, 0.85f);
+    public Color warningRed = new Color(1f, 0.2f, 0.1f, 1f);
+    public Color textCyan = new Color(0.4f, 0.95f, 1f, 1f);
+    // Oggetti principali della UI generata runtime. Il progetto non dipende da
+    // prefab HUD obbligatori: lo script costruisce tutto e poi aggiorna i pezzi.
+    private Canvas hudCanvas;
+    private CanvasScaler hudScaler;
 
-    [Header("Colori Palette Cyber/Neon")] // nota unity // riga-ok
-    public Color neonGreen = new Color(0.15f, 1f, 0.25f, 1f); // roba pub // riga-ok
-    public Color neonGreenDim = new Color(0.1f, 0.5f, 0.15f, 0.35f); // roba pub // riga-ok
-    public Color darkGlass = new Color(0.02f, 0.06f, 0.04f, 0.85f); // roba pub // riga-ok
-    public Color warningRed = new Color(1f, 0.2f, 0.1f, 1f); // roba pub // riga-ok
-    public Color textCyan = new Color(0.4f, 0.95f, 1f, 1f); // roba pub // riga-ok
-
-    // Canvas & UI Components
-    private Canvas hudCanvas; // roba pub // riga-ok
-    private CanvasScaler hudScaler; // roba pub // riga-ok
-
-    // 1. Barra Vita Batteria LCD
-    private RectTransform batteryContainer; // roba pub // riga-ok
-    private Image[] batterySegments; // roba pub // riga-ok
-    private Text testoPercentualeHP; // roba pub // riga-ok
-    private Text testoDettaglioHP; // roba pub // riga-ok
-    private const int NUM_SEGMENTI = 10; // roba pub // riga-ok
-    private float hpCorrenti = 100f; // roba pub // riga-ok
-    private float hpMassimi = 100f; // roba pub // riga-ok
-
-    // 2. Mirino Visore Robotico
-    private RectTransform visorReticleContainer; // roba pub // riga-ok
-    private RectTransform reticleRing; // roba pub // riga-ok
-    private Image reticleCenterDot; // roba pub // riga-ok
-    private Image[] reticleBrackets; // roba pub // riga-ok
-    private Text reticleStatusText; // roba pub // riga-ok
-    private bool isTargetLocked = false; // roba pub // riga-ok
-    private float reticleRotationSpeed = 25f; // roba pub // riga-ok
-
-    // 3. Prompt di Prossimità [E]
-    private RectTransform promptPanel; // roba pub // riga-ok
-    private CanvasGroup promptCanvasGroup; // roba pub // riga-ok
-    private Text promptTitleText; // roba pub // riga-ok
-    private Text promptActionText; // roba pub // riga-ok
-    private Image promptKeyBadge; // roba pub // riga-ok
-    private Text promptKeyText; // roba pub // riga-ok
-
-    // 4. Banner Notifica Acquisizione Keycard
-    private RectTransform notificaPanel; // roba pub // riga-ok
-    private CanvasGroup notificaCanvasGroup; // roba pub // riga-ok
-    private Text notificaTitleText; // roba pub // riga-ok
-    private Text notificaSubText; // roba pub // riga-ok
-    private Coroutine notificaCoroutine; // roba pub // riga-ok
-
+    // Barra vita stile batteria: segmenti separati = feedback più leggibile
+    // rispetto a una barra continua quando il player prende danni.
+    private RectTransform batteryContainer;
+    private Image[] batterySegments;
+    private Text testoPercentualeHP;
+    private Text testoDettaglioHP;
+    private const int NUM_SEGMENTI = 10;
+    private float hpCorrenti = 100f;
+    private float hpMassimi = 100f;
+    // Mirino centrale: comunica target lock/interazione senza usare cursore mouse.
+    private RectTransform visorReticleContainer;
+    private RectTransform reticleRing;
+    private Image reticleCenterDot;
+    private Image[] reticleBrackets;
+    private Text reticleStatusText;
+    private bool isTargetLocked = false;
+    private float reticleRotationSpeed = 25f;
+    // Prompt di prossimità: viene pilotato da PlayerInteract e resta separato
+    // dalle modali, così non entra in conflitto con datapad o terminali.
+    private RectTransform promptPanel;
+    private CanvasGroup promptCanvasGroup;
+    private Text promptTitleText;
+    private Text promptActionText;
+    private Image promptKeyBadge;
+    private Text promptKeyText;
+    // Banner brevi: danno feedback immediato senza fermare il player.
+    private RectTransform notificaPanel;
+    private CanvasGroup notificaCanvasGroup;
+    private Text notificaTitleText;
+    private Text notificaSubText;
+    private Coroutine notificaCoroutine;
     // 4b. Banner Hint Credenziali (icona terminale lampeggiante)
-    private RectTransform hintCredenzialiPanel; // roba pub // riga-ok
-    private CanvasGroup hintCredenzialiGroup; // roba pub // riga-ok
-    private Text hintCredenzialiTesto; // roba pub // riga-ok
-    private Image hintIconaTerminale; // roba pub // riga-ok
-    private Coroutine hintCredenzialiCoroutine; // roba pub // riga-ok
-
+    private RectTransform hintCredenzialiPanel;
+    private CanvasGroup hintCredenzialiGroup;
+    private Text hintCredenzialiTesto;
+    private Image hintIconaTerminale;
+    private Coroutine hintCredenzialiCoroutine;
     // 4c. Banner Hint Tutorial Dinamico (lampeggiante, in alto/centro)
-    private RectTransform hintTutorialPanel; // roba pub // riga-ok
-    private CanvasGroup hintTutorialGroup; // roba pub // riga-ok
-    private Text hintTutorialTesto; // roba pub // riga-ok
-    private Image hintIconaTutorial; // roba pub // riga-ok
-    private Coroutine hintTutorialCoroutine; // roba pub // riga-ok
-
-    // 5. Flash e Feedback Impatto Danni
-    private CanvasGroup damageFlashGroup; // roba pub // riga-ok
-    private Coroutine damageFlashCoroutine; // roba pub // riga-ok
-
-    // 6. Cyber Countdown Timer Panel (In alto a destra)
-    [Header("Configurazione Countdown (Inspector)")] // nota unity // riga-ok
-    [Tooltip("Durata del timer di missione in MINUTI (regolabile da qui: es. 5 = 5:00, 3 = 3:00, 10 = 10:00).")] // nota unity // riga-ok
-    [SerializeField] [Range(0.5f, 60f)] private float durataInMinuti = 5f; // setta // riga-ok
-    [Tooltip("Secondi totali calcolati per il countdown.")] // nota unity // riga-ok
-    public float durataCountdownIniziale = 300f; // roba pub // riga-ok
-    [Tooltip("Abilita o disabilita il conteggio all'indietro del timer.")] // nota unity // riga-ok
-    [SerializeField] private bool timerAttivo = true; // setta // riga-ok
-    [Tooltip("Se true, provoca la sconfitta immediata allo scadere del timer (00:00.0).")] // nota unity // riga-ok
-    [SerializeField] private bool sconfittaATempoScaduto = true; // setta // riga-ok
-    [Tooltip("Se true, usa le impostazioni specificate qui su CyberHUD invece di ereditare quelle di MissionManager.")] // nota unity // riga-ok
-    [SerializeField] private bool forzaImpostazioniLocaliHUD = false; // setta // riga-ok
-
-    private RectTransform timerContainer; // roba pub // riga-ok
-    private Text testoTimerValore; // roba pub // riga-ok
-    private Text testoTimerStatus; // roba pub // riga-ok
-    private float tempoRimanenteCountdown = 300f; // roba pub // riga-ok
-
-    // 7. Pulsante tutorial rapido (ingranaggio HUD)
-    private const string TutorialModalOwner = "HudTutorial"; // roba pub // riga-ok
-    private RectTransform tutorialButtonContainer; // roba pub // riga-ok
-    private RectTransform tutorialPanel; // roba pub // riga-ok
-    private CanvasGroup tutorialPanelGroup; // roba pub // riga-ok
-    private bool tutorialAperto = false; // roba pub // riga-ok
-    [SerializeField] private KeyCode tastoTutorial = KeyCode.F1; // setta // riga-ok
-
-    public float TempoRimanente => tempoRimanenteCountdown; // roba pub // riga-ok
-    // blocco: funzione fa cose
-    public void ImpostaCountdown(float secondi) { durataCountdownIniziale = secondi; durataInMinuti = secondi / 60f; tempoRimanenteCountdown = secondi; } // roba pub // riga-ok
-    // blocco: funzione fa cose
-    public void ResetCountdown() => tempoRimanenteCountdown = durataCountdownIniziale; // roba pub // riga-ok
-    // blocco: funzione fa cose
-    public void SetTimerAttivo(bool attivo) => timerAttivo = attivo; // roba pub // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnValidate() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (durataInMinuti > 0f) // se ok // riga-ok
-        { // apre // riga-ok
-            durataCountdownIniziale = durataInMinuti * 60f; // setta // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void Awake() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (instance != null && instance != this) // se ok // riga-ok
-        { // apre // riga-ok
-            Destroy(gameObject); // elimina // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-        instance = this; // setta // riga-ok
-        DontDestroyOnLoad(gameObject); // chiama // riga-ok
-
-        CostruisciHUDCompleto(); // chiama // riga-ok
-        InizializzaStatoIniziale(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnEnable() // roba pub // riga-ok
-    { // apre // riga-ok
-        SalutePlayer.OnSaluteCambiata += OnSaluteAggiornata; // setta // riga-ok
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded; // setta // riga-ok
-        InizializzaStatoIniziale(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnDisable() // roba pub // riga-ok
-    { // apre // riga-ok
-        SalutePlayer.OnSaluteCambiata -= OnSaluteAggiornata; // setta // riga-ok
-        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded; // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode) // roba pub // riga-ok
-    { // apre // riga-ok
-        InizializzaStatoIniziale(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void Start() // roba pub // riga-ok
-    { // apre // riga-ok
-        InizializzaStatoIniziale(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    public void InizializzaStatoIniziale() // roba pub // riga-ok
-    { // apre // riga-ok
-        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; // setta // riga-ok
-        // blocco: controlla se va
-        if (currentScene == "MainMenu-Scene") // se ok // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (hudCanvas != null) hudCanvas.enabled = false; // se ok // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (hudCanvas != null) hudCanvas.enabled = true; // se ok // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (MissionManager.Instance != null && !forzaImpostazioniLocaliHUD) // se ok // riga-ok
-        { // apre // riga-ok
-            timerAttivo = MissionManager.Instance.UsaTempoLimite; // setta // riga-ok
-            durataInMinuti = MissionManager.Instance.TempoLimiteMinuti; // setta // riga-ok
-            durataCountdownIniziale = MissionManager.Instance.TempoLimiteSecondi; // setta // riga-ok
-            sconfittaATempoScaduto = MissionManager.Instance.SconfittaAScadenzaTimer; // setta // riga-ok
-        } // chiude // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (durataInMinuti > 0f) // se ok // riga-ok
-            { // apre // riga-ok
-                durataCountdownIniziale = durataInMinuti * 60f; // setta // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        tempoRimanenteCountdown = durataCountdownIniziale; // setta // riga-ok
-        if (timerContainer != null) timerContainer.gameObject.SetActive(timerAttivo); // chiama // riga-ok
-
-        SalutePlayer p = Object.FindAnyObjectByType<SalutePlayer>(); // setta // riga-ok
-        // blocco: controlla se va
-        if (p != null) // se ok // riga-ok
-        { // apre // riga-ok
-            OnSaluteAggiornata(p.SaluteAttuale > 0 ? p.SaluteAttuale : p.puntiVitaMassimi, p.puntiVitaMassimi); // chiama // riga-ok
-        } // chiude // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-        { // apre // riga-ok
-            OnSaluteAggiornata(100f, 100f); // chiama // riga-ok
-        } // chiude // riga-ok
-
-        SetTargetLocked(false); // chiama // riga-ok
-
+    private RectTransform hintTutorialPanel;
+    private CanvasGroup hintTutorialGroup;
+    private Text hintTutorialTesto;
+    private Image hintIconaTutorial;
+    private Coroutine hintTutorialCoroutine;
+    // Flash danni: overlay temporaneo, niente stato persistente.
+    private CanvasGroup damageFlashGroup;
+    private Coroutine damageFlashCoroutine;
+    // Timer missione: può ereditare dal MissionManager o usare valori locali.
+    // Questo è comodo in prototipo, dove ogni scena può avere tuning diverso.
+    [Header("Configurazione Countdown (Inspector)")]
+    [Tooltip("Durata del timer di missione in MINUTI (regolabile da qui: es. 5 = 5:00, 3 = 3:00, 10 = 10:00).")]
+    [SerializeField] [Range(0.5f, 60f)] private float durataInMinuti = 5f;
+    [Tooltip("Secondi totali calcolati per il countdown.")]
+    public float durataCountdownIniziale = 300f;
+    [Tooltip("Abilita o disabilita il conteggio all'indietro del timer.")]
+    [SerializeField] private bool timerAttivo = true;
+    [Tooltip("Se true, provoca la sconfitta immediata allo scadere del timer (00:00.0).")]
+    [SerializeField] private bool sconfittaATempoScaduto = true;
+    [Tooltip("Se true, usa le impostazioni specificate qui su CyberHUD invece di ereditare quelle di MissionManager.")]
+    [SerializeField] private bool forzaImpostazioniLocaliHUD = false;
+    private RectTransform timerContainer;
+    private Text testoTimerValore;
+    private Text testoTimerStatus;
+    private float tempoRimanenteCountdown = 300f;
+    // Tutorial HUD: F1 è la via principale perché in gioco il cursore può essere
+    // bloccato. Il bottone resta come affordance visiva quando la UI è cliccabile.
+    private const string TutorialModalOwner = "HudTutorial";
+    private RectTransform tutorialButtonContainer;
+    private RectTransform tutorialPanel;
+    private CanvasGroup tutorialPanelGroup;
+    private bool tutorialAperto = false;
+    [SerializeField] private KeyCode tastoTutorial = KeyCode.F1;
+    public float TempoRimanente => tempoRimanenteCountdown;
+    public void ImpostaCountdown(float secondi) { durataCountdownIniziale = secondi; durataInMinuti = secondi / 60f; tempoRimanenteCountdown = secondi; }
+    public void ResetCountdown() => tempoRimanenteCountdown = durataCountdownIniziale;
+    public void SetTimerAttivo(bool attivo) => timerAttivo = attivo;
+    private void OnValidate()
+    {
+        if (durataInMinuti > 0f)
+        {
+            durataCountdownIniziale = durataInMinuti * 60f;
+        }
+    }
+    private void Awake()
+    {
+        // HUD persistente: evita ricostruzioni complete tra settore 0/1/2 e
+        // mantiene coerenti notifiche, timer e riferimenti base.
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+        CostruisciHUDCompleto();
+        InizializzaStatoIniziale();
+    }
+    private void OnEnable()
+    {
+        SalutePlayer.OnSaluteCambiata += OnSaluteAggiornata;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        InizializzaStatoIniziale();
+    }
+    private void OnDisable()
+    {
+        SalutePlayer.OnSaluteCambiata -= OnSaluteAggiornata;
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        InizializzaStatoIniziale();
+    }
+    private void Start()
+    {
+        InizializzaStatoIniziale();
+    }
+    public void InizializzaStatoIniziale()
+    {
+        // Il main menu non deve mostrare HUD gameplay. Ogni rientro in scena passa
+        // da qui, quindi è il punto unico per accendere/spegnere il cockpit.
+        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (currentScene == "MainMenu-Scene")
+        {
+            if (hudCanvas != null) hudCanvas.enabled = false;
+            return;
+        }
+        else
+        {
+            if (hudCanvas != null) hudCanvas.enabled = true;
+        }
+        if (MissionManager.Instance != null && !forzaImpostazioniLocaliHUD)
+        {
+            timerAttivo = MissionManager.Instance.UsaTempoLimite;
+            durataInMinuti = MissionManager.Instance.TempoLimiteMinuti;
+            durataCountdownIniziale = MissionManager.Instance.TempoLimiteSecondi;
+            sconfittaATempoScaduto = MissionManager.Instance.SconfittaAScadenzaTimer;
+        }
+        else
+        {
+            if (durataInMinuti > 0f)
+            {
+                durataCountdownIniziale = durataInMinuti * 60f;
+            }
+        }
+        tempoRimanenteCountdown = durataCountdownIniziale;
+        if (timerContainer != null) timerContainer.gameObject.SetActive(timerAttivo);
+        SalutePlayer p = Object.FindAnyObjectByType<SalutePlayer>();
+        if (p != null)
+        {
+            OnSaluteAggiornata(p.SaluteAttuale > 0 ? p.SaluteAttuale : p.puntiVitaMassimi, p.puntiVitaMassimi);
+        }
+        else
+        {
+            OnSaluteAggiornata(100f, 100f);
+        }
+        SetTargetLocked(false);
         // LOGICA TUTORIAL DINAMICO SU CARICAMENTO SETTORE
-        string sceneNameLow = currentScene.ToLower(); // setta // riga-ok
-        if (sceneNameLow.Contains("settore 0")) // se ok // riga-ok
-        { // apre // riga-ok
-            MostraHintTutorial("TUTORIAL: Usa [W][A][S][D] per muoverti, il Mouse per la visuale, [E] per interagire,[Q] per scansionare l'ambiente , [ESC] per pausa/mappa."); // chiama // riga-ok
-        } // chiude // riga-ok
-        else if (sceneNameLow.Contains("settore 1")) // se ok // riga-ok
-        { // apre // riga-ok
-            MostraHintTutorial("TUTORIAL: Cerca le credenziali per la porta bloccata. Segui la luce blu lampeggiante per trovare la keycard!"); // chiama // riga-ok
-        } // chiude // riga-ok
-        else // se no // riga-ok
-        { // apre // riga-ok
-            NascondiHintTutorial(); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void Update() // roba pub // riga-ok
-    { // apre // riga-ok
-        GestisciInputTutorial(); // chiama // riga-ok
-
+        string sceneNameLow = currentScene.ToLower();
+        if (sceneNameLow.Contains("settore 0"))
+        {
+            MostraHintTutorial("TUTORIAL: Usa [W][A][S][D] per muoverti, il Mouse per la visuale, [E] per interagire,[Q] per scansionare l'ambiente , [ESC] per pausa/mappa.");
+        }
+        else if (sceneNameLow.Contains("settore 1"))
+        {
+            MostraHintTutorial("TUTORIAL: Cerca le credenziali per la porta bloccata. Segui la luce blu lampeggiante per trovare la keycard!");
+        }
+        else
+        {
+            NascondiHintTutorial();
+        }
+    }
+    private void Update()
+    {
+        GestisciInputTutorial();
         // Rotazione continua dell'anello del visore robotico
-        // blocco: controlla se va
-        if (reticleRing != null) // se ok // riga-ok
-        { // apre // riga-ok
-            float speed = isTargetLocked ? 100f : reticleRotationSpeed; // setta // riga-ok
-            reticleRing.Rotate(Vector3.forward, -speed * Time.unscaledDeltaTime); // chiama // riga-ok
-        } // chiude // riga-ok
-
+        if (reticleRing != null)
+        {
+            float speed = isTargetLocked ? 100f : reticleRotationSpeed;
+            reticleRing.Rotate(Vector3.forward, -speed * Time.unscaledDeltaTime);
+        }
         // Effetto pulsazione mirino quando lockato
-        // blocco: controlla se va
-        if (visorReticleContainer != null && isTargetLocked) // se ok // riga-ok
-        { // apre // riga-ok
-            float pulse = 1f + Mathf.Sin(Time.unscaledTime * 8f) * 0.05f; // setta // riga-ok
-            visorReticleContainer.localScale = new Vector3(pulse, pulse, 1f); // setta // riga-ok
-        } // chiude // riga-ok
-
+        if (visorReticleContainer != null && isTargetLocked)
+        {
+            float pulse = 1f + Mathf.Sin(Time.unscaledTime * 8f) * 0.05f;
+            visorReticleContainer.localScale = new Vector3(pulse, pulse, 1f);
+        }
         // Aggiornamento Countdown a schermo LCD (Conteggio all'indietro)
-        // blocco: controlla se va
-        if (timerAttivo && testoTimerValore != null) // se ok // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (MissionManager.Instance != null && (MissionManager.Instance.MissioneTerminata || MissionManager.Instance.EstrazioneSbloccata)) // se ok // riga-ok
-            { // apre // riga-ok
-                if (MissionManager.Instance.EstrazioneSbloccata && timerContainer != null && timerContainer.gameObject.activeSelf) // se ok // riga-ok
-                    timerContainer.gameObject.SetActive(false); // chiama // riga-ok
-
-                return; // torna val // riga-ok
-            } // chiude // riga-ok
-
-            tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime); // setta // riga-ok
-            int minuti = (int)(tempoRimanenteCountdown / 60f); // setta // riga-ok
-            int secondi = (int)(tempoRimanenteCountdown % 60f); // setta // riga-ok
-            int decimi = (int)((tempoRimanenteCountdown * 10f) % 10f); // setta // riga-ok
-
-            testoTimerValore.text = $"{minuti:D2}:{secondi:D2}.{decimi:D1}"; // setta // riga-ok
-
+        if (timerAttivo && testoTimerValore != null)
+        {
+            if (MissionManager.Instance != null && (MissionManager.Instance.MissioneTerminata || MissionManager.Instance.EstrazioneSbloccata))
+            {
+                if (MissionManager.Instance.EstrazioneSbloccata && timerContainer != null && timerContainer.gameObject.activeSelf)
+                    timerContainer.gameObject.SetActive(false);
+                return;
+            }
+            tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime);
+            int minuti = (int)(tempoRimanenteCountdown / 60f);
+            int secondi = (int)(tempoRimanenteCountdown % 60f);
+            int decimi = (int)((tempoRimanenteCountdown * 10f) % 10f);
+            testoTimerValore.text = $"{minuti:D2}:{secondi:D2}.{decimi:D1}";
             // Integrazione dinamica con lo stato di emergenza e countdown
-            // blocco: controlla se va
-            if (tempoRimanenteCountdown <= 0f) // se ok // riga-ok
-            { // apre // riga-ok
-                testoTimerValore.text = "00:00.0"; // setta // riga-ok
-                testoTimerValore.color = warningRed; // setta // riga-ok
-                // blocco: controlla se va
-                if (testoTimerStatus != null) // se ok // riga-ok
-                { // apre // riga-ok
-                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL DEFEAT"; // setta // riga-ok
-                    testoTimerStatus.color = warningRed; // setta // riga-ok
-                } // chiude // riga-ok
-
-                // blocco: controlla se va
-                if (sconfittaATempoScaduto) // se ok // riga-ok
-                { // apre // riga-ok
-                    // blocco: controlla se va
-                    if (MissionManager.Instance != null && !MissionManager.Instance.MissioneTerminata) // se ok // riga-ok
-                    { // apre // riga-ok
-                        MissionManager.Instance.TerminaPerTempoScaduto(); // chiama // riga-ok
-                    } // chiude // riga-ok
-                    // blocco: caso diverso
-                    else // se no // riga-ok
-                    { // apre // riga-ok
-                        SalutePlayer player = Object.FindAnyObjectByType<SalutePlayer>(); // setta // riga-ok
-                        // blocco: controlla se va
-                        if (player != null && player.SaluteAttuale > 0) // se ok // riga-ok
-                        { // apre // riga-ok
-                            player.SubisciDanno(99999f); // chiama // riga-ok
-                        } // chiude // riga-ok
-                        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA"); // chiama // riga-ok
-                    } // chiude // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (tempoRimanenteCountdown <= 60f) // se ok // riga-ok
-            { // apre // riga-ok
+            if (tempoRimanenteCountdown <= 0f)
+            {
+                testoTimerValore.text = "00:00.0";
+                testoTimerValore.color = warningRed;
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL DEFEAT";
+                    testoTimerStatus.color = warningRed;
+                }
+                if (sconfittaATempoScaduto)
+                {
+                    if (MissionManager.Instance != null && !MissionManager.Instance.MissioneTerminata)
+                    {
+                        MissionManager.Instance.TerminaPerTempoScaduto();
+                    }
+                    else
+                    {
+                        SalutePlayer player = Object.FindAnyObjectByType<SalutePlayer>();
+                        if (player != null && player.SaluteAttuale > 0)
+                        {
+                            player.SubisciDanno(99999f);
+                        }
+                        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA");
+                    }
+                }
+            }
+            else if (tempoRimanenteCountdown <= 60f)
+            {
                 // Ultimo minuto: allarme rosso lampeggiante
-                float blink = Mathf.Sin(Time.unscaledTime * 10f); // setta // riga-ok
-                testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.6f, 0.6f, 1f); // setta // riga-ok
-                // blocco: controlla se va
-                if (testoTimerStatus != null) // se ok // riga-ok
-                { // apre // riga-ok
-                    testoTimerStatus.text = "⚠️ T-MINUS CRITICAL // EVACUATE"; // setta // riga-ok
-                    testoTimerStatus.color = warningRed; // setta // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (MissionManager.Instance != null && testoTimerStatus != null) // se ok // riga-ok
-            { // apre // riga-ok
-                float collasso = MissionManager.Instance.CollassoCorrente; // setta // riga-ok
-                // blocco: controlla se va
-                if (collasso > 75f) // se ok // riga-ok
-                { // apre // riga-ok
-                    float blink = Mathf.Sin(Time.unscaledTime * 8f); // setta // riga-ok
-                    testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.75f, 0.2f, 1f); // setta // riga-ok
-                    testoTimerStatus.text = $"⚠️ COLLAPSE: {Mathf.CeilToInt(collasso)}% [CRITICAL]"; // setta // riga-ok
-                    testoTimerStatus.color = warningRed; // setta // riga-ok
-                } // chiude // riga-ok
-                // blocco: controlla se va
-                else if (collasso > 40f) // se ok // riga-ok
-                { // apre // riga-ok
-                    testoTimerValore.color = new Color(1f, 0.75f, 0.2f, 1f); // setta // riga-ok
-                    testoTimerStatus.text = $"SYS_ALERT: COLLAPSE {Mathf.CeilToInt(collasso)}%"; // setta // riga-ok
-                    testoTimerStatus.color = new Color(1f, 0.75f, 0.2f, 1f); // setta // riga-ok
-                } // chiude // riga-ok
-                // blocco: caso diverso
-                else // se no // riga-ok
-                { // apre // riga-ok
-                    testoTimerValore.color = neonGreen; // setta // riga-ok
-                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]"; // setta // riga-ok
-                    testoTimerStatus.color = textCyan; // setta // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-            // blocco: caso diverso
-            else // se no // riga-ok
-            { // apre // riga-ok
-                testoTimerValore.color = neonGreen; // setta // riga-ok
-                // blocco: controlla se va
-                if (testoTimerStatus != null) // se ok // riga-ok
-                { // apre // riga-ok
-                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]"; // setta // riga-ok
-                    testoTimerStatus.color = textCyan; // setta // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
+                float blink = Mathf.Sin(Time.unscaledTime * 10f);
+                testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.6f, 0.6f, 1f);
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "⚠️ T-MINUS CRITICAL // EVACUATE";
+                    testoTimerStatus.color = warningRed;
+                }
+            }
+            else if (MissionManager.Instance != null && testoTimerStatus != null)
+            {
+                float collasso = MissionManager.Instance.CollassoCorrente;
+                if (collasso > 75f)
+                {
+                    float blink = Mathf.Sin(Time.unscaledTime * 8f);
+                    testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.75f, 0.2f, 1f);
+                    testoTimerStatus.text = $"⚠️ COLLAPSE: {Mathf.CeilToInt(collasso)}% [CRITICAL]";
+                    testoTimerStatus.color = warningRed;
+                }
+                else if (collasso > 40f)
+                {
+                    testoTimerValore.color = new Color(1f, 0.75f, 0.2f, 1f);
+                    testoTimerStatus.text = $"SYS_ALERT: COLLAPSE {Mathf.CeilToInt(collasso)}%";
+                    testoTimerStatus.color = new Color(1f, 0.75f, 0.2f, 1f);
+                }
+                else
+                {
+                    testoTimerValore.color = neonGreen;
+                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]";
+                    testoTimerStatus.color = textCyan;
+                }
+            }
+            else
+            {
+                testoTimerValore.color = neonGreen;
+                if (testoTimerStatus != null)
+                {
+                    testoTimerStatus.text = "SYS_REC // SEC_02 [COUNTDOWN]";
+                    testoTimerStatus.color = textCyan;
+                }
+            }
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // COSTRUZIONE GRAFICA HUD PROCEDURALE (Crisp High-DPI UI)
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    private void CostruisciHUDCompleto() // roba pub // riga-ok
-    { // apre // riga-ok
+    private void CostruisciHUDCompleto()
+    {
         // 1. Canvas Setup
-        hudCanvas = gameObject.GetComponent<Canvas>(); // setta // riga-ok
-        // blocco: controlla se va
-        if (hudCanvas == null) hudCanvas = gameObject.AddComponent<Canvas>(); // se ok // riga-ok
-        hudCanvas.renderMode = RenderMode.ScreenSpaceOverlay; // setta // riga-ok
-        hudCanvas.sortingOrder = 99; // setta // riga-ok
-
-        hudScaler = gameObject.GetComponent<CanvasScaler>(); // setta // riga-ok
-        // blocco: controlla se va
-        if (hudScaler == null) hudScaler = gameObject.AddComponent<CanvasScaler>(); // se ok // riga-ok
-        hudScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; // setta // riga-ok
-        hudScaler.referenceResolution = new Vector2(1920, 1080); // setta // riga-ok
-        hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight; // setta // riga-ok
-        hudScaler.matchWidthOrHeight = 1.0f; // Fissa l'altezza per evitare che l'interfaccia esca dallo schermo in finestre larghe o Free Aspect // setta // riga-ok
-        hudScaler.dynamicPixelsPerUnit = 3.0f; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (gameObject.GetComponent<GraphicRaycaster>() == null) // se ok // riga-ok
-            gameObject.AddComponent<GraphicRaycaster>(); // chiama // riga-ok
-
-        Font defaultFont = Font.CreateDynamicFontFromOSFont("Arial", 16); // setta // riga-ok
-
-        Sprite solidSprite = CreaSpriteSolido(); // setta // riga-ok
-        Sprite borderSprite = CreaSpriteCorniceTech(); // setta // riga-ok
-
+        hudCanvas = gameObject.GetComponent<Canvas>();
+        if (hudCanvas == null) hudCanvas = gameObject.AddComponent<Canvas>();
+        hudCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        hudCanvas.sortingOrder = 99;
+        hudScaler = gameObject.GetComponent<CanvasScaler>();
+        if (hudScaler == null) hudScaler = gameObject.AddComponent<CanvasScaler>();
+        hudScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        hudScaler.referenceResolution = new Vector2(1920, 1080);
+        hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        hudScaler.matchWidthOrHeight = 1.0f; // Fissa l'altezza per evitare che l'interfaccia esca dallo schermo in finestre larghe o Free Aspect
+        hudScaler.dynamicPixelsPerUnit = 3.0f;
+        if (gameObject.GetComponent<GraphicRaycaster>() == null)
+            gameObject.AddComponent<GraphicRaycaster>();
+        Font defaultFont = Font.CreateDynamicFontFromOSFont("Arial", 16);
+        Sprite solidSprite = CreaSpriteSolido();
+        Sprite borderSprite = CreaSpriteCorniceTech();
         // 2. Barra Vita Batteria LCD (Posizionata con margine di sicurezza 50px da sinistra e dal basso)
-        CostruisciBarraVitaLCD(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
-
+        CostruisciBarraVitaLCD(solidSprite, borderSprite, defaultFont);
         // 3. Mirino Visore Robot (Al centro dello schermo)
-        CostruisciMirinoVisore(solidSprite, defaultFont); // chiama // riga-ok
-
+        CostruisciMirinoVisore(solidSprite, defaultFont);
         // 4. Prompt di Prossimità [E] (In basso al centro, subito sotto il mirino)
-        CostruisciPromptProssimita(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
-
+        CostruisciPromptProssimita(solidSprite, borderSprite, defaultFont);
         // 5. Banner Notifica Acquisizione Keycard (In alto al centro)
-        CostruisciBannerNotifica(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
-
+        CostruisciBannerNotifica(solidSprite, borderSprite, defaultFont);
         // 6. Cyber Mission Timer Panel (In alto a destra, coerente con lo stile neon del visore)
-        CostruisciTimerVisore(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
-
+        CostruisciTimerVisore(solidSprite, borderSprite, defaultFont);
         // 7. Flash Visivo Impatto Danno Schermo
-        CostruisciDamageFlash(solidSprite); // chiama // riga-ok
-
+        CostruisciDamageFlash(solidSprite);
         // 8. Bottone ingranaggio + tutorial testuale del gioco
-        CostruisciTutorialHUD(solidSprite, borderSprite, defaultFont); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciTutorialHUD(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject buttonGO = new GameObject("HUD_Tutorial_GearButton"); // setta // riga-ok
-        buttonGO.transform.SetParent(transform, false); // chiama // riga-ok
-        tutorialButtonContainer = buttonGO.AddComponent<RectTransform>(); // setta // riga-ok
-        tutorialButtonContainer.anchorMin = new Vector2(1f, 1f); // setta // riga-ok
-        tutorialButtonContainer.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        tutorialButtonContainer.pivot = new Vector2(1f, 1f); // setta // riga-ok
-        tutorialButtonContainer.anchoredPosition = new Vector2(-340f, -34f); // setta // riga-ok
-        tutorialButtonContainer.sizeDelta = new Vector2(190f, 58f); // setta // riga-ok
-
-        Image buttonBg = buttonGO.AddComponent<Image>(); // setta // riga-ok
-        buttonBg.sprite = border; // setta // riga-ok
-        buttonBg.type = Image.Type.Sliced; // setta // riga-ok
-        buttonBg.color = new Color(0.02f, 0.12f, 0.13f, 0.92f); // setta // riga-ok
-        buttonBg.raycastTarget = true; // setta // riga-ok
-
-        Button button = buttonGO.AddComponent<Button>(); // setta // riga-ok
-        button.targetGraphic = buttonBg; // setta // riga-ok
-        button.onClick.AddListener(ToggleTutorialPanel); // chiama // riga-ok
-
-        GameObject iconGO = new GameObject("Gear_Icon"); // setta // riga-ok
-        iconGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
-        Text iconText = iconGO.AddComponent<Text>(); // setta // riga-ok
-        iconText.font = font; // setta // riga-ok
-        iconText.text = "⚙"; // setta // riga-ok
-        iconText.fontSize = 30; // setta // riga-ok
-        iconText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        iconText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        iconText.color = textCyan; // setta // riga-ok
-        iconText.raycastTarget = false; // setta // riga-ok
-        RectTransform iconRect = iconGO.GetComponent<RectTransform>(); // setta // riga-ok
-        iconRect.anchorMin = new Vector2(1f, 0f); // setta // riga-ok
-        iconRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        iconRect.pivot = new Vector2(1f, 0.5f); // setta // riga-ok
-        iconRect.anchoredPosition = Vector2.zero; // setta // riga-ok
-        iconRect.sizeDelta = new Vector2(58f, 0f); // setta // riga-ok
-
-        GameObject labelGO = new GameObject("Tutorial_Key_Label"); // setta // riga-ok
-        labelGO.transform.SetParent(tutorialButtonContainer, false); // chiama // riga-ok
-        Text labelText = labelGO.AddComponent<Text>(); // setta // riga-ok
-        labelText.font = font; // setta // riga-ok
-        labelText.text = "TUTORIAL\nF1"; // setta // riga-ok
-        labelText.fontSize = 16; // setta // riga-ok
-        labelText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        labelText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        labelText.color = textCyan; // setta // riga-ok
-        labelText.raycastTarget = false; // setta // riga-ok
-        RectTransform labelRect = labelGO.GetComponent<RectTransform>(); // setta // riga-ok
-        labelRect.anchorMin = Vector2.zero; // setta // riga-ok
-        labelRect.anchorMax = Vector2.one; // setta // riga-ok
-        labelRect.offsetMin = new Vector2(10f, 0f); // setta // riga-ok
-        labelRect.offsetMax = new Vector2(-62f, 0f); // setta // riga-ok
-
-        GameObject panelGO = new GameObject("HUD_Tutorial_Panel"); // setta // riga-ok
-        panelGO.transform.SetParent(transform, false); // chiama // riga-ok
-        tutorialPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
-        tutorialPanel.anchorMin = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        tutorialPanel.anchorMax = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        tutorialPanel.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        tutorialPanel.anchoredPosition = Vector2.zero; // setta // riga-ok
-        tutorialPanel.sizeDelta = new Vector2(820f, 560f); // setta // riga-ok
-
-        Image panelBg = panelGO.AddComponent<Image>(); // setta // riga-ok
-        panelBg.sprite = border; // setta // riga-ok
-        panelBg.type = Image.Type.Sliced; // setta // riga-ok
-        panelBg.color = new Color(0.01f, 0.05f, 0.055f, 0.96f); // setta // riga-ok
-        panelBg.raycastTarget = true; // setta // riga-ok
-        tutorialPanelGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        tutorialPanelGroup.alpha = 0f; // setta // riga-ok
-        tutorialPanelGroup.interactable = false; // setta // riga-ok
-        tutorialPanelGroup.blocksRaycasts = false; // setta // riga-ok
-
-        GameObject titleGO = new GameObject("Tutorial_Title"); // setta // riga-ok
-        titleGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
-        Text titleText = titleGO.AddComponent<Text>(); // setta // riga-ok
-        titleText.font = font; // setta // riga-ok
-        titleText.text = "TUTORIAL OPERATORE // COME SI GIOCA"; // setta // riga-ok
-        titleText.fontSize = 28; // setta // riga-ok
-        titleText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        titleText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        titleText.color = textCyan; // setta // riga-ok
-        titleText.raycastTarget = false; // setta // riga-ok
-        RectTransform titleRect = titleGO.GetComponent<RectTransform>(); // setta // riga-ok
-        titleRect.anchorMin = new Vector2(0f, 1f); // setta // riga-ok
-        titleRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        titleRect.pivot = new Vector2(0.5f, 1f); // setta // riga-ok
-        titleRect.anchoredPosition = new Vector2(0f, -28f); // setta // riga-ok
-        titleRect.sizeDelta = new Vector2(-52f, 46f); // setta // riga-ok
-
-        GameObject bodyGO = new GameObject("Tutorial_Body"); // setta // riga-ok
-        bodyGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
-        Text bodyText = bodyGO.AddComponent<Text>(); // setta // riga-ok
-        bodyText.font = font; // setta // riga-ok
+        CostruisciTutorialHUD(solidSprite, borderSprite, defaultFont);
+    }
+    private void CostruisciTutorialHUD(Sprite solid, Sprite border, Font font)
+    {
+        GameObject buttonGO = new GameObject("HUD_Tutorial_GearButton");
+        buttonGO.transform.SetParent(transform, false);
+        tutorialButtonContainer = buttonGO.AddComponent<RectTransform>();
+        tutorialButtonContainer.anchorMin = new Vector2(1f, 1f);
+        tutorialButtonContainer.anchorMax = new Vector2(1f, 1f);
+        tutorialButtonContainer.pivot = new Vector2(1f, 1f);
+        tutorialButtonContainer.anchoredPosition = new Vector2(-340f, -34f);
+        tutorialButtonContainer.sizeDelta = new Vector2(190f, 58f);
+        Image buttonBg = buttonGO.AddComponent<Image>();
+        buttonBg.sprite = border;
+        buttonBg.type = Image.Type.Sliced;
+        buttonBg.color = new Color(0.02f, 0.12f, 0.13f, 0.92f);
+        buttonBg.raycastTarget = true;
+        Button button = buttonGO.AddComponent<Button>();
+        button.targetGraphic = buttonBg;
+        button.onClick.AddListener(ToggleTutorialPanel);
+        GameObject iconGO = new GameObject("Gear_Icon");
+        iconGO.transform.SetParent(tutorialButtonContainer, false);
+        Text iconText = iconGO.AddComponent<Text>();
+        iconText.font = font;
+        iconText.text = "⚙";
+        iconText.fontSize = 30;
+        iconText.fontStyle = FontStyle.Bold;
+        iconText.alignment = TextAnchor.MiddleCenter;
+        iconText.color = textCyan;
+        iconText.raycastTarget = false;
+        RectTransform iconRect = iconGO.GetComponent<RectTransform>();
+        iconRect.anchorMin = new Vector2(1f, 0f);
+        iconRect.anchorMax = new Vector2(1f, 1f);
+        iconRect.pivot = new Vector2(1f, 0.5f);
+        iconRect.anchoredPosition = Vector2.zero;
+        iconRect.sizeDelta = new Vector2(58f, 0f);
+        GameObject labelGO = new GameObject("Tutorial_Key_Label");
+        labelGO.transform.SetParent(tutorialButtonContainer, false);
+        Text labelText = labelGO.AddComponent<Text>();
+        labelText.font = font;
+        labelText.text = "TUTORIAL\nF1";
+        labelText.fontSize = 16;
+        labelText.fontStyle = FontStyle.Bold;
+        labelText.alignment = TextAnchor.MiddleCenter;
+        labelText.color = textCyan;
+        labelText.raycastTarget = false;
+        RectTransform labelRect = labelGO.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(10f, 0f);
+        labelRect.offsetMax = new Vector2(-62f, 0f);
+        GameObject panelGO = new GameObject("HUD_Tutorial_Panel");
+        panelGO.transform.SetParent(transform, false);
+        tutorialPanel = panelGO.AddComponent<RectTransform>();
+        tutorialPanel.anchorMin = new Vector2(0.5f, 0.5f);
+        tutorialPanel.anchorMax = new Vector2(0.5f, 0.5f);
+        tutorialPanel.pivot = new Vector2(0.5f, 0.5f);
+        tutorialPanel.anchoredPosition = Vector2.zero;
+        tutorialPanel.sizeDelta = new Vector2(820f, 560f);
+        Image panelBg = panelGO.AddComponent<Image>();
+        panelBg.sprite = border;
+        panelBg.type = Image.Type.Sliced;
+        panelBg.color = new Color(0.01f, 0.05f, 0.055f, 0.96f);
+        panelBg.raycastTarget = true;
+        tutorialPanelGroup = panelGO.AddComponent<CanvasGroup>();
+        tutorialPanelGroup.alpha = 0f;
+        tutorialPanelGroup.interactable = false;
+        tutorialPanelGroup.blocksRaycasts = false;
+        GameObject titleGO = new GameObject("Tutorial_Title");
+        titleGO.transform.SetParent(tutorialPanel, false);
+        Text titleText = titleGO.AddComponent<Text>();
+        titleText.font = font;
+        titleText.text = "TUTORIAL OPERATORE // COME SI GIOCA";
+        titleText.fontSize = 28;
+        titleText.fontStyle = FontStyle.Bold;
+        titleText.alignment = TextAnchor.MiddleCenter;
+        titleText.color = textCyan;
+        titleText.raycastTarget = false;
+        RectTransform titleRect = titleGO.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0f, 1f);
+        titleRect.anchorMax = new Vector2(1f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = new Vector2(0f, -28f);
+        titleRect.sizeDelta = new Vector2(-52f, 46f);
+        GameObject bodyGO = new GameObject("Tutorial_Body");
+        bodyGO.transform.SetParent(tutorialPanel, false);
+        Text bodyText = bodyGO.AddComponent<Text>();
+        bodyText.font = font;
         bodyText.text =
             "1. OBIETTIVO\n" +
             "   Ripristina il settore in emergenza, trova le keycard e completa le procedure prima che il timer arrivi a zero.\n\n" +
@@ -560,813 +466,672 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
             "4. PERICOLO\n" +
             "   Tieni d'occhio batteria/vita e countdown. Se subisci danni la HUD lampeggia, quindi cerca riparo o cambia percorso.\n\n" +
             "5. COMANDI RAPIDI\n" +
-            "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | F1: tutorial | ESC: chiudi/pause"; // setta // riga-ok
-        bodyText.fontSize = 20; // setta // riga-ok
-        bodyText.lineSpacing = 1.12f; // setta // riga-ok
-        bodyText.alignment = TextAnchor.UpperLeft; // setta // riga-ok
-        bodyText.color = new Color(0.78f, 1f, 0.95f, 1f); // setta // riga-ok
-        bodyText.raycastTarget = false; // setta // riga-ok
-        RectTransform bodyRect = bodyGO.GetComponent<RectTransform>(); // setta // riga-ok
-        bodyRect.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        bodyRect.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        bodyRect.offsetMin = new Vector2(48f, 104f); // setta // riga-ok
-        bodyRect.offsetMax = new Vector2(-48f, -96f); // setta // riga-ok
-
-        GameObject closeGO = new GameObject("Tutorial_Close_Button"); // setta // riga-ok
-        closeGO.transform.SetParent(tutorialPanel, false); // chiama // riga-ok
-        RectTransform closeRect = closeGO.AddComponent<RectTransform>(); // setta // riga-ok
-        closeRect.anchorMin = new Vector2(0.5f, 0f); // setta // riga-ok
-        closeRect.anchorMax = new Vector2(0.5f, 0f); // setta // riga-ok
-        closeRect.pivot = new Vector2(0.5f, 0f); // setta // riga-ok
-        closeRect.anchoredPosition = new Vector2(0f, 28f); // setta // riga-ok
-        closeRect.sizeDelta = new Vector2(260f, 54f); // setta // riga-ok
-        Image closeBg = closeGO.AddComponent<Image>(); // setta // riga-ok
-        closeBg.sprite = border; // setta // riga-ok
-        closeBg.type = Image.Type.Sliced; // setta // riga-ok
-        closeBg.color = new Color(0.03f, 0.16f, 0.14f, 0.95f); // setta // riga-ok
-        closeBg.raycastTarget = true; // setta // riga-ok
-        Button closeButton = closeGO.AddComponent<Button>(); // setta // riga-ok
-        closeButton.targetGraphic = closeBg; // setta // riga-ok
-        closeButton.onClick.AddListener(ChiudiTutorialPanel); // chiama // riga-ok
-
-        GameObject closeLabelGO = new GameObject("Close_Label"); // setta // riga-ok
-        closeLabelGO.transform.SetParent(closeRect, false); // chiama // riga-ok
-        Text closeLabel = closeLabelGO.AddComponent<Text>(); // setta // riga-ok
-        closeLabel.font = font; // setta // riga-ok
-        closeLabel.text = "CHIUDI TUTORIAL"; // setta // riga-ok
-        closeLabel.fontSize = 18; // setta // riga-ok
-        closeLabel.fontStyle = FontStyle.Bold; // setta // riga-ok
-        closeLabel.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        closeLabel.color = textCyan; // setta // riga-ok
-        closeLabel.raycastTarget = false; // setta // riga-ok
-        RectTransform closeLabelRect = closeLabelGO.GetComponent<RectTransform>(); // setta // riga-ok
-        closeLabelRect.anchorMin = Vector2.zero; // setta // riga-ok
-        closeLabelRect.anchorMax = Vector2.one; // setta // riga-ok
-        closeLabelRect.offsetMin = Vector2.zero; // setta // riga-ok
-        closeLabelRect.offsetMax = Vector2.zero; // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: legge tastiera tutorial
-    private void GestisciInputTutorial() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (Input.GetKeyDown(tastoTutorial)) // se ok // riga-ok
-        { // apre // riga-ok
-            ToggleTutorialPanel(); // chiama // riga-ok
-        } // chiude // riga-ok
-
-        if (tutorialAperto && Input.GetKeyDown(KeyCode.Escape)) // se ok // riga-ok
-        { // apre // riga-ok
-            ChiudiTutorialPanel(); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: apre/chiude tutorial
-    private void ToggleTutorialPanel() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (tutorialAperto) // se ok // riga-ok
-        { // apre // riga-ok
-            ChiudiTutorialPanel(); // chiama // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        ApriTutorialPanel(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: mostra tutorial
-    private void ApriTutorialPanel() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (tutorialPanelGroup == null) return; // se ok // riga-ok
-        EnsureEventSystem(); // FIX: assicura che il mouse funzioni! // riga-ok
-        if (!ModalUIState.TryOpen(TutorialModalOwner)) return; // se ok // riga-ok
-        tutorialAperto = true; // setta // riga-ok
-        tutorialPanelGroup.alpha = 1f; // setta // riga-ok
-        tutorialPanelGroup.interactable = true; // setta // riga-ok
-        tutorialPanelGroup.blocksRaycasts = true; // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: prepara click ui
-    private static void EnsureEventSystem() // roba pub // riga-ok
-    { // apre // riga-ok
-        UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current; // setta // riga-ok
-        if (eventSystem == null) // se ok // riga-ok
-        { // apre // riga-ok
-            eventSystem = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem)).GetComponent<UnityEngine.EventSystems.EventSystem>(); // setta // riga-ok
-        } // chiude // riga-ok
-
-        System.Type inputSystemUiModule = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem"); // setta // riga-ok
-        if (inputSystemUiModule != null) // se ok // riga-ok
-        { // apre // riga-ok
-            UnityEngine.EventSystems.StandaloneInputModule oldModule = eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>(); // setta // riga-ok
-            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
-
-            Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
-            if (!inputModule) // se ok // riga-ok
-                inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule); // setta // riga-ok
-
-            if (inputModule is Behaviour behaviour) // se ok // riga-ok
-                behaviour.enabled = true; // setta // riga-ok
-
-            inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null); // chiama // riga-ok
-        } // chiude // riga-ok
-        else if (!eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>()) // se ok // riga-ok
-        { // apre // riga-ok
-            eventSystem.gameObject.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>(); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: nasconde tutorial
-    private void ChiudiTutorialPanel() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (tutorialPanelGroup == null) return; // se ok // riga-ok
-        tutorialAperto = false; // setta // riga-ok
-        tutorialPanelGroup.alpha = 0f; // setta // riga-ok
-        tutorialPanelGroup.interactable = false; // setta // riga-ok
-        tutorialPanelGroup.blocksRaycasts = false; // setta // riga-ok
-        ModalUIState.Close(TutorialModalOwner); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciBarraVitaLCD(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject panelGO = new GameObject("HealthBattery_Panel"); // setta // riga-ok
-        panelGO.transform.SetParent(transform, false); // chiama // riga-ok
-        batteryContainer = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
-        batteryContainer.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        batteryContainer.anchorMax = new Vector2(0f, 0f); // setta // riga-ok
-        batteryContainer.pivot = new Vector2(0f, 0f); // setta // riga-ok
-        batteryContainer.anchoredPosition = new Vector2(150f, 100f); // setta // riga-ok
-        batteryContainer.sizeDelta = new Vector2(360f, 102f); // setta // riga-ok
-
+            "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | F1: tutorial | ESC: chiudi/pause";
+        bodyText.fontSize = 20;
+        bodyText.lineSpacing = 1.12f;
+        bodyText.alignment = TextAnchor.UpperLeft;
+        bodyText.color = new Color(0.78f, 1f, 0.95f, 1f);
+        bodyText.raycastTarget = false;
+        RectTransform bodyRect = bodyGO.GetComponent<RectTransform>();
+        bodyRect.anchorMin = new Vector2(0f, 0f);
+        bodyRect.anchorMax = new Vector2(1f, 1f);
+        bodyRect.offsetMin = new Vector2(48f, 104f);
+        bodyRect.offsetMax = new Vector2(-48f, -96f);
+        GameObject closeGO = new GameObject("Tutorial_Close_Button");
+        closeGO.transform.SetParent(tutorialPanel, false);
+        RectTransform closeRect = closeGO.AddComponent<RectTransform>();
+        closeRect.anchorMin = new Vector2(0.5f, 0f);
+        closeRect.anchorMax = new Vector2(0.5f, 0f);
+        closeRect.pivot = new Vector2(0.5f, 0f);
+        closeRect.anchoredPosition = new Vector2(0f, 28f);
+        closeRect.sizeDelta = new Vector2(260f, 54f);
+        Image closeBg = closeGO.AddComponent<Image>();
+        closeBg.sprite = border;
+        closeBg.type = Image.Type.Sliced;
+        closeBg.color = new Color(0.03f, 0.16f, 0.14f, 0.95f);
+        closeBg.raycastTarget = true;
+        Button closeButton = closeGO.AddComponent<Button>();
+        closeButton.targetGraphic = closeBg;
+        closeButton.onClick.AddListener(ChiudiTutorialPanel);
+        GameObject closeLabelGO = new GameObject("Close_Label");
+        closeLabelGO.transform.SetParent(closeRect, false);
+        Text closeLabel = closeLabelGO.AddComponent<Text>();
+        closeLabel.font = font;
+        closeLabel.text = "CHIUDI TUTORIAL";
+        closeLabel.fontSize = 18;
+        closeLabel.fontStyle = FontStyle.Bold;
+        closeLabel.alignment = TextAnchor.MiddleCenter;
+        closeLabel.color = textCyan;
+        closeLabel.raycastTarget = false;
+        RectTransform closeLabelRect = closeLabelGO.GetComponent<RectTransform>();
+        closeLabelRect.anchorMin = Vector2.zero;
+        closeLabelRect.anchorMax = Vector2.one;
+        closeLabelRect.offsetMin = Vector2.zero;
+        closeLabelRect.offsetMax = Vector2.zero;
+    }
+    // F1 resta il comando principale: funziona anche quando il cursore non esiste in gioco.
+    private void GestisciInputTutorial()
+    {
+        if (Input.GetKeyDown(tastoTutorial))
+        {
+            ToggleTutorialPanel();
+        }
+        if (tutorialAperto && Input.GetKeyDown(KeyCode.Escape))
+        {
+            ChiudiTutorialPanel();
+        }
+    }
+    // Toggle secco del tutorial, utile per non bloccare il flusso del player.
+    private void ToggleTutorialPanel()
+    {
+        if (tutorialAperto)
+        {
+            ChiudiTutorialPanel();
+            return;
+        }
+        ApriTutorialPanel();
+    }
+    // Apertura modale controllata: pausa input gameplay e lascia leggibile il testo.
+    private void ApriTutorialPanel()
+    {
+        if (tutorialPanelGroup == null) return;
+        EnsureEventSystem(); // FIX: assicura che il mouse funzioni!
+        if (!ModalUIState.TryOpen(TutorialModalOwner)) return;
+        tutorialAperto = true;
+        tutorialPanelGroup.alpha = 1f;
+        tutorialPanelGroup.interactable = true;
+        tutorialPanelGroup.blocksRaycasts = true;
+    }
+    // Bottone costruito runtime: stile e callback stanno vicini, cosi' si legge al volo.
+    private static void EnsureEventSystem()
+    {
+        UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
+        if (eventSystem == null)
+        {
+            eventSystem = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem)).GetComponent<UnityEngine.EventSystems.EventSystem>();
+        }
+        System.Type inputSystemUiModule = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem");
+        if (inputSystemUiModule != null)
+        {
+            UnityEngine.EventSystems.StandaloneInputModule oldModule = eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+            if (oldModule != null) UnityEngine.Object.Destroy(oldModule);
+            Component inputModule = eventSystem.GetComponent(inputSystemUiModule);
+            if (!inputModule)
+                inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule);
+            if (inputModule is Behaviour behaviour)
+                behaviour.enabled = true;
+            inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null);
+        }
+        else if (!eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>())
+        {
+            eventSystem.gameObject.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        }
+    }
+    // Chiusura pulita: riporta focus e stato modale alla partita.
+    private void ChiudiTutorialPanel()
+    {
+        if (tutorialPanelGroup == null) return;
+        tutorialAperto = false;
+        tutorialPanelGroup.alpha = 0f;
+        tutorialPanelGroup.interactable = false;
+        tutorialPanelGroup.blocksRaycasts = false;
+        ModalUIState.Close(TutorialModalOwner);
+    }
+    private void CostruisciBarraVitaLCD(Sprite solid, Sprite border, Font font)
+    {
+        GameObject panelGO = new GameObject("HealthBattery_Panel");
+        panelGO.transform.SetParent(transform, false);
+        batteryContainer = panelGO.AddComponent<RectTransform>();
+        batteryContainer.anchorMin = new Vector2(0f, 0f);
+        batteryContainer.anchorMax = new Vector2(0f, 0f);
+        batteryContainer.pivot = new Vector2(0f, 0f);
+        batteryContainer.anchoredPosition = new Vector2(150f, 100f);
+        batteryContainer.sizeDelta = new Vector2(360f, 102f);
         // Sfondo dark glass con contorno verde
-        Image bg = panelGO.AddComponent<Image>(); // setta // riga-ok
-        bg.sprite = border; // setta // riga-ok
-        bg.type = Image.Type.Sliced; // setta // riga-ok
-        bg.color = darkGlass; // setta // riga-ok
-        bg.raycastTarget = false; // setta // riga-ok
-
+        Image bg = panelGO.AddComponent<Image>();
+        bg.sprite = border;
+        bg.type = Image.Type.Sliced;
+        bg.color = darkGlass;
+        bg.raycastTarget = false;
         // Intestazione Batteria LCD
-        GameObject labelGO = new GameObject("Battery_Label"); // setta // riga-ok
-        labelGO.transform.SetParent(batteryContainer, false); // chiama // riga-ok
-        Text lbl = labelGO.AddComponent<Text>(); // setta // riga-ok
-        lbl.font = font; // setta // riga-ok
-        lbl.fontSize = 16; // setta // riga-ok
-        lbl.fontStyle = FontStyle.Bold; // setta // riga-ok
-        lbl.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        lbl.text = "⚡ POWER_CORE // CELL_STATUS"; // setta // riga-ok
-        lbl.color = textCyan; // setta // riga-ok
-        lbl.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        lbl.raycastTarget = false; // setta // riga-ok
-
-        RectTransform lblRT = labelGO.GetComponent<RectTransform>(); // setta // riga-ok
-        lblRT.anchorMin = new Vector2(0f, 1f); // setta // riga-ok
-        lblRT.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        lblRT.pivot = new Vector2(0f, 1f); // setta // riga-ok
-        lblRT.anchoredPosition = new Vector2(18f, -10f); // setta // riga-ok
-        lblRT.sizeDelta = new Vector2(324f, 22f); // setta // riga-ok
-
+        GameObject labelGO = new GameObject("Battery_Label");
+        labelGO.transform.SetParent(batteryContainer, false);
+        Text lbl = labelGO.AddComponent<Text>();
+        lbl.font = font;
+        lbl.fontSize = 16;
+        lbl.fontStyle = FontStyle.Bold;
+        lbl.alignment = TextAnchor.MiddleLeft;
+        lbl.text = "⚡ POWER_CORE // CELL_STATUS";
+        lbl.color = textCyan;
+        lbl.horizontalOverflow = HorizontalWrapMode.Overflow;
+        lbl.raycastTarget = false;
+        RectTransform lblRT = labelGO.GetComponent<RectTransform>();
+        lblRT.anchorMin = new Vector2(0f, 1f);
+        lblRT.anchorMax = new Vector2(1f, 1f);
+        lblRT.pivot = new Vector2(0f, 1f);
+        lblRT.anchoredPosition = new Vector2(18f, -10f);
+        lblRT.sizeDelta = new Vector2(324f, 22f);
         // Contenitore segmenti batteria LCD
-        GameObject segContainerGO = new GameObject("Segments_Container"); // setta // riga-ok
-        segContainerGO.transform.SetParent(batteryContainer, false); // chiama // riga-ok
-        RectTransform segRT = segContainerGO.AddComponent<RectTransform>(); // setta // riga-ok
-        segRT.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        segRT.anchorMax = new Vector2(1f, 0f); // setta // riga-ok
-        segRT.pivot = new Vector2(0.5f, 0f); // setta // riga-ok
-        segRT.anchoredPosition = new Vector2(1.0f, 35f); // setta // riga-ok
-        segRT.sizeDelta = new Vector2(325f, 25f); // setta // riga-ok
-
-        HorizontalLayoutGroup hlg = segContainerGO.AddComponent<HorizontalLayoutGroup>(); // setta // riga-ok
-        hlg.spacing = 3.5f; // setta // riga-ok
-        hlg.childAlignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        hlg.childControlWidth = true; // setta // riga-ok
-        hlg.childControlHeight = true; // setta // riga-ok
-        hlg.childForceExpandWidth = true; // setta // riga-ok
-        hlg.childForceExpandHeight = true; // setta // riga-ok
-        hlg.padding = new RectOffset(16, 16, 2, 2); // setta // riga-ok
-
-        batterySegments = new Image[NUM_SEGMENTI]; // setta // riga-ok
-        // blocco: gira piu volte
-        for (int i = 0; i < NUM_SEGMENTI; i++) // ciclo x // riga-ok
-        { // apre // riga-ok
-            GameObject seg = new GameObject($"Cell_{i}"); // setta // riga-ok
-            seg.transform.SetParent(segRT, false); // chiama // riga-ok
-            Image segImg = seg.AddComponent<Image>(); // setta // riga-ok
-            segImg.sprite = solid; // setta // riga-ok
-            segImg.color = neonGreen; // setta // riga-ok
-            segImg.raycastTarget = false; // setta // riga-ok
-            batterySegments[i] = segImg; // setta // riga-ok
-        } // chiude // riga-ok
-
+        GameObject segContainerGO = new GameObject("Segments_Container");
+        segContainerGO.transform.SetParent(batteryContainer, false);
+        RectTransform segRT = segContainerGO.AddComponent<RectTransform>();
+        segRT.anchorMin = new Vector2(0f, 0f);
+        segRT.anchorMax = new Vector2(1f, 0f);
+        segRT.pivot = new Vector2(0.5f, 0f);
+        segRT.anchoredPosition = new Vector2(1.0f, 35f);
+        segRT.sizeDelta = new Vector2(325f, 25f);
+        HorizontalLayoutGroup hlg = segContainerGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 3.5f;
+        hlg.childAlignment = TextAnchor.MiddleLeft;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+        hlg.padding = new RectOffset(16, 16, 2, 2);
+        batterySegments = new Image[NUM_SEGMENTI];
+        for (int i = 0; i < NUM_SEGMENTI; i++)
+        {
+            GameObject seg = new GameObject($"Cell_{i}");
+            seg.transform.SetParent(segRT, false);
+            Image segImg = seg.AddComponent<Image>();
+            segImg.sprite = solid;
+            segImg.color = neonGreen;
+            segImg.raycastTarget = false;
+            batterySegments[i] = segImg;
+        }
         // Testo Percentuale e Valore numerico HP
-        GameObject txtPGO = new GameObject("Text_Percentage"); // setta // riga-ok
-        txtPGO.transform.SetParent(batteryContainer, false); // chiama // riga-ok
-        testoPercentualeHP = txtPGO.AddComponent<Text>(); // setta // riga-ok
-        testoPercentualeHP.font = font; // setta // riga-ok
-        testoPercentualeHP.fontSize = 17; // setta // riga-ok
-        testoPercentualeHP.fontStyle = FontStyle.Bold; // setta // riga-ok
-        testoPercentualeHP.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        testoPercentualeHP.text = "100% [ONLINE]"; // setta // riga-ok
-        testoPercentualeHP.color = neonGreen; // setta // riga-ok
-        testoPercentualeHP.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        testoPercentualeHP.raycastTarget = false; // setta // riga-ok
-
-        RectTransform pRT = txtPGO.GetComponent<RectTransform>(); // setta // riga-ok
-        pRT.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        pRT.anchorMax = new Vector2(0.55f, 0f); // setta // riga-ok
-        pRT.pivot = new Vector2(0f, 0f); // setta // riga-ok
-        pRT.anchoredPosition = new Vector2(18f, 8f); // setta // riga-ok
-        pRT.sizeDelta = new Vector2(160f, 22f); // setta // riga-ok
-
-        GameObject txtDGO = new GameObject("Text_Details"); // setta // riga-ok
-        txtDGO.transform.SetParent(batteryContainer, false); // chiama // riga-ok
-        testoDettaglioHP = txtDGO.AddComponent<Text>(); // setta // riga-ok
-        testoDettaglioHP.font = font; // setta // riga-ok
-        testoDettaglioHP.fontSize = 16; // setta // riga-ok
-        testoDettaglioHP.alignment = TextAnchor.MiddleRight; // setta // riga-ok
-        testoDettaglioHP.text = "100 / 100 HP"; // setta // riga-ok
-        testoDettaglioHP.color = new Color(0.7f, 1f, 0.8f, 0.85f); // setta // riga-ok
-        testoDettaglioHP.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        testoDettaglioHP.raycastTarget = false; // setta // riga-ok
-
-        RectTransform dRT = txtDGO.GetComponent<RectTransform>(); // setta // riga-ok
-        dRT.anchorMin = new Vector2(0.45f, 0f); // setta // riga-ok
-        dRT.anchorMax = new Vector2(1f, 0f); // setta // riga-ok
-        dRT.pivot = new Vector2(1f, 0f); // setta // riga-ok
-        dRT.anchoredPosition = new Vector2(-18f, 8f); // setta // riga-ok
-        dRT.sizeDelta = new Vector2(160f, 22f); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciMirinoVisore(Sprite solid, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject reticleGO = new GameObject("RobotVisor_Reticle"); // setta // riga-ok
-        reticleGO.transform.SetParent(transform, false); // chiama // riga-ok
-        visorReticleContainer = reticleGO.AddComponent<RectTransform>(); // setta // riga-ok
-        visorReticleContainer.anchorMin = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        visorReticleContainer.anchorMax = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        visorReticleContainer.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        visorReticleContainer.anchoredPosition = Vector2.zero; // setta // riga-ok
-        visorReticleContainer.sizeDelta = new Vector2(80f, 80f); // setta // riga-ok
-
+        GameObject txtPGO = new GameObject("Text_Percentage");
+        txtPGO.transform.SetParent(batteryContainer, false);
+        testoPercentualeHP = txtPGO.AddComponent<Text>();
+        testoPercentualeHP.font = font;
+        testoPercentualeHP.fontSize = 17;
+        testoPercentualeHP.fontStyle = FontStyle.Bold;
+        testoPercentualeHP.alignment = TextAnchor.MiddleLeft;
+        testoPercentualeHP.text = "100% [ONLINE]";
+        testoPercentualeHP.color = neonGreen;
+        testoPercentualeHP.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoPercentualeHP.raycastTarget = false;
+        RectTransform pRT = txtPGO.GetComponent<RectTransform>();
+        pRT.anchorMin = new Vector2(0f, 0f);
+        pRT.anchorMax = new Vector2(0.55f, 0f);
+        pRT.pivot = new Vector2(0f, 0f);
+        pRT.anchoredPosition = new Vector2(18f, 8f);
+        pRT.sizeDelta = new Vector2(160f, 22f);
+        GameObject txtDGO = new GameObject("Text_Details");
+        txtDGO.transform.SetParent(batteryContainer, false);
+        testoDettaglioHP = txtDGO.AddComponent<Text>();
+        testoDettaglioHP.font = font;
+        testoDettaglioHP.fontSize = 16;
+        testoDettaglioHP.alignment = TextAnchor.MiddleRight;
+        testoDettaglioHP.text = "100 / 100 HP";
+        testoDettaglioHP.color = new Color(0.7f, 1f, 0.8f, 0.85f);
+        testoDettaglioHP.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoDettaglioHP.raycastTarget = false;
+        RectTransform dRT = txtDGO.GetComponent<RectTransform>();
+        dRT.anchorMin = new Vector2(0.45f, 0f);
+        dRT.anchorMax = new Vector2(1f, 0f);
+        dRT.pivot = new Vector2(1f, 0f);
+        dRT.anchoredPosition = new Vector2(-18f, 8f);
+        dRT.sizeDelta = new Vector2(160f, 22f);
+    }
+    private void CostruisciMirinoVisore(Sprite solid, Font font)
+    {
+        GameObject reticleGO = new GameObject("RobotVisor_Reticle");
+        reticleGO.transform.SetParent(transform, false);
+        visorReticleContainer = reticleGO.AddComponent<RectTransform>();
+        visorReticleContainer.anchorMin = new Vector2(0.5f, 0.5f);
+        visorReticleContainer.anchorMax = new Vector2(0.5f, 0.5f);
+        visorReticleContainer.pivot = new Vector2(0.5f, 0.5f);
+        visorReticleContainer.anchoredPosition = Vector2.zero;
+        visorReticleContainer.sizeDelta = new Vector2(80f, 80f);
         // Punto centrale
-        GameObject dotGO = new GameObject("Center_Dot"); // setta // riga-ok
-        dotGO.transform.SetParent(visorReticleContainer, false); // chiama // riga-ok
-        reticleCenterDot = dotGO.AddComponent<Image>(); // setta // riga-ok
-        reticleCenterDot.sprite = solid; // setta // riga-ok
-        reticleCenterDot.color = new Color(0.4f, 0.95f, 1f, 0.85f); // setta // riga-ok
-        RectTransform dotRT = dotGO.GetComponent<RectTransform>(); // setta // riga-ok
-        dotRT.sizeDelta = new Vector2(4f, 4f); // setta // riga-ok
-
+        GameObject dotGO = new GameObject("Center_Dot");
+        dotGO.transform.SetParent(visorReticleContainer, false);
+        reticleCenterDot = dotGO.AddComponent<Image>();
+        reticleCenterDot.sprite = solid;
+        reticleCenterDot.color = new Color(0.4f, 0.95f, 1f, 0.85f);
+        RectTransform dotRT = dotGO.GetComponent<RectTransform>();
+        dotRT.sizeDelta = new Vector2(4f, 4f);
         // Anello tech rotante con tick
-        GameObject ringGO = new GameObject("Tech_Ring"); // setta // riga-ok
-        ringGO.transform.SetParent(visorReticleContainer, false); // chiama // riga-ok
-        reticleRing = ringGO.AddComponent<RectTransform>(); // setta // riga-ok
-        reticleRing.sizeDelta = new Vector2(46f, 46f); // setta // riga-ok
-
+        GameObject ringGO = new GameObject("Tech_Ring");
+        ringGO.transform.SetParent(visorReticleContainer, false);
+        reticleRing = ringGO.AddComponent<RectTransform>();
+        reticleRing.sizeDelta = new Vector2(46f, 46f);
         // 4 tacche cardinali sull'anello
-        // blocco: gira piu volte
-        for (int i = 0; i < 4; i++) // ciclo x // riga-ok
-        { // apre // riga-ok
-            GameObject tick = new GameObject($"Tick_{i}"); // setta // riga-ok
-            tick.transform.SetParent(reticleRing, false); // chiama // riga-ok
-            Image tImg = tick.AddComponent<Image>(); // setta // riga-ok
-            tImg.sprite = solid; // setta // riga-ok
-            tImg.color = new Color(0.4f, 0.95f, 1f, 0.6f); // setta // riga-ok
-            RectTransform tRT = tick.GetComponent<RectTransform>(); // setta // riga-ok
-            tRT.sizeDelta = new Vector2(2f, 6f); // setta // riga-ok
-            float angle = i * 90f; // setta // riga-ok
-            tRT.localRotation = Quaternion.Euler(0f, 0f, angle); // setta // riga-ok
-            tRT.anchoredPosition = Quaternion.Euler(0f, 0f, angle) * new Vector2(0f, 20f); // setta // riga-ok
-        } // chiude // riga-ok
-
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject tick = new GameObject($"Tick_{i}");
+            tick.transform.SetParent(reticleRing, false);
+            Image tImg = tick.AddComponent<Image>();
+            tImg.sprite = solid;
+            tImg.color = new Color(0.4f, 0.95f, 1f, 0.6f);
+            RectTransform tRT = tick.GetComponent<RectTransform>();
+            tRT.sizeDelta = new Vector2(2f, 6f);
+            float angle = i * 90f;
+            tRT.localRotation = Quaternion.Euler(0f, 0f, angle);
+            tRT.anchoredPosition = Quaternion.Euler(0f, 0f, angle) * new Vector2(0f, 20f);
+        }
         // 4 Angoli Bracket Cybernetici [   ]
-        reticleBrackets = new Image[4]; // setta // riga-ok
-        Vector2[] bracketOffsets = new Vector2[] // setta // riga-ok
-        { // apre // riga-ok
-            new Vector2(-32f, 32f),  // Top Left // ok qua // riga-ok
-            new Vector2(32f, 32f),   // Top Right // ok qua // riga-ok
-            new Vector2(-32f, -32f), // Bottom Left // ok qua // riga-ok
-            new Vector2(32f, -32f)   // Bottom Right // ok qua // riga-ok
-        }; // ok qua // riga-ok
-
-        // blocco: gira piu volte
-        for (int i = 0; i < 4; i++) // ciclo x // riga-ok
-        { // apre // riga-ok
-            GameObject bGO = new GameObject($"Bracket_{i}"); // setta // riga-ok
-            bGO.transform.SetParent(visorReticleContainer, false); // chiama // riga-ok
-            reticleBrackets[i] = bGO.AddComponent<Image>(); // setta // riga-ok
-            reticleBrackets[i].sprite = solid; // setta // riga-ok
-            reticleBrackets[i].color = new Color(0.4f, 0.95f, 1f, 0.7f); // setta // riga-ok
-            RectTransform bRT = bGO.GetComponent<RectTransform>(); // setta // riga-ok
-            bRT.sizeDelta = new Vector2(7f, 2f); // setta // riga-ok
-            bRT.anchoredPosition = bracketOffsets[i]; // setta // riga-ok
-        } // chiude // riga-ok
-
+        reticleBrackets = new Image[4];
+        Vector2[] bracketOffsets = new Vector2[]
+        {
+            new Vector2(-32f, 32f),  // Top Left
+            new Vector2(32f, 32f),   // Top Right
+            new Vector2(-32f, -32f), // Bottom Left
+            new Vector2(32f, -32f)   // Bottom Right
+        };
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject bGO = new GameObject($"Bracket_{i}");
+            bGO.transform.SetParent(visorReticleContainer, false);
+            reticleBrackets[i] = bGO.AddComponent<Image>();
+            reticleBrackets[i].sprite = solid;
+            reticleBrackets[i].color = new Color(0.4f, 0.95f, 1f, 0.7f);
+            RectTransform bRT = bGO.GetComponent<RectTransform>();
+            bRT.sizeDelta = new Vector2(7f, 2f);
+            bRT.anchoredPosition = bracketOffsets[i];
+        }
         // Testo stato Scanner / Lock
-        GameObject statusGO = new GameObject("Scan_Status"); // setta // riga-ok
-        statusGO.transform.SetParent(visorReticleContainer, false); // chiama // riga-ok
-        reticleStatusText = statusGO.AddComponent<Text>(); // setta // riga-ok
-        reticleStatusText.font = font; // setta // riga-ok
-        reticleStatusText.fontSize = 14; // setta // riga-ok
-        reticleStatusText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        reticleStatusText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        reticleStatusText.text = ""; // setta // riga-ok
-        reticleStatusText.color = neonGreen; // setta // riga-ok
-        reticleStatusText.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        RectTransform stRT = statusGO.GetComponent<RectTransform>(); // setta // riga-ok
-        stRT.anchoredPosition = new Vector2(0f, -48f); // setta // riga-ok
-        stRT.sizeDelta = new Vector2(200f, 24f); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciPromptProssimita(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject promptGO = new GameObject("Interaction_PromptPanel"); // setta // riga-ok
-        promptGO.transform.SetParent(transform, false); // chiama // riga-ok
-        promptPanel = promptGO.AddComponent<RectTransform>(); // setta // riga-ok
-        promptPanel.anchorMin = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        promptPanel.anchorMax = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        promptPanel.pivot = new Vector2(0.5f, 1f); // setta // riga-ok
-        promptPanel.anchoredPosition = new Vector2(0f, -68f); // setta // riga-ok
-        promptPanel.sizeDelta = new Vector2(480f, 88f); // setta // riga-ok
-
-        promptCanvasGroup = promptGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        promptCanvasGroup.alpha = 0f; // setta // riga-ok
-
-        Image bg = promptGO.AddComponent<Image>(); // setta // riga-ok
-        bg.sprite = border; // setta // riga-ok
-        bg.type = Image.Type.Sliced; // setta // riga-ok
-        bg.color = darkGlass; // setta // riga-ok
-
+        GameObject statusGO = new GameObject("Scan_Status");
+        statusGO.transform.SetParent(visorReticleContainer, false);
+        reticleStatusText = statusGO.AddComponent<Text>();
+        reticleStatusText.font = font;
+        reticleStatusText.fontSize = 14;
+        reticleStatusText.fontStyle = FontStyle.Bold;
+        reticleStatusText.alignment = TextAnchor.MiddleCenter;
+        reticleStatusText.text = "";
+        reticleStatusText.color = neonGreen;
+        reticleStatusText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        RectTransform stRT = statusGO.GetComponent<RectTransform>();
+        stRT.anchoredPosition = new Vector2(0f, -48f);
+        stRT.sizeDelta = new Vector2(200f, 24f);
+    }
+    private void CostruisciPromptProssimita(Sprite solid, Sprite border, Font font)
+    {
+        GameObject promptGO = new GameObject("Interaction_PromptPanel");
+        promptGO.transform.SetParent(transform, false);
+        promptPanel = promptGO.AddComponent<RectTransform>();
+        promptPanel.anchorMin = new Vector2(0.5f, 0.5f);
+        promptPanel.anchorMax = new Vector2(0.5f, 0.5f);
+        promptPanel.pivot = new Vector2(0.5f, 1f);
+        promptPanel.anchoredPosition = new Vector2(0f, -68f);
+        promptPanel.sizeDelta = new Vector2(480f, 88f);
+        promptCanvasGroup = promptGO.AddComponent<CanvasGroup>();
+        promptCanvasGroup.alpha = 0f;
+        Image bg = promptGO.AddComponent<Image>();
+        bg.sprite = border;
+        bg.type = Image.Type.Sliced;
+        bg.color = darkGlass;
         // Badge Tasto [ E ]
-        GameObject badgeGO = new GameObject("KeyBadge_E"); // setta // riga-ok
-        badgeGO.transform.SetParent(promptPanel, false); // chiama // riga-ok
-        promptKeyBadge = badgeGO.AddComponent<Image>(); // setta // riga-ok
-        promptKeyBadge.sprite = border; // setta // riga-ok
-        promptKeyBadge.type = Image.Type.Sliced; // setta // riga-ok
-        promptKeyBadge.color = new Color(0.08f, 0.35f, 0.15f, 0.95f); // setta // riga-ok
-        RectTransform badgeRT = badgeGO.GetComponent<RectTransform>(); // setta // riga-ok
-        badgeRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        badgeRT.anchorMax = new Vector2(0f, 0.5f); // setta // riga-ok
-        badgeRT.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        badgeRT.anchoredPosition = new Vector2(46f, 0f); // setta // riga-ok
-        badgeRT.sizeDelta = new Vector2(50f, 50f); // setta // riga-ok
-
-        GameObject keyTxtGO = new GameObject("KeyText"); // setta // riga-ok
-        keyTxtGO.transform.SetParent(badgeGO.transform, false); // chiama // riga-ok
-        promptKeyText = keyTxtGO.AddComponent<Text>(); // setta // riga-ok
-        promptKeyText.font = font; // setta // riga-ok
-        promptKeyText.fontSize = 26; // setta // riga-ok
-        promptKeyText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        promptKeyText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        promptKeyText.text = "E"; // setta // riga-ok
-        promptKeyText.color = Color.white; // setta // riga-ok
-        RectTransform ktRT = keyTxtGO.GetComponent<RectTransform>(); // setta // riga-ok
-        ktRT.anchorMin = Vector2.zero; // setta // riga-ok
-        ktRT.anchorMax = Vector2.one; // setta // riga-ok
-        ktRT.sizeDelta = Vector2.zero; // setta // riga-ok
-
+        GameObject badgeGO = new GameObject("KeyBadge_E");
+        badgeGO.transform.SetParent(promptPanel, false);
+        promptKeyBadge = badgeGO.AddComponent<Image>();
+        promptKeyBadge.sprite = border;
+        promptKeyBadge.type = Image.Type.Sliced;
+        promptKeyBadge.color = new Color(0.08f, 0.35f, 0.15f, 0.95f);
+        RectTransform badgeRT = badgeGO.GetComponent<RectTransform>();
+        badgeRT.anchorMin = new Vector2(0f, 0.5f);
+        badgeRT.anchorMax = new Vector2(0f, 0.5f);
+        badgeRT.pivot = new Vector2(0.5f, 0.5f);
+        badgeRT.anchoredPosition = new Vector2(46f, 0f);
+        badgeRT.sizeDelta = new Vector2(50f, 50f);
+        GameObject keyTxtGO = new GameObject("KeyText");
+        keyTxtGO.transform.SetParent(badgeGO.transform, false);
+        promptKeyText = keyTxtGO.AddComponent<Text>();
+        promptKeyText.font = font;
+        promptKeyText.fontSize = 26;
+        promptKeyText.fontStyle = FontStyle.Bold;
+        promptKeyText.alignment = TextAnchor.MiddleCenter;
+        promptKeyText.text = "E";
+        promptKeyText.color = Color.white;
+        RectTransform ktRT = keyTxtGO.GetComponent<RectTransform>();
+        ktRT.anchorMin = Vector2.zero;
+        ktRT.anchorMax = Vector2.one;
+        ktRT.sizeDelta = Vector2.zero;
         // Titolo Oggetto
-        GameObject titleGO = new GameObject("Prompt_Title"); // setta // riga-ok
-        titleGO.transform.SetParent(promptPanel, false); // chiama // riga-ok
-        promptTitleText = titleGO.AddComponent<Text>(); // setta // riga-ok
-        promptTitleText.font = font; // setta // riga-ok
-        promptTitleText.fontSize = 17; // setta // riga-ok
-        promptTitleText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        promptTitleText.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        promptTitleText.text = "AUTORIZZAZIONE: KEYCARD_A02"; // setta // riga-ok
-        promptTitleText.color = neonGreen; // setta // riga-ok
-        promptTitleText.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        RectTransform tRT = titleGO.GetComponent<RectTransform>(); // setta // riga-ok
-        tRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        tRT.anchorMax = new Vector2(1f, 0.5f); // setta // riga-ok
-        tRT.pivot = new Vector2(0f, 0.5f); // setta // riga-ok
-        tRT.anchoredPosition = new Vector2(84f, 16f); // setta // riga-ok
-        tRT.sizeDelta = new Vector2(380f, 26f); // setta // riga-ok
-
+        GameObject titleGO = new GameObject("Prompt_Title");
+        titleGO.transform.SetParent(promptPanel, false);
+        promptTitleText = titleGO.AddComponent<Text>();
+        promptTitleText.font = font;
+        promptTitleText.fontSize = 17;
+        promptTitleText.fontStyle = FontStyle.Bold;
+        promptTitleText.alignment = TextAnchor.MiddleLeft;
+        promptTitleText.text = "AUTORIZZAZIONE: KEYCARD_A02";
+        promptTitleText.color = neonGreen;
+        promptTitleText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        RectTransform tRT = titleGO.GetComponent<RectTransform>();
+        tRT.anchorMin = new Vector2(0f, 0.5f);
+        tRT.anchorMax = new Vector2(1f, 0.5f);
+        tRT.pivot = new Vector2(0f, 0.5f);
+        tRT.anchoredPosition = new Vector2(84f, 16f);
+        tRT.sizeDelta = new Vector2(380f, 26f);
         // Azione / Cosa sistemare
-        GameObject actGO = new GameObject("Prompt_Action"); // setta // riga-ok
-        actGO.transform.SetParent(promptPanel, false); // chiama // riga-ok
-        promptActionText = actGO.AddComponent<Text>(); // setta // riga-ok
-        promptActionText.font = font; // setta // riga-ok
-        promptActionText.fontSize = 15; // setta // riga-ok
-        promptActionText.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        promptActionText.text = "Premi [E] per Raccogliere Scheda di Accesso"; // setta // riga-ok
-        promptActionText.color = textCyan; // setta // riga-ok
-        promptActionText.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        RectTransform aRT = actGO.GetComponent<RectTransform>(); // setta // riga-ok
-        aRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        aRT.anchorMax = new Vector2(1f, 0.5f); // setta // riga-ok
-        aRT.pivot = new Vector2(0f, 0.5f); // setta // riga-ok
-        aRT.anchoredPosition = new Vector2(84f, -15f); // setta // riga-ok
-        aRT.sizeDelta = new Vector2(380f, 24f); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciBannerNotifica(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject notificaGO = new GameObject("Notification_Banner"); // setta // riga-ok
-        notificaGO.transform.SetParent(transform, false); // chiama // riga-ok
-        notificaPanel = notificaGO.AddComponent<RectTransform>(); // setta // riga-ok
-        notificaPanel.anchorMin = new Vector2(0.5f, 1f); // setta // riga-ok
-        notificaPanel.anchorMax = new Vector2(0.5f, 1f); // setta // riga-ok
-        notificaPanel.pivot = new Vector2(0.5f, 1f); // setta // riga-ok
-        notificaPanel.anchoredPosition = new Vector2(0f, -25f); // setta // riga-ok
-        notificaPanel.sizeDelta = new Vector2(580f, 80f); // setta // riga-ok
-
-        notificaCanvasGroup = notificaGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        notificaCanvasGroup.alpha = 0f; // setta // riga-ok
-
-        Image bg = notificaGO.AddComponent<Image>(); // setta // riga-ok
-        bg.sprite = border; // setta // riga-ok
-        bg.type = Image.Type.Sliced; // setta // riga-ok
-        bg.color = darkGlass; // setta // riga-ok
-
+        GameObject actGO = new GameObject("Prompt_Action");
+        actGO.transform.SetParent(promptPanel, false);
+        promptActionText = actGO.AddComponent<Text>();
+        promptActionText.font = font;
+        promptActionText.fontSize = 15;
+        promptActionText.alignment = TextAnchor.MiddleLeft;
+        promptActionText.text = "Premi [E] per Raccogliere Scheda di Accesso";
+        promptActionText.color = textCyan;
+        promptActionText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        RectTransform aRT = actGO.GetComponent<RectTransform>();
+        aRT.anchorMin = new Vector2(0f, 0.5f);
+        aRT.anchorMax = new Vector2(1f, 0.5f);
+        aRT.pivot = new Vector2(0f, 0.5f);
+        aRT.anchoredPosition = new Vector2(84f, -15f);
+        aRT.sizeDelta = new Vector2(380f, 24f);
+    }
+    private void CostruisciBannerNotifica(Sprite solid, Sprite border, Font font)
+    {
+        GameObject notificaGO = new GameObject("Notification_Banner");
+        notificaGO.transform.SetParent(transform, false);
+        notificaPanel = notificaGO.AddComponent<RectTransform>();
+        notificaPanel.anchorMin = new Vector2(0.5f, 1f);
+        notificaPanel.anchorMax = new Vector2(0.5f, 1f);
+        notificaPanel.pivot = new Vector2(0.5f, 1f);
+        notificaPanel.anchoredPosition = new Vector2(0f, -25f);
+        notificaPanel.sizeDelta = new Vector2(580f, 80f);
+        notificaCanvasGroup = notificaGO.AddComponent<CanvasGroup>();
+        notificaCanvasGroup.alpha = 0f;
+        Image bg = notificaGO.AddComponent<Image>();
+        bg.sprite = border;
+        bg.type = Image.Type.Sliced;
+        bg.color = darkGlass;
         // Titolo Notifica
-        GameObject tGO = new GameObject("Notifica_Title"); // setta // riga-ok
-        tGO.transform.SetParent(notificaPanel, false); // chiama // riga-ok
-        notificaTitleText = tGO.AddComponent<Text>(); // setta // riga-ok
-        notificaTitleText.font = font; // setta // riga-ok
-        notificaTitleText.fontSize = 19; // setta // riga-ok
-        notificaTitleText.fontStyle = FontStyle.Bold; // setta // riga-ok
-        notificaTitleText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        notificaTitleText.text = "AUTORIZZAZIONE ACQUISITA"; // setta // riga-ok
-        notificaTitleText.color = neonGreen; // setta // riga-ok
-        notificaTitleText.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        RectTransform ntRT = tGO.GetComponent<RectTransform>(); // setta // riga-ok
-        ntRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        ntRT.anchorMax = new Vector2(1f, 0.5f); // setta // riga-ok
-        ntRT.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        ntRT.anchoredPosition = new Vector2(0f, 14f); // setta // riga-ok
-        ntRT.sizeDelta = new Vector2(550f, 28f); // setta // riga-ok
-
+        GameObject tGO = new GameObject("Notifica_Title");
+        tGO.transform.SetParent(notificaPanel, false);
+        notificaTitleText = tGO.AddComponent<Text>();
+        notificaTitleText.font = font;
+        notificaTitleText.fontSize = 19;
+        notificaTitleText.fontStyle = FontStyle.Bold;
+        notificaTitleText.alignment = TextAnchor.MiddleCenter;
+        notificaTitleText.text = "AUTORIZZAZIONE ACQUISITA";
+        notificaTitleText.color = neonGreen;
+        notificaTitleText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        RectTransform ntRT = tGO.GetComponent<RectTransform>();
+        ntRT.anchorMin = new Vector2(0f, 0.5f);
+        ntRT.anchorMax = new Vector2(1f, 0.5f);
+        ntRT.pivot = new Vector2(0.5f, 0.5f);
+        ntRT.anchoredPosition = new Vector2(0f, 14f);
+        ntRT.sizeDelta = new Vector2(550f, 28f);
         // Sottotitolo / Dettagli
-        GameObject sGO = new GameObject("Notifica_Sub"); // setta // riga-ok
-        sGO.transform.SetParent(notificaPanel, false); // chiama // riga-ok
-        notificaSubText = sGO.AddComponent<Text>(); // setta // riga-ok
-        notificaSubText.font = font; // setta // riga-ok
-        notificaSubText.fontSize = 15; // setta // riga-ok
-        notificaSubText.alignment = TextAnchor.MiddleCenter; // setta // riga-ok
-        notificaSubText.text = "KEYCARD_A02 // ACCESSO AL SETTORE AGGIORNATO"; // setta // riga-ok
-        notificaSubText.color = textCyan; // setta // riga-ok
-        notificaSubText.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        RectTransform nsRT = sGO.GetComponent<RectTransform>(); // setta // riga-ok
-        nsRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        nsRT.anchorMax = new Vector2(1f, 0.5f); // setta // riga-ok
-        nsRT.pivot = new Vector2(0.5f, 0.5f); // setta // riga-ok
-        nsRT.anchoredPosition = new Vector2(0f, -15f); // setta // riga-ok
-        nsRT.sizeDelta = new Vector2(550f, 24f); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciTimerVisore(Sprite solid, Sprite border, Font font) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject panelGO = new GameObject("CyberTimer_Panel"); // setta // riga-ok
-        panelGO.transform.SetParent(transform, false); // chiama // riga-ok
-        timerContainer = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
-        timerContainer.anchorMin = new Vector2(1f, 1f); // setta // riga-ok
-        timerContainer.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        timerContainer.pivot = new Vector2(1f, 1f); // setta // riga-ok
-        timerContainer.anchoredPosition = new Vector2(-60f, -40f); // setta // riga-ok
-        timerContainer.sizeDelta = new Vector2(250f, 92f); // setta // riga-ok
-
+        GameObject sGO = new GameObject("Notifica_Sub");
+        sGO.transform.SetParent(notificaPanel, false);
+        notificaSubText = sGO.AddComponent<Text>();
+        notificaSubText.font = font;
+        notificaSubText.fontSize = 15;
+        notificaSubText.alignment = TextAnchor.MiddleCenter;
+        notificaSubText.text = "KEYCARD_A02 // ACCESSO AL SETTORE AGGIORNATO";
+        notificaSubText.color = textCyan;
+        notificaSubText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        RectTransform nsRT = sGO.GetComponent<RectTransform>();
+        nsRT.anchorMin = new Vector2(0f, 0.5f);
+        nsRT.anchorMax = new Vector2(1f, 0.5f);
+        nsRT.pivot = new Vector2(0.5f, 0.5f);
+        nsRT.anchoredPosition = new Vector2(0f, -15f);
+        nsRT.sizeDelta = new Vector2(550f, 24f);
+    }
+    private void CostruisciTimerVisore(Sprite solid, Sprite border, Font font)
+    {
+        GameObject panelGO = new GameObject("CyberTimer_Panel");
+        panelGO.transform.SetParent(transform, false);
+        timerContainer = panelGO.AddComponent<RectTransform>();
+        timerContainer.anchorMin = new Vector2(1f, 1f);
+        timerContainer.anchorMax = new Vector2(1f, 1f);
+        timerContainer.pivot = new Vector2(1f, 1f);
+        timerContainer.anchoredPosition = new Vector2(-60f, -40f);
+        timerContainer.sizeDelta = new Vector2(250f, 92f);
         // Sfondo dark glass con contorno verde/cianotico
-        Image bg = panelGO.AddComponent<Image>(); // setta // riga-ok
-        bg.sprite = border; // setta // riga-ok
-        bg.type = Image.Type.Sliced; // setta // riga-ok
-        bg.color = darkGlass; // setta // riga-ok
-        bg.raycastTarget = false; // setta // riga-ok
-
+        Image bg = panelGO.AddComponent<Image>();
+        bg.sprite = border;
+        bg.type = Image.Type.Sliced;
+        bg.color = darkGlass;
+        bg.raycastTarget = false;
         // Intestazione Timer LCD
-        GameObject labelGO = new GameObject("Timer_Label"); // setta // riga-ok
-        labelGO.transform.SetParent(timerContainer, false); // chiama // riga-ok
-        Text lbl = labelGO.AddComponent<Text>(); // setta // riga-ok
-        lbl.font = font; // setta // riga-ok
-        lbl.fontSize = 14; // setta // riga-ok
-        lbl.fontStyle = FontStyle.Bold; // setta // riga-ok
-        lbl.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        lbl.text = "⏳ COUNTDOWN // T-MINUS"; // setta // riga-ok
-        lbl.color = textCyan; // setta // riga-ok
-        lbl.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        lbl.raycastTarget = false; // setta // riga-ok
-
-        RectTransform lblRT = labelGO.GetComponent<RectTransform>(); // setta // riga-ok
-        lblRT.anchorMin = new Vector2(0f, 1f); // setta // riga-ok
-        lblRT.anchorMax = new Vector2(1f, 1f); // setta // riga-ok
-        lblRT.pivot = new Vector2(0f, 1f); // setta // riga-ok
-        lblRT.anchoredPosition = new Vector2(16f, -10f); // setta // riga-ok
-        lblRT.sizeDelta = new Vector2(220f, 20f); // setta // riga-ok
-
+        GameObject labelGO = new GameObject("Timer_Label");
+        labelGO.transform.SetParent(timerContainer, false);
+        Text lbl = labelGO.AddComponent<Text>();
+        lbl.font = font;
+        lbl.fontSize = 14;
+        lbl.fontStyle = FontStyle.Bold;
+        lbl.alignment = TextAnchor.MiddleLeft;
+        lbl.text = "⏳ COUNTDOWN // T-MINUS";
+        lbl.color = textCyan;
+        lbl.horizontalOverflow = HorizontalWrapMode.Overflow;
+        lbl.raycastTarget = false;
+        RectTransform lblRT = labelGO.GetComponent<RectTransform>();
+        lblRT.anchorMin = new Vector2(0f, 1f);
+        lblRT.anchorMax = new Vector2(1f, 1f);
+        lblRT.pivot = new Vector2(0f, 1f);
+        lblRT.anchoredPosition = new Vector2(16f, -10f);
+        lblRT.sizeDelta = new Vector2(220f, 20f);
         // Testo Digitale Orologio Timer (Grande Verde Neon)
-        GameObject valGO = new GameObject("Timer_Value"); // setta // riga-ok
-        valGO.transform.SetParent(timerContainer, false); // chiama // riga-ok
-        testoTimerValore = valGO.AddComponent<Text>(); // setta // riga-ok
-        testoTimerValore.font = font; // setta // riga-ok
-        testoTimerValore.fontSize = 28; // setta // riga-ok
-        testoTimerValore.fontStyle = FontStyle.Bold; // setta // riga-ok
-        testoTimerValore.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        testoTimerValore.text = "00:00.0"; // setta // riga-ok
-        testoTimerValore.color = neonGreen; // setta // riga-ok
-        testoTimerValore.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        testoTimerValore.raycastTarget = false; // setta // riga-ok
-
-        RectTransform valRT = valGO.GetComponent<RectTransform>(); // setta // riga-ok
-        valRT.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        valRT.anchorMax = new Vector2(1f, 0.5f); // setta // riga-ok
-        valRT.pivot = new Vector2(0f, 0.5f); // setta // riga-ok
-        valRT.anchoredPosition = new Vector2(18f, -2f); // setta // riga-ok
-        valRT.sizeDelta = new Vector2(220f, 32f); // setta // riga-ok
-
+        GameObject valGO = new GameObject("Timer_Value");
+        valGO.transform.SetParent(timerContainer, false);
+        testoTimerValore = valGO.AddComponent<Text>();
+        testoTimerValore.font = font;
+        testoTimerValore.fontSize = 28;
+        testoTimerValore.fontStyle = FontStyle.Bold;
+        testoTimerValore.alignment = TextAnchor.MiddleLeft;
+        testoTimerValore.text = "00:00.0";
+        testoTimerValore.color = neonGreen;
+        testoTimerValore.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoTimerValore.raycastTarget = false;
+        RectTransform valRT = valGO.GetComponent<RectTransform>();
+        valRT.anchorMin = new Vector2(0f, 0.5f);
+        valRT.anchorMax = new Vector2(1f, 0.5f);
+        valRT.pivot = new Vector2(0f, 0.5f);
+        valRT.anchoredPosition = new Vector2(18f, -2f);
+        valRT.sizeDelta = new Vector2(220f, 32f);
         // Sottotitolo / Status Timer
-        GameObject stGO = new GameObject("Timer_Status"); // setta // riga-ok
-        stGO.transform.SetParent(timerContainer, false); // chiama // riga-ok
-        testoTimerStatus = stGO.AddComponent<Text>(); // setta // riga-ok
-        testoTimerStatus.font = font; // setta // riga-ok
-        testoTimerStatus.fontSize = 12; // setta // riga-ok
-        testoTimerStatus.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        testoTimerStatus.text = "SYS_REC // SEC_02 [ACTIVE]"; // setta // riga-ok
-        testoTimerStatus.color = textCyan; // setta // riga-ok
-        testoTimerStatus.horizontalOverflow = HorizontalWrapMode.Overflow; // setta // riga-ok
-        testoTimerStatus.raycastTarget = false; // setta // riga-ok
-
-        RectTransform stRT = stGO.GetComponent<RectTransform>(); // setta // riga-ok
-        stRT.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        stRT.anchorMax = new Vector2(1f, 0f); // setta // riga-ok
-        stRT.pivot = new Vector2(0f, 0f); // setta // riga-ok
-        stRT.anchoredPosition = new Vector2(18f, 10f); // setta // riga-ok
-        stRT.sizeDelta = new Vector2(220f, 18f); // setta // riga-ok
-    } // chiude // riga-ok
-
+        GameObject stGO = new GameObject("Timer_Status");
+        stGO.transform.SetParent(timerContainer, false);
+        testoTimerStatus = stGO.AddComponent<Text>();
+        testoTimerStatus.font = font;
+        testoTimerStatus.fontSize = 12;
+        testoTimerStatus.alignment = TextAnchor.MiddleLeft;
+        testoTimerStatus.text = "SYS_REC // SEC_02 [ACTIVE]";
+        testoTimerStatus.color = textCyan;
+        testoTimerStatus.horizontalOverflow = HorizontalWrapMode.Overflow;
+        testoTimerStatus.raycastTarget = false;
+        RectTransform stRT = stGO.GetComponent<RectTransform>();
+        stRT.anchorMin = new Vector2(0f, 0f);
+        stRT.anchorMax = new Vector2(1f, 0f);
+        stRT.pivot = new Vector2(0f, 0f);
+        stRT.anchoredPosition = new Vector2(18f, 10f);
+        stRT.sizeDelta = new Vector2(220f, 18f);
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // AGGIORNAMENTO DINAMICO BARRA VITA LCD
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    private void OnSaluteAggiornata(float corrente, float massima) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (corrente < hpCorrenti && hpCorrenti > 0) // se ok // riga-ok
-        { // apre // riga-ok
-            TriggerDamageFeedback(hpCorrenti - corrente); // chiama // riga-ok
-        } // chiude // riga-ok
-
-        hpCorrenti = corrente; // setta // riga-ok
-        hpMassimi = massima; // setta // riga-ok
-
-        float ratio = Mathf.Clamp01(corrente / Mathf.Max(massima, 1f)); // setta // riga-ok
-        int segmentiAttivi = Mathf.CeilToInt(ratio * NUM_SEGMENTI); // setta // riga-ok
-
-        Color activeColor = ratio <= 0.25f ? warningRed : neonGreen; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (batterySegments != null) // se ok // riga-ok
-        { // apre // riga-ok
-            // blocco: gira piu volte
-            for (int i = 0; i < NUM_SEGMENTI; i++) // ciclo x // riga-ok
-            { // apre // riga-ok
-                // blocco: controlla se va
-                if (batterySegments[i] != null) // se ok // riga-ok
-                { // apre // riga-ok
-                    bool attivo = i < segmentiAttivi; // setta // riga-ok
-                    batterySegments[i].color = attivo ? activeColor : neonGreenDim; // setta // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (testoPercentualeHP != null) // se ok // riga-ok
-        { // apre // riga-ok
-            int perc = Mathf.CeilToInt(ratio * 100f); // setta // riga-ok
-            testoPercentualeHP.text = ratio <= 0.25f ? $"[CRITICAL {perc}%]" : $"{perc}% [ONLINE]"; // setta // riga-ok
-            testoPercentualeHP.color = activeColor; // setta // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (testoDettaglioHP != null) // se ok // riga-ok
-        { // apre // riga-ok
-            testoDettaglioHP.text = $"{Mathf.CeilToInt(corrente)} / {Mathf.CeilToInt(massima)} HP"; // setta // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void CostruisciDamageFlash(Sprite solid) // roba pub // riga-ok
-    { // apre // riga-ok
-        GameObject dfGO = new GameObject("HUD_DamageFlash"); // setta // riga-ok
-        dfGO.transform.SetParent(transform, false); // chiama // riga-ok
-        Image dfImg = dfGO.AddComponent<Image>(); // setta // riga-ok
-        dfImg.sprite = solid; // setta // riga-ok
-        dfImg.color = new Color(1f, 0.05f, 0.05f, 0.35f); // setta // riga-ok
-        dfImg.raycastTarget = false; // setta // riga-ok
-
-        damageFlashGroup = dfGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        damageFlashGroup.alpha = 0f; // setta // riga-ok
-
-        RectTransform dfRT = dfGO.GetComponent<RectTransform>(); // setta // riga-ok
-        dfRT.anchorMin = Vector2.zero; // setta // riga-ok
-        dfRT.anchorMax = Vector2.one; // setta // riga-ok
-        dfRT.sizeDelta = Vector2.zero; // setta // riga-ok
-        dfRT.anchoredPosition = Vector2.zero; // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void TriggerDamageFeedback(float deltaDamage) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (damageFlashCoroutine != null) // se ok // riga-ok
-            StopCoroutine(damageFlashCoroutine); // corutina // riga-ok
-        damageFlashCoroutine = StartCoroutine(AnimaDamageFlash()); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private IEnumerator AnimaDamageFlash() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (damageFlashGroup == null) yield break; // se ok // riga-ok
-        damageFlashGroup.alpha = 1f; // setta // riga-ok
-
-        float timer = 0.35f; // setta // riga-ok
-        // blocco: gira piu volte
-        while (timer > 0) // ciclo x // riga-ok
-        { // apre // riga-ok
-            timer -= Time.unscaledDeltaTime; // setta // riga-ok
-            damageFlashGroup.alpha = Mathf.Clamp01(timer / 0.35f); // setta // riga-ok
-            yield return null; // aspetta // riga-ok
-        } // chiude // riga-ok
-        damageFlashGroup.alpha = 0f; // setta // riga-ok
-    } // chiude // riga-ok
-
+    private void OnSaluteAggiornata(float corrente, float massima)
+    {
+        if (corrente < hpCorrenti && hpCorrenti > 0)
+        {
+            TriggerDamageFeedback(hpCorrenti - corrente);
+        }
+        hpCorrenti = corrente;
+        hpMassimi = massima;
+        float ratio = Mathf.Clamp01(corrente / Mathf.Max(massima, 1f));
+        int segmentiAttivi = Mathf.CeilToInt(ratio * NUM_SEGMENTI);
+        Color activeColor = ratio <= 0.25f ? warningRed : neonGreen;
+        if (batterySegments != null)
+        {
+            for (int i = 0; i < NUM_SEGMENTI; i++)
+            {
+                if (batterySegments[i] != null)
+                {
+                    bool attivo = i < segmentiAttivi;
+                    batterySegments[i].color = attivo ? activeColor : neonGreenDim;
+                }
+            }
+        }
+        if (testoPercentualeHP != null)
+        {
+            int perc = Mathf.CeilToInt(ratio * 100f);
+            testoPercentualeHP.text = ratio <= 0.25f ? $"[CRITICAL {perc}%]" : $"{perc}% [ONLINE]";
+            testoPercentualeHP.color = activeColor;
+        }
+        if (testoDettaglioHP != null)
+        {
+            testoDettaglioHP.text = $"{Mathf.CeilToInt(corrente)} / {Mathf.CeilToInt(massima)} HP";
+        }
+    }
+    private void CostruisciDamageFlash(Sprite solid)
+    {
+        GameObject dfGO = new GameObject("HUD_DamageFlash");
+        dfGO.transform.SetParent(transform, false);
+        Image dfImg = dfGO.AddComponent<Image>();
+        dfImg.sprite = solid;
+        dfImg.color = new Color(1f, 0.05f, 0.05f, 0.35f);
+        dfImg.raycastTarget = false;
+        damageFlashGroup = dfGO.AddComponent<CanvasGroup>();
+        damageFlashGroup.alpha = 0f;
+        RectTransform dfRT = dfGO.GetComponent<RectTransform>();
+        dfRT.anchorMin = Vector2.zero;
+        dfRT.anchorMax = Vector2.one;
+        dfRT.sizeDelta = Vector2.zero;
+        dfRT.anchoredPosition = Vector2.zero;
+    }
+    private void TriggerDamageFeedback(float deltaDamage)
+    {
+        if (damageFlashCoroutine != null)
+            StopCoroutine(damageFlashCoroutine);
+        damageFlashCoroutine = StartCoroutine(AnimaDamageFlash());
+    }
+    private IEnumerator AnimaDamageFlash()
+    {
+        if (damageFlashGroup == null) yield break;
+        damageFlashGroup.alpha = 1f;
+        float timer = 0.35f;
+        while (timer > 0)
+        {
+            timer -= Time.unscaledDeltaTime;
+            damageFlashGroup.alpha = Mathf.Clamp01(timer / 0.35f);
+            yield return null;
+        }
+        damageFlashGroup.alpha = 0f;
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // CONTROLLO VISORE ROBOTICO & PROMPT PROSSIMITÀ
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    public void SetTargetLocked(bool locked, string nomeTarget = "") // roba pub // riga-ok
-    { // apre // riga-ok
-        isTargetLocked = locked; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (reticleCenterDot != null) // se ok // riga-ok
-            reticleCenterDot.color = locked ? neonGreen : new Color(0.4f, 0.95f, 1f, 0.85f); // setta // riga-ok
-
-        // blocco: controlla se va
-        if (reticleBrackets != null) // se ok // riga-ok
-        { // apre // riga-ok
-            Color c = locked ? neonGreen : new Color(0.4f, 0.95f, 1f, 0.7f); // setta // riga-ok
-            // blocco: gira piu volte
-            foreach (var b in reticleBrackets) // ciclo x // riga-ok
-            { // apre // riga-ok
-                // blocco: controlla se va
-                if (b != null) b.color = c; // se ok // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (reticleStatusText != null) // se ok // riga-ok
-        { // apre // riga-ok
-            reticleStatusText.text = locked ? "[TARGET LOCKED]" : ""; // setta // riga-ok
-            reticleStatusText.color = neonGreen; // setta // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (!locked && visorReticleContainer != null) // se ok // riga-ok
-        { // apre // riga-ok
-            visorReticleContainer.localScale = Vector3.one; // setta // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    public void MostraPrompt(string titoloOggetto, string azioneDescrizione) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (promptTitleText != null) promptTitleText.text = titoloOggetto; // se ok // riga-ok
-        // blocco: controlla se va
-        if (promptActionText != null) promptActionText.text = azioneDescrizione; // se ok // riga-ok
-
-        // blocco: controlla se va
-        if (promptCanvasGroup != null) // se ok // riga-ok
-        { // apre // riga-ok
-            promptCanvasGroup.alpha = 1f; // setta // riga-ok
-        } // chiude // riga-ok
-
-        SetTargetLocked(true, titoloOggetto); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    public void NascondiPrompt() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (promptCanvasGroup != null) // se ok // riga-ok
-        { // apre // riga-ok
-            promptCanvasGroup.alpha = 0f; // setta // riga-ok
-        } // chiude // riga-ok
-
-        SetTargetLocked(false); // chiama // riga-ok
-    } // chiude // riga-ok
-
+    public void SetTargetLocked(bool locked, string nomeTarget = "")
+    {
+        isTargetLocked = locked;
+        if (reticleCenterDot != null)
+            reticleCenterDot.color = locked ? neonGreen : new Color(0.4f, 0.95f, 1f, 0.85f);
+        if (reticleBrackets != null)
+        {
+            Color c = locked ? neonGreen : new Color(0.4f, 0.95f, 1f, 0.7f);
+            foreach (var b in reticleBrackets)
+            {
+                if (b != null) b.color = c;
+            }
+        }
+        if (reticleStatusText != null)
+        {
+            reticleStatusText.text = locked ? "[TARGET LOCKED]" : "";
+            reticleStatusText.color = neonGreen;
+        }
+        if (!locked && visorReticleContainer != null)
+        {
+            visorReticleContainer.localScale = Vector3.one;
+        }
+    }
+    public void MostraPrompt(string titoloOggetto, string azioneDescrizione)
+    {
+        if (promptTitleText != null) promptTitleText.text = titoloOggetto;
+        if (promptActionText != null) promptActionText.text = azioneDescrizione;
+        if (promptCanvasGroup != null)
+        {
+            promptCanvasGroup.alpha = 1f;
+        }
+        SetTargetLocked(true, titoloOggetto);
+    }
+    public void NascondiPrompt()
+    {
+        if (promptCanvasGroup != null)
+        {
+            promptCanvasGroup.alpha = 0f;
+        }
+        SetTargetLocked(false);
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // NOTIFICA OLOGRAFICA ACQUISIZIONE
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    public void MostraNotificaAcquisizione(string titolo, string dettagli) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (notificaCoroutine != null) // se ok // riga-ok
-            StopCoroutine(notificaCoroutine); // corutina // riga-ok
-
-        notificaCoroutine = StartCoroutine(AnimaNotifica(titolo, dettagli)); // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private IEnumerator AnimaNotifica(string titolo, string dettagli) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (notificaTitleText != null) notificaTitleText.text = titolo.ToUpper(); // se ok // riga-ok
-        // blocco: controlla se va
-        if (notificaSubText != null) notificaSubText.text = dettagli.ToUpper(); // se ok // riga-ok
-
-        // blocco: controlla se va
-        if (notificaCanvasGroup == null) yield break; // se ok // riga-ok
-
+    public void MostraNotificaAcquisizione(string titolo, string dettagli)
+    {
+        if (notificaCoroutine != null)
+            StopCoroutine(notificaCoroutine);
+        notificaCoroutine = StartCoroutine(AnimaNotifica(titolo, dettagli));
+    }
+    private IEnumerator AnimaNotifica(string titolo, string dettagli)
+    {
+        if (notificaTitleText != null) notificaTitleText.text = titolo.ToUpper();
+        if (notificaSubText != null) notificaSubText.text = dettagli.ToUpper();
+        if (notificaCanvasGroup == null) yield break;
         // Fade in
-        float t = 0f; // setta // riga-ok
-        // blocco: gira piu volte
-        while (t < 0.25f) // ciclo x // riga-ok
-        { // apre // riga-ok
-            t += Time.unscaledDeltaTime; // setta // riga-ok
-            notificaCanvasGroup.alpha = Mathf.Lerp(0f, 1f, t / 0.25f); // setta // riga-ok
-            yield return null; // aspetta // riga-ok
-        } // chiude // riga-ok
-        notificaCanvasGroup.alpha = 1f; // setta // riga-ok
-
+        float t = 0f;
+        while (t < 0.25f)
+        {
+            t += Time.unscaledDeltaTime;
+            notificaCanvasGroup.alpha = Mathf.Lerp(0f, 1f, t / 0.25f);
+            yield return null;
+        }
+        notificaCanvasGroup.alpha = 1f;
         // Mostra a schermo per 3.5 secondi
-        yield return new WaitForSecondsRealtime(3.5f); // aspetta // riga-ok
-
+        yield return new WaitForSecondsRealtime(3.5f);
         // Fade out
-        t = 0f; // setta // riga-ok
-        // blocco: gira piu volte
-        while (t < 0.4f) // ciclo x // riga-ok
-        { // apre // riga-ok
-            t += Time.unscaledDeltaTime; // setta // riga-ok
-            notificaCanvasGroup.alpha = Mathf.Lerp(1f, 0f, t / 0.4f); // setta // riga-ok
-            yield return null; // aspetta // riga-ok
-        } // chiude // riga-ok
-        notificaCanvasGroup.alpha = 0f; // setta // riga-ok
-    } // chiude // riga-ok
-
+        t = 0f;
+        while (t < 0.4f)
+        {
+            t += Time.unscaledDeltaTime;
+            notificaCanvasGroup.alpha = Mathf.Lerp(1f, 0f, t / 0.4f);
+            yield return null;
+        }
+        notificaCanvasGroup.alpha = 0f;
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // SPRITE GENERATORS (Cornice Neon e Texture Solida)
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    private Sprite CreaSpriteSolido() // roba pub // riga-ok
-    { // apre // riga-ok
-        Texture2D tex = new Texture2D(2, 2); // setta // riga-ok
-        Color[] cols = new Color[] { Color.white, Color.white, Color.white, Color.white }; // setta // riga-ok
-        tex.SetPixels(cols); // chiama // riga-ok
-        tex.Apply(); // chiama // riga-ok
-        return Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f)); // torna val // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private Sprite CreaSpriteCorniceTech() // roba pub // riga-ok
-    { // apre // riga-ok
-        int w = 32; // setta // riga-ok
-        int h = 32; // setta // riga-ok
-        Texture2D tex = new Texture2D(w, h); // setta // riga-ok
-        tex.filterMode = FilterMode.Point; // setta // riga-ok
-        Color[] pixels = new Color[w * h]; // setta // riga-ok
-
-        Color bg = new Color(1f, 1f, 1f, 0.12f); // setta // riga-ok
-        Color border = new Color(0.2f, 1f, 0.35f, 0.95f); // setta // riga-ok
-        Color corner = new Color(0.4f, 1f, 0.6f, 1f); // setta // riga-ok
-
-        // blocco: gira piu volte
-        for (int y = 0; y < h; y++) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: gira piu volte
-            for (int x = 0; x < w; x++) // ciclo x // riga-ok
-            { // apre // riga-ok
-                bool isBorderX = (x == 0 || x == w - 1); // setta // riga-ok
-                bool isBorderY = (y == 0 || y == h - 1); // setta // riga-ok
-                bool isCorner = (x < 4 || x >= w - 4) && (y < 4 || y >= h - 4); // setta // riga-ok
-
-                // blocco: controlla se va
-                if (isCorner && (isBorderX || isBorderY)) // se ok // riga-ok
-                    pixels[y * w + x] = corner; // setta // riga-ok
-                // blocco: controlla se va
-                else if (isBorderX || isBorderY) // se ok // riga-ok
-                    pixels[y * w + x] = border; // setta // riga-ok
-                // blocco: caso diverso
-                else // se no // riga-ok
-                    pixels[y * w + x] = bg; // setta // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        tex.SetPixels(pixels); // chiama // riga-ok
-        tex.Apply(); // chiama // riga-ok
-        return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(6, 6, 6, 6)); // torna val // riga-ok
-    } // chiude // riga-ok
-
+    private Sprite CreaSpriteSolido()
+    {
+        Texture2D tex = new Texture2D(2, 2);
+        Color[] cols = new Color[] { Color.white, Color.white, Color.white, Color.white };
+        tex.SetPixels(cols);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f));
+    }
+    private Sprite CreaSpriteCorniceTech()
+    {
+        int w = 32;
+        int h = 32;
+        Texture2D tex = new Texture2D(w, h);
+        tex.filterMode = FilterMode.Point;
+        Color[] pixels = new Color[w * h];
+        Color bg = new Color(1f, 1f, 1f, 0.12f);
+        Color border = new Color(0.2f, 1f, 0.35f, 0.95f);
+        Color corner = new Color(0.4f, 1f, 0.6f, 1f);
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                bool isBorderX = (x == 0 || x == w - 1);
+                bool isBorderY = (y == 0 || y == h - 1);
+                bool isCorner = (x < 4 || x >= w - 4) && (y < 4 || y >= h - 4);
+                if (isCorner && (isBorderX || isBorderY))
+                    pixels[y * w + x] = corner;
+                else if (isBorderX || isBorderY)
+                    pixels[y * w + x] = border;
+                else
+                    pixels[y * w + x] = bg;
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(6, 6, 6, 6));
+    }
     // =========================================================================
     // 8. HINT CREDENZIALI — banner lampeggiante "cerca le credenziali"
     // =========================================================================
@@ -1375,206 +1140,179 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     /// Mostra il banner lampeggiante che indica al giocatore di cercare le credenziali
     /// vicino al terminale di sicurezza. Rimane visibile finche' non si chiama NascondiHintCredenziali().
     /// </summary>
-    public void MostraHintCredenziali(string messaggioOpzionale = null) // roba pub // riga-ok
-    { // apre // riga-ok
-        if (hudCanvas == null) return; // non pronto // riga-ok
-
+    public void MostraHintCredenziali(string messaggioOpzionale = null)
+    {
+        if (hudCanvas == null) return;
         // Costruisce il panel al primo uso
-        if (hintCredenzialiPanel == null) // se ok // riga-ok
-            CostruisciHintCredenzialiPanel(); // chiama // riga-ok
-
+        if (hintCredenzialiPanel == null)
+            CostruisciHintCredenzialiPanel();
         // Imposta il testo personalizzato o quello di default
-        if (hintCredenzialiTesto != null) // se ok // riga-ok
-        { // apre // riga-ok
-            hintCredenzialiTesto.text = messaggioOpzionale ?? // setta // riga-ok
-                "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!"; // setta // riga-ok
-        } // chiude // riga-ok
-
-        hintCredenzialiPanel.gameObject.SetActive(true); // mostra // riga-ok
-
+        if (hintCredenzialiTesto != null)
+        {
+            hintCredenzialiTesto.text = messaggioOpzionale ??
+                "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!";
+        }
+        hintCredenzialiPanel.gameObject.SetActive(true);
         // Riavvia lampeggio
-        if (hintCredenzialiCoroutine != null) StopCoroutine(hintCredenzialiCoroutine); // ferma vecchio // riga-ok
-        hintCredenzialiCoroutine = StartCoroutine(LampeggiaBannerCredenziali()); // avvia // riga-ok
-    } // chiude // riga-ok
-
+        if (hintCredenzialiCoroutine != null) StopCoroutine(hintCredenzialiCoroutine);
+        hintCredenzialiCoroutine = StartCoroutine(LampeggiaBannerCredenziali());
+    }
     /// <summary>
     /// Nasconde il banner hint credenziali (da chiamare quando le credenziali vengono trovate).
     /// </summary>
-    public void NascondiHintCredenziali() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (hintCredenzialiCoroutine != null) // se ok // riga-ok
-        { // apre // riga-ok
-            StopCoroutine(hintCredenzialiCoroutine); // ferma // riga-ok
-            hintCredenzialiCoroutine = null; // setta // riga-ok
-        } // chiude // riga-ok
-        if (hintCredenzialiPanel != null) // se ok // riga-ok
-            hintCredenzialiPanel.gameObject.SetActive(false); // nasconde // riga-ok
-    } // chiude // riga-ok
-
+    public void NascondiHintCredenziali()
+    {
+        if (hintCredenzialiCoroutine != null)
+        {
+            StopCoroutine(hintCredenzialiCoroutine);
+            hintCredenzialiCoroutine = null;
+        }
+        if (hintCredenzialiPanel != null)
+            hintCredenzialiPanel.gameObject.SetActive(false);
+    }
     // Costruisce il banner hint al primo utilizzo
-    private void CostruisciHintCredenzialiPanel() // roba priv // riga-ok
-    { // apre // riga-ok
-        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf"); // setta // riga-ok
-
+    private void CostruisciHintCredenzialiPanel()
+    {
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
         // Panel contenitore — in basso a sinistra, sopra la barra HP
-        GameObject panelGO = new GameObject("Hint_Credenziali_Panel"); // setta // riga-ok
-        panelGO.transform.SetParent(hudCanvas.transform, false); // chiama // riga-ok
-        hintCredenzialiPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
-        hintCredenzialiPanel.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
-        hintCredenzialiPanel.anchorMax = new Vector2(0f, 0f); // setta // riga-ok
-        hintCredenzialiPanel.pivot     = new Vector2(0f, 0f); // setta // riga-ok
-        hintCredenzialiPanel.anchoredPosition = new Vector2(24f, 130f); // setta // riga-ok
-        hintCredenzialiPanel.sizeDelta = new Vector2(420f, 80f); // setta // riga-ok
-
+        GameObject panelGO = new GameObject("Hint_Credenziali_Panel");
+        panelGO.transform.SetParent(hudCanvas.transform, false);
+        hintCredenzialiPanel = panelGO.AddComponent<RectTransform>();
+        hintCredenzialiPanel.anchorMin = new Vector2(0f, 0f);
+        hintCredenzialiPanel.anchorMax = new Vector2(0f, 0f);
+        hintCredenzialiPanel.pivot     = new Vector2(0f, 0f);
+        hintCredenzialiPanel.anchoredPosition = new Vector2(24f, 130f);
+        hintCredenzialiPanel.sizeDelta = new Vector2(420f, 80f);
         // Sfondo arancione semi-trasparente con bordo lampeggiante
-        Image bgImg = panelGO.AddComponent<Image>(); // setta // riga-ok
-        bgImg.color = new Color(0.9f, 0.45f, 0.0f, 0.88f); // arancione // setta // riga-ok
-        hintCredenzialiGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        hintCredenzialiGroup.alpha = 1f; // setta // riga-ok
-
+        Image bgImg = panelGO.AddComponent<Image>();
+        bgImg.color = new Color(0.9f, 0.45f, 0.0f, 0.88f);
+        hintCredenzialiGroup = panelGO.AddComponent<CanvasGroup>();
+        hintCredenzialiGroup.alpha = 1f;
         // Icona terminale (testo emoji simulato)
-        GameObject iconaGO = new GameObject("Hint_Icona"); // setta // riga-ok
-        iconaGO.transform.SetParent(hintCredenzialiPanel, false); // chiama // riga-ok
-        hintIconaTerminale = iconaGO.AddComponent<Image>(); // setta // riga-ok
-        hintIconaTerminale.color = new Color(1f, 1f, 0.2f, 1f); // giallo // setta // riga-ok
-        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>(); // setta // riga-ok
-        iconaRect.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.anchorMax = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.pivot     = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.anchoredPosition = new Vector2(12f, 0f); // setta // riga-ok
-        iconaRect.sizeDelta = new Vector2(16f, 16f); // setta // riga-ok
-
+        GameObject iconaGO = new GameObject("Hint_Icona");
+        iconaGO.transform.SetParent(hintCredenzialiPanel, false);
+        hintIconaTerminale = iconaGO.AddComponent<Image>();
+        hintIconaTerminale.color = new Color(1f, 1f, 0.2f, 1f);
+        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>();
+        iconaRect.anchorMin = new Vector2(0f, 0.5f);
+        iconaRect.anchorMax = new Vector2(0f, 0.5f);
+        iconaRect.pivot     = new Vector2(0f, 0.5f);
+        iconaRect.anchoredPosition = new Vector2(12f, 0f);
+        iconaRect.sizeDelta = new Vector2(16f, 16f);
         // Testo messaggio
-        GameObject testoGO = new GameObject("Hint_Testo"); // setta // riga-ok
-        testoGO.transform.SetParent(hintCredenzialiPanel, false); // chiama // riga-ok
-        hintCredenzialiTesto = testoGO.AddComponent<Text>(); // setta // riga-ok
-        hintCredenzialiTesto.font      = font; // setta // riga-ok
-        hintCredenzialiTesto.fontSize  = 17; // setta // riga-ok
-        hintCredenzialiTesto.fontStyle = FontStyle.Bold; // setta // riga-ok
-        hintCredenzialiTesto.color     = Color.white; // setta // riga-ok
-        hintCredenzialiTesto.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        hintCredenzialiTesto.raycastTarget = false; // setta // riga-ok
+        GameObject testoGO = new GameObject("Hint_Testo");
+        testoGO.transform.SetParent(hintCredenzialiPanel, false);
+        hintCredenzialiTesto = testoGO.AddComponent<Text>();
+        hintCredenzialiTesto.font      = font;
+        hintCredenzialiTesto.fontSize  = 17;
+        hintCredenzialiTesto.fontStyle = FontStyle.Bold;
+        hintCredenzialiTesto.color     = Color.white;
+        hintCredenzialiTesto.alignment = TextAnchor.MiddleLeft;
+        hintCredenzialiTesto.raycastTarget = false;
         hintCredenzialiTesto.text =
-            "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!"; // setta // riga-ok
-        RectTransform testoRect = testoGO.GetComponent<RectTransform>(); // setta // riga-ok
-        testoRect.anchorMin = Vector2.zero; // setta // riga-ok
-        testoRect.anchorMax = Vector2.one; // setta // riga-ok
-        testoRect.offsetMin = new Vector2(36f, 4f); // setta // riga-ok
-        testoRect.offsetMax = new Vector2(-10f, -4f); // setta // riga-ok
-
-        panelGO.SetActive(false); // nascosto di default // riga-ok
-    } // chiude // riga-ok
-
+            "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!";
+        RectTransform testoRect = testoGO.GetComponent<RectTransform>();
+        testoRect.anchorMin = Vector2.zero;
+        testoRect.anchorMax = Vector2.one;
+        testoRect.offsetMin = new Vector2(36f, 4f);
+        testoRect.offsetMax = new Vector2(-10f, -4f);
+        panelGO.SetActive(false);
+    }
     // Coroutine lampeggio banner credenziali: pulsa alpha tra 0.4 e 1.0
-    private IEnumerator LampeggiaBannerCredenziali() // roba priv // riga-ok
-    { // apre // riga-ok
-        float velocita = 2.8f; // velocita lampeggio // setta // riga-ok
-        while (true) // ciclo infinito // riga-ok
-        { // apre // riga-ok
-            float alpha = Mathf.Lerp(0.4f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f); // calcola // riga-ok
-            if (hintCredenzialiGroup != null) hintCredenzialiGroup.alpha = alpha; // setta // riga-ok
+    private IEnumerator LampeggiaBannerCredenziali()
+    {
+        float velocita = 2.8f;
+        while (true)
+        {
+            float alpha = Mathf.Lerp(0.4f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f);
+            if (hintCredenzialiGroup != null) hintCredenzialiGroup.alpha = alpha;
             // Lampeggia anche l'icona con colore alternato
-            if (hintIconaTerminale != null) // se ok // riga-ok
-            { // apre // riga-ok
-                float t = (Mathf.Sin(Time.unscaledTime * velocita * 1.5f) + 1f) * 0.5f; // setta // riga-ok
-                hintIconaTerminale.color = Color.Lerp(new Color(1f, 0.6f, 0f, 1f), new Color(1f, 1f, 0.2f, 1f), t); // setta // riga-ok
-            } // chiude // riga-ok
-            yield return null; // aspetta frame // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
+            if (hintIconaTerminale != null)
+            {
+                float t = (Mathf.Sin(Time.unscaledTime * velocita * 1.5f) + 1f) * 0.5f;
+                hintIconaTerminale.color = Color.Lerp(new Color(1f, 0.6f, 0f, 1f), new Color(1f, 1f, 0.2f, 1f), t);
+            }
+            yield return null;
+        }
+    }
     // =========================================================================
     // 9. HINT TUTORIAL DINAMICO
     // =========================================================================
 
-    public void MostraHintTutorial(string messaggio) // roba pub // riga-ok
-    { // apre // riga-ok
-        if (hudCanvas == null) return; // non pronto // riga-ok
-
-        if (hintTutorialPanel == null) // se ok // riga-ok
-            CostruisciHintTutorialPanel(); // chiama // riga-ok
-
-        if (hintTutorialTesto != null) // se ok // riga-ok
-            hintTutorialTesto.text = messaggio; // setta // riga-ok
-
-        hintTutorialPanel.gameObject.SetActive(true); // mostra // riga-ok
-
-        if (hintTutorialCoroutine != null) StopCoroutine(hintTutorialCoroutine); // ferma vecchio // riga-ok
-        hintTutorialCoroutine = StartCoroutine(LampeggiaBannerTutorial()); // avvia // riga-ok
-    } // chiude // riga-ok
-
-    public void NascondiHintTutorial() // roba pub // riga-ok
-    { // apre // riga-ok
-        if (hintTutorialCoroutine != null) // se ok // riga-ok
-        { // apre // riga-ok
-            StopCoroutine(hintTutorialCoroutine); // ferma // riga-ok
-            hintTutorialCoroutine = null; // setta // riga-ok
-        } // chiude // riga-ok
-        if (hintTutorialPanel != null) // se ok // riga-ok
-            hintTutorialPanel.gameObject.SetActive(false); // nasconde // riga-ok
-    } // chiude // riga-ok
-
-    private void CostruisciHintTutorialPanel() // roba priv // riga-ok
-    { // apre // riga-ok
-        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf"); // setta // riga-ok
-
+    public void MostraHintTutorial(string messaggio)
+    {
+        if (hudCanvas == null) return;
+        if (hintTutorialPanel == null)
+            CostruisciHintTutorialPanel();
+        if (hintTutorialTesto != null)
+            hintTutorialTesto.text = messaggio;
+        hintTutorialPanel.gameObject.SetActive(true);
+        if (hintTutorialCoroutine != null) StopCoroutine(hintTutorialCoroutine);
+        hintTutorialCoroutine = StartCoroutine(LampeggiaBannerTutorial());
+    }
+    public void NascondiHintTutorial()
+    {
+        if (hintTutorialCoroutine != null)
+        {
+            StopCoroutine(hintTutorialCoroutine);
+            hintTutorialCoroutine = null;
+        }
+        if (hintTutorialPanel != null)
+            hintTutorialPanel.gameObject.SetActive(false);
+    }
+    private void CostruisciHintTutorialPanel()
+    {
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
         // Panel contenitore — in basso, sopra il prompt prossimita' ma centrato
-        GameObject panelGO = new GameObject("Hint_Tutorial_Panel"); // setta // riga-ok
-        panelGO.transform.SetParent(hudCanvas.transform, false); // chiama // riga-ok
-        hintTutorialPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
-        hintTutorialPanel.anchorMin = new Vector2(0.5f, 0f); // setta // riga-ok
-        hintTutorialPanel.anchorMax = new Vector2(0.5f, 0f); // setta // riga-ok
-        hintTutorialPanel.pivot     = new Vector2(0.5f, 0f); // setta // riga-ok
-        hintTutorialPanel.anchoredPosition = new Vector2(0f, 220f); // setta // riga-ok
-        hintTutorialPanel.sizeDelta = new Vector2(700f, 60f); // setta // riga-ok
-
+        GameObject panelGO = new GameObject("Hint_Tutorial_Panel");
+        panelGO.transform.SetParent(hudCanvas.transform, false);
+        hintTutorialPanel = panelGO.AddComponent<RectTransform>();
+        hintTutorialPanel.anchorMin = new Vector2(0.5f, 0f);
+        hintTutorialPanel.anchorMax = new Vector2(0.5f, 0f);
+        hintTutorialPanel.pivot     = new Vector2(0.5f, 0f);
+        hintTutorialPanel.anchoredPosition = new Vector2(0f, 220f);
+        hintTutorialPanel.sizeDelta = new Vector2(700f, 60f);
         // Sfondo ciano semi-trasparente
-        Image bgImg = panelGO.AddComponent<Image>(); // setta // riga-ok
-        bgImg.color = new Color(0.05f, 0.45f, 0.6f, 0.85f); // ciano // setta // riga-ok
-        hintTutorialGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
-        hintTutorialGroup.alpha = 1f; // setta // riga-ok
-
+        Image bgImg = panelGO.AddComponent<Image>();
+        bgImg.color = new Color(0.05f, 0.45f, 0.6f, 0.85f);
+        hintTutorialGroup = panelGO.AddComponent<CanvasGroup>();
+        hintTutorialGroup.alpha = 1f;
         // Icona ingranaggio tutorial
-        GameObject iconaGO = new GameObject("Tutorial_Icona"); // setta // riga-ok
-        iconaGO.transform.SetParent(hintTutorialPanel, false); // chiama // riga-ok
-        hintIconaTutorial = iconaGO.AddComponent<Image>(); // setta // riga-ok
-        hintIconaTutorial.color = new Color(0.4f, 1f, 1f, 1f); // ciano chiaro // setta // riga-ok
-        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>(); // setta // riga-ok
-        iconaRect.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.anchorMax = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.pivot     = new Vector2(0f, 0.5f); // setta // riga-ok
-        iconaRect.anchoredPosition = new Vector2(16f, 0f); // setta // riga-ok
-        iconaRect.sizeDelta = new Vector2(24f, 24f); // setta // riga-ok
-
+        GameObject iconaGO = new GameObject("Tutorial_Icona");
+        iconaGO.transform.SetParent(hintTutorialPanel, false);
+        hintIconaTutorial = iconaGO.AddComponent<Image>();
+        hintIconaTutorial.color = new Color(0.4f, 1f, 1f, 1f);
+        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>();
+        iconaRect.anchorMin = new Vector2(0f, 0.5f);
+        iconaRect.anchorMax = new Vector2(0f, 0.5f);
+        iconaRect.pivot     = new Vector2(0f, 0.5f);
+        iconaRect.anchoredPosition = new Vector2(16f, 0f);
+        iconaRect.sizeDelta = new Vector2(24f, 24f);
         // Testo messaggio tutorial
-        GameObject testoGO = new GameObject("Tutorial_Testo"); // setta // riga-ok
-        testoGO.transform.SetParent(hintTutorialPanel, false); // chiama // riga-ok
-        hintTutorialTesto = testoGO.AddComponent<Text>(); // setta // riga-ok
-        hintTutorialTesto.font      = font; // setta // riga-ok
-        hintTutorialTesto.fontSize  = 18; // setta // riga-ok
-        hintTutorialTesto.fontStyle = FontStyle.Bold; // setta // riga-ok
-        hintTutorialTesto.color     = Color.white; // setta // riga-ok
-        hintTutorialTesto.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
-        hintTutorialTesto.raycastTarget = false; // setta // riga-ok
-        RectTransform testoRect = testoGO.GetComponent<RectTransform>(); // setta // riga-ok
-        testoRect.anchorMin = Vector2.zero; // setta // riga-ok
-        testoRect.anchorMax = Vector2.one; // setta // riga-ok
-        testoRect.offsetMin = new Vector2(50f, 4f); // setta // riga-ok
-        testoRect.offsetMax = new Vector2(-10f, -4f); // setta // riga-ok
-
-        panelGO.SetActive(false); // nascosto di default // riga-ok
-    } // chiude // riga-ok
-
-    private IEnumerator LampeggiaBannerTutorial() // roba priv // riga-ok
-    { // apre // riga-ok
-        float velocita = 2.0f; // velocita lampeggio // setta // riga-ok
-        while (true) // ciclo infinito // riga-ok
-        { // apre // riga-ok
-            float alpha = Mathf.Lerp(0.6f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f); // calcola // riga-ok
-            if (hintTutorialGroup != null) hintTutorialGroup.alpha = alpha; // setta // riga-ok
-            yield return null; // aspetta frame // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-} // chiude // riga-ok
-
+        GameObject testoGO = new GameObject("Tutorial_Testo");
+        testoGO.transform.SetParent(hintTutorialPanel, false);
+        hintTutorialTesto = testoGO.AddComponent<Text>();
+        hintTutorialTesto.font      = font;
+        hintTutorialTesto.fontSize  = 18;
+        hintTutorialTesto.fontStyle = FontStyle.Bold;
+        hintTutorialTesto.color     = Color.white;
+        hintTutorialTesto.alignment = TextAnchor.MiddleLeft;
+        hintTutorialTesto.raycastTarget = false;
+        RectTransform testoRect = testoGO.GetComponent<RectTransform>();
+        testoRect.anchorMin = Vector2.zero;
+        testoRect.anchorMax = Vector2.one;
+        testoRect.offsetMin = new Vector2(50f, 4f);
+        testoRect.offsetMax = new Vector2(-10f, -4f);
+        panelGO.SetActive(false);
+    }
+    private IEnumerator LampeggiaBannerTutorial()
+    {
+        float velocita = 2.0f;
+        while (true)
+        {
+            float alpha = Mathf.Lerp(0.6f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f);
+            if (hintTutorialGroup != null) hintTutorialGroup.alpha = alpha;
+            yield return null;
+        }
+    }
+}

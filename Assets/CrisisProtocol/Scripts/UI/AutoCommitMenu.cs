@@ -6,71 +6,57 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-#if UNITY_EDITOR // prep ok // riga-ok
-using UnityEngine; // usa lib // riga-ok
-using UnityEditor; // usa lib // riga-ok
-using System.Diagnostics; // usa lib // riga-ok
-using System.IO; // Necessario per gestire i percorsi di sistema // usa lib // riga-ok
-
-// blocco: classe x roba grossa
-public class AutoCommitMenu // classe qui // riga-ok
-{ // apre // riga-ok
+#if UNITY_EDITOR
+using UnityEngine;
+using UnityEditor;
+using System.Diagnostics;
+using System.IO; // Necessario per gestire i percorsi di sistema
+public class AutoCommitMenu
+{
     // Aggiunge una voce nel menu in alto su Unity (rinominata per non fare riferimento alla chiusura)
-    [MenuItem("GitHub/Salva e Invia (Push)")] // nota unity // riga-ok
-    // blocco: funzione fa cose
-    public static void SalvaECommit() // roba pub // riga-ok
-    { // apre // riga-ok
+    [MenuItem("GitHub/Salva e Invia (Push)")]
+    public static void SalvaECommit()
+    {
         // 1. Salva i cambiamenti alle scene e agli asset correnti senza interrompere il lavoro
-        EditorApplication.ExecuteMenuItem("File/Save Project"); // chiama // riga-ok
-        AssetDatabase.SaveAssets(); // chiama // riga-ok
-        UnityEngine.Debug.Log("Progetto Unity salvato con successo."); // chiama // riga-ok
-
+        EditorApplication.ExecuteMenuItem("File/Save Project");
+        AssetDatabase.SaveAssets();
+        UnityEngine.Debug.Log("Progetto Unity salvato con successo.");
         // 2. Otteniamo il percorso principale del progetto (Root Directory)
-        string projectPath = Path.GetDirectoryName(Application.dataPath); // setta // riga-ok
-        
+        string projectPath = Path.GetDirectoryName(Application.dataPath);
         // Formattiamo il percorso usando gli slash corretti per Git
-        string gitSafePath = projectPath.Replace("\\", "/"); // setta // riga-ok
-
+        string gitSafePath = projectPath.Replace("\\", "/");
         // 3. Messaggio di commit aggiornato (indica un salvataggio/backup in corso d'opera)
-        string commitMessage = $"Backup automatico del {System.DateTime.Now:dd/MM/yyyy HH:mm}"; // setta // riga-ok
-        
+        string commitMessage = $"Backup automatico del {System.DateTime.Now:dd/MM/yyyy HH:mm}";
         // Concateniamo la configurazione di sicurezza prima del commit
-#if UNITY_EDITOR_WIN // prep ok // riga-ok
-        string command = $"/c git config --global --add safe.directory \"{gitSafePath}\" && git add . && git commit -m \"{commitMessage}\" && git push"; // setta // riga-ok
-        EseguiComando("cmd.exe", command, projectPath); // chiama // riga-ok
-#else // prep ok // riga-ok
-        string command = $"-c \"git config --global --add safe.directory '{gitSafePath}' && git add . && git commit -m '{commitMessage}' && git push\""; // setta // riga-ok
-        EseguiComando("/bin/bash", command, projectPath); // chiama // riga-ok
-#endif // prep ok // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private static void EseguiComando(string filename, string arguments, string workingDirectory) // roba pub // riga-ok
-    { // apre // riga-ok
-        ProcessStartInfo startInfo = new ProcessStartInfo // setta // riga-ok
-        { // apre // riga-ok
-            FileName = filename, // setta // riga-ok
-            Arguments = arguments, // setta // riga-ok
-            WorkingDirectory = workingDirectory, // setta // riga-ok
-            RedirectStandardOutput = true, // setta // riga-ok
-            RedirectStandardError = true, // setta // riga-ok
-            UseShellExecute = false, // setta // riga-ok
-            CreateNoWindow = true // setta // riga-ok
-        }; // ok qua // riga-ok
-
-        using (Process process = Process.Start(startInfo)) // usa lib // riga-ok
-        { // apre // riga-ok
-            string output = process.StandardOutput.ReadToEnd(); // setta // riga-ok
-            string error = process.StandardError.ReadToEnd(); // setta // riga-ok
-            process.WaitForExit(); // chiama // riga-ok
-
-            // blocco: controlla se va
-            if (!string.IsNullOrEmpty(output)) UnityEngine.Debug.Log($"Git Output: {output}"); // se ok // riga-ok
-            
+#if UNITY_EDITOR_WIN
+        string command = $"/c git config --global --add safe.directory \"{gitSafePath}\" && git add . && git commit -m \"{commitMessage}\" && git push";
+        EseguiComando("cmd.exe", command, projectPath);
+#else
+        string command = $"-c \"git config --global --add safe.directory '{gitSafePath}' && git add . && git commit -m '{commitMessage}' && git push\"";
+        EseguiComando("/bin/bash", command, projectPath);
+#endif
+    }
+    private static void EseguiComando(string filename, string arguments, string workingDirectory)
+    {
+        ProcessStartInfo startInfo = new ProcessStartInfo
+        {
+            FileName = filename,
+            Arguments = arguments,
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using (Process process = Process.Start(startInfo))
+        {
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            if (!string.IsNullOrEmpty(output)) UnityEngine.Debug.Log($"Git Output: {output}");
             // Nota: Git spesso stampa informazioni sul flusso 'Error' anche se non ci sono problemi critici.
-            // blocco: controlla se va
-            if (!string.IsNullOrEmpty(error)) UnityEngine.Debug.LogWarning($"Git Nota/Errore: {error}"); // se ok // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-} // chiude // riga-ok
-#endif // prep ok // riga-ok
+            if (!string.IsNullOrEmpty(error)) UnityEngine.Debug.LogWarning($"Git Nota/Errore: {error}");
+        }
+    }
+}
+#endif

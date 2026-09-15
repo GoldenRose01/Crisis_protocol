@@ -6,10 +6,9 @@
 // script nel prototipo Unity; mantenere nomi pubblici e campi serializzati con
 // attenzione, perche' scene, prefab e ScriptableObject possono dipendere da essi.
 // ============================================================================
-using System.Collections; // usa lib // riga-ok
-using UnityEngine; // usa lib // riga-ok
-using UnityEngine.AI; // usa lib // riga-ok
-
+using System.Collections;
+using UnityEngine;
+using UnityEngine.AI;
 /// <summary>
 /// Porta o vetrata del settore. Si integra con PlayerInteract tramite IInteractable.
 /// Il player preme E vicino alla porta per aprirla/chiuderla.
@@ -20,684 +19,525 @@ using UnityEngine.AI; // usa lib // riga-ok
 ///   3. NON mettere il Collider come Trigger (serve come fisico)
 ///   4. Aggiungi NavMeshObstacle (opzionale) se vuoi bloccare i nemici
 /// </summary>
-[RequireComponent(typeof(Collider))] // nota unity // riga-ok
-// blocco: classe x roba grossa
-public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-ok
-{ // apre // riga-ok
-    // blocco: scelte rapide
-    public enum TipoApertura { Slide, Rotazione } // enum val // riga-ok
-
-    [Header("Target Animazione (Opzionale)")] // nota unity // riga-ok
-    [Tooltip("Trascina qui l'oggetto o l'anta da muovere se lo script si trova su un oggetto padre/telaio. Se lasciato vuoto, muove questo GameObject.")] // nota unity // riga-ok
-    [SerializeField] private Transform oggettoDaAnimare; // ok qua // riga-ok
-
-    [Header("Configurazione Porta")] // nota unity // riga-ok
-    [Tooltip("ID univoco: usato per salvare lo stato nel GameManager.")] // nota unity // riga-ok
-    [SerializeField] private string portaId = "DOOR_S0_001"; // setta // riga-ok
-
-    [Tooltip("Se compilato, richiede questa credenziale raccolta prima di aprire.")] // nota unity // riga-ok
-    [SerializeField] private string credenzialeRichiesta = ""; // setta // riga-ok
-
-    [Tooltip("Come si apre: Slide = scivola, Rotazione = ruota.")] // nota unity // riga-ok
-    [SerializeField] private TipoApertura tipoApertura = TipoApertura.Slide; // setta // riga-ok
-
-    [Header("Slide - solo se Tipo = Slide")] // nota unity // riga-ok
-    [Tooltip("Direzione locale di movimento: (0,1,0) = sale in alto, (1,0,0) = scorre a destra, (0,0,1) = profondità.")] // nota unity // riga-ok
-    [SerializeField] private Vector3 direzioneScivolamento = Vector3.up; // setta // riga-ok
-    [Tooltip("Distanza di scivolamento in metri Unity.")] // nota unity // riga-ok
-    [SerializeField] private float offsetApertura = 3f; // setta // riga-ok
-
-    [Header("Rotazione - solo se Tipo = Rotazione")] // nota unity // riga-ok
-    [Tooltip("Gradi di rotazione sull'asse Y quando si apre (es. 90 o -90).")] // nota unity // riga-ok
-    [SerializeField] private float angoloApertura = 90f; // setta // riga-ok
-
-    [Header("Animazione")] // nota unity // riga-ok
-    [Tooltip("Durata dell'animazione apertura/chiusura in secondi.")] // nota unity // riga-ok
-    [SerializeField] private float durataAnimazione = 0.5f; // setta // riga-ok
-
-    [Header("Feedback Visivo (Luce & Cubo/Lampadina)")] // nota unity // riga-ok
-    [Tooltip("Luce di stato opzionale: rossa = bloccata (manca chiave), verde = sbloccata (si può aprire).")] // nota unity // riga-ok
-    [SerializeField] private Light luceDiStato; // ok qua // riga-ok
-
-    [Tooltip("Slot per il Cubo / Lampadina / Mesh che emana la luce. Cambierà colore insieme alla luce.")] // nota unity // riga-ok
-    [SerializeField] private Renderer oggettoEmettitoreLuce; // ok qua // riga-ok
-
-    [Tooltip("Colore quando la porta è BLOCCATA (richiede una credenziale non ancora raccolta).")] // nota unity // riga-ok
-    [SerializeField] private Color coloreBloccato = Color.red; // setta // riga-ok
-
-    [Tooltip("Colore quando la porta è SBLOCCATA / SI PUÒ APRIRE (credenziale posseduta o nessuna credenziale richiesta).")] // nota unity // riga-ok
-    [SerializeField] private Color coloreSbloccato = Color.green; // setta // riga-ok
-
-    [Tooltip("Intensità del bagliore (emissione) sul materiale del Cubo.")] // nota unity // riga-ok
-    [SerializeField] private float intensitaEmissione = 2f; // setta // riga-ok
-
-    [Header("Modalità Apertura")] // nota unity // riga-ok
-    [Tooltip("Se true, la porta si apre ESCLUSIVAMENTE quando il giocatore interagisce con essa (premendo E). Se false, si apre automaticamente quando richiesto.")] // nota unity // riga-ok
-    [SerializeField] private bool aperturaAInterazione = true; // setta // riga-ok
-
-    [Header("Sblocco Automatico Fine Crisi")] // nota unity // riga-ok
-    [Tooltip("Se true (e Apertura a Interazione è disattivato), la porta si sblocca e si apre automaticamente quando tutti i focolai sono contenuti e finisce la crisi.")] // nota unity // riga-ok
-    [SerializeField] private bool apriAlTermineCrisi = false; // setta // riga-ok
-
-    [Header("Stato Iniziale")] // nota unity // riga-ok
-    [Tooltip("Se true la porta parte gia' aperta all'avvio della scena.")] // nota unity // riga-ok
-    [SerializeField] private bool apertaAllInizio = false; // setta // riga-ok
-
-    [Header("Audio")] // nota unity // riga-ok
-    [Tooltip("Suono di apertura porta/portellone.")] // nota unity // riga-ok
-    [SerializeField] private AudioClip suonoApertura; // ok qua // riga-ok
-    [Tooltip("Suono di chiusura porta/portellone.")] // nota unity // riga-ok
-    [SerializeField] private AudioClip suonoChiusura; // ok qua // riga-ok
-    [Tooltip("Suono di porta bloccata / maniglia forzata quando non si possiede l'accesso.")] // nota unity // riga-ok
-    [SerializeField] private AudioClip suonoBloccata; // ok qua // riga-ok
-    [Tooltip("Suono di sblocco elettronico da terminale o autorizzazione.")] // nota unity // riga-ok
-    [SerializeField] private AudioClip suonoSblocco; // ok qua // riga-ok
-    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1f; // setta // riga-ok
-
+[RequireComponent(typeof(Collider))]
+public class PortaSettore : MonoBehaviour, IInteractable
+{
+    public enum TipoApertura { Slide, Rotazione }
+    [Header("Target Animazione (Opzionale)")]
+    [Tooltip("Trascina qui l'oggetto o l'anta da muovere se lo script si trova su un oggetto padre/telaio. Se lasciato vuoto, muove questo GameObject.")]
+    [SerializeField] private Transform oggettoDaAnimare;
+    [Header("Configurazione Porta")]
+    [Tooltip("ID univoco: usato per salvare lo stato nel GameManager.")]
+    [SerializeField] private string portaId = "DOOR_S0_001";
+    [Tooltip("Se compilato, richiede questa credenziale raccolta prima di aprire.")]
+    [SerializeField] private string credenzialeRichiesta = "";
+    [Tooltip("Come si apre: Slide = scivola, Rotazione = ruota.")]
+    [SerializeField] private TipoApertura tipoApertura = TipoApertura.Slide;
+    [Header("Slide - solo se Tipo = Slide")]
+    [Tooltip("Direzione locale di movimento: (0,1,0) = sale in alto, (1,0,0) = scorre a destra, (0,0,1) = profondità.")]
+    [SerializeField] private Vector3 direzioneScivolamento = Vector3.up;
+    [Tooltip("Distanza di scivolamento in metri Unity.")]
+    [SerializeField] private float offsetApertura = 3f;
+    [Header("Rotazione - solo se Tipo = Rotazione")]
+    [Tooltip("Gradi di rotazione sull'asse Y quando si apre (es. 90 o -90).")]
+    [SerializeField] private float angoloApertura = 90f;
+    [Header("Animazione")]
+    [Tooltip("Durata dell'animazione apertura/chiusura in secondi.")]
+    [SerializeField] private float durataAnimazione = 0.5f;
+    [Header("Feedback Visivo (Luce & Cubo/Lampadina)")]
+    [Tooltip("Luce di stato opzionale: rossa = bloccata (manca chiave), verde = sbloccata (si può aprire).")]
+    [SerializeField] private Light luceDiStato;
+    [Tooltip("Slot per il Cubo / Lampadina / Mesh che emana la luce. Cambierà colore insieme alla luce.")]
+    [SerializeField] private Renderer oggettoEmettitoreLuce;
+    [Tooltip("Colore quando la porta è BLOCCATA (richiede una credenziale non ancora raccolta).")]
+    [SerializeField] private Color coloreBloccato = Color.red;
+    [Tooltip("Colore quando la porta è SBLOCCATA / SI PUÒ APRIRE (credenziale posseduta o nessuna credenziale richiesta).")]
+    [SerializeField] private Color coloreSbloccato = Color.green;
+    [Tooltip("Intensità del bagliore (emissione) sul materiale del Cubo.")]
+    [SerializeField] private float intensitaEmissione = 2f;
+    [Header("Modalità Apertura")]
+    [Tooltip("Se true, la porta si apre ESCLUSIVAMENTE quando il giocatore interagisce con essa (premendo E). Se false, si apre automaticamente quando richiesto.")]
+    [SerializeField] private bool aperturaAInterazione = true;
+    [Header("Sblocco Automatico Fine Crisi")]
+    [Tooltip("Se true (e Apertura a Interazione è disattivato), la porta si sblocca e si apre automaticamente quando tutti i focolai sono contenuti e finisce la crisi.")]
+    [SerializeField] private bool apriAlTermineCrisi = false;
+    [Header("Stato Iniziale")]
+    [Tooltip("Se true la porta parte gia' aperta all'avvio della scena.")]
+    [SerializeField] private bool apertaAllInizio = false;
+    [Header("Audio")]
+    [Tooltip("Suono di apertura porta/portellone.")]
+    [SerializeField] private AudioClip suonoApertura;
+    [Tooltip("Suono di chiusura porta/portellone.")]
+    [SerializeField] private AudioClip suonoChiusura;
+    [Tooltip("Suono di porta bloccata / maniglia forzata quando non si possiede l'accesso.")]
+    [SerializeField] private AudioClip suonoBloccata;
+    [Tooltip("Suono di sblocco elettronico da terminale o autorizzazione.")]
+    [SerializeField] private AudioClip suonoSblocco;
+    [Range(0f, 1f)] [SerializeField] private float volumeAudio = 1f;
     // Stato interno
-    private bool aperta = false; // roba pub // riga-ok
-    private bool inAnimazione = false; // roba pub // riga-ok
+    // aperta/inAnimazione sono la verità runtime della porta. Non leggiamo la
+    // posizione della mesh ogni frame perché animazioni, parent e scale importate
+    // possono rendere quel controllo poco affidabile.
+    private bool aperta = false;
+    private bool inAnimazione = false;
 
-    private Transform targetTransform; // roba pub // riga-ok
-    private Vector3 posizioneChiusaWorld; // roba pub // riga-ok
-    private Vector3 posizioneApertaWorld; // roba pub // riga-ok
-    private Quaternion rotazioneChiusaWorld; // roba pub // riga-ok
-    private Quaternion rotazioneApertaWorld; // roba pub // riga-ok
-
-    private Collider colliderFisico; // roba pub // riga-ok
-    private NavMeshObstacle ostacolo; // roba pub // riga-ok
-    private AudioSource audioSource; // roba pub // riga-ok
-
+    // Target da muovere: può essere la porta stessa o solo l'anta figlia.
+    // Questa separazione evita di trascinare terminali, luci o collider UI.
+    private Transform targetTransform;
+    private Vector3 posizioneChiusaWorld;
+    private Vector3 posizioneApertaWorld;
+    private Quaternion rotazioneChiusaWorld;
+    private Quaternion rotazioneApertaWorld;
+    private Collider colliderFisico;
+    private NavMeshObstacle ostacolo;
+    private AudioSource audioSource;
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    private void OnEnable() // roba pub // riga-ok
-    { // apre // riga-ok
-        MissionManager.OnCredenzialiCambiate += OnCredenzialiModificate; // setta // riga-ok
-        MissionManager.OnEstrazioneSbloccata += OnEstrazioneModificata; // setta // riga-ok
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnDisable() // roba pub // riga-ok
-    { // apre // riga-ok
-        MissionManager.OnCredenzialiCambiate -= OnCredenzialiModificate; // setta // riga-ok
-        MissionManager.OnEstrazioneSbloccata -= OnEstrazioneModificata; // setta // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnCredenzialiModificate(int totaleCredenziali) // roba pub // riga-ok
-    { // apre // riga-ok
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnEstrazioneModificata(bool sbloccata) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (sbloccata) // se ok // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (apriAlTermineCrisi) // se ok // riga-ok
-            { // apre // riga-ok
-                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>"); // logga // riga-ok
-                SbloccaEDApri(); // chiama // riga-ok
-            } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (aperturaAInterazione) // se ok // riga-ok
-            { // apre // riga-ok
-                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata. Porta sbloccata per apertura a interazione: <b>{name}</b>"); // logga // riga-ok
-                Sblocca(); // chiama // riga-ok
-            } // chiude // riga-ok
-            // blocco: caso diverso
-            else // se no // riga-ok
-            { // apre // riga-ok
-                Sblocca(); // chiama // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void Awake() // roba pub // riga-ok
-    { // apre // riga-ok
+    private void OnEnable()
+    {
+        MissionManager.OnCredenzialiCambiate += OnCredenzialiModificate;
+        MissionManager.OnEstrazioneSbloccata += OnEstrazioneModificata;
+        AggiornaFeedbackVisivo();
+    }
+    private void OnDisable()
+    {
+        MissionManager.OnCredenzialiCambiate -= OnCredenzialiModificate;
+        MissionManager.OnEstrazioneSbloccata -= OnEstrazioneModificata;
+    }
+    private void OnCredenzialiModificate(int totaleCredenziali)
+    {
+        AggiornaFeedbackVisivo();
+    }
+    private void OnEstrazioneModificata(bool sbloccata)
+    {
+        // Le porte ascoltano il segnale missione invece di interrogare MissionManager
+        // ogni frame. Quando la crisi finisce, solo le porte configurate come uscita
+        // automatica si aprono da sole; le altre al massimo diventano sbloccate.
+        if (sbloccata)
+        {
+            if (apriAlTermineCrisi)
+            {
+                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata! Apertura automatica porta di evacuazione: <b>{name}</b>");
+                SbloccaEDApri();
+            }
+            else if (aperturaAInterazione)
+            {
+                Debug.Log($"<color=lime>[PORTA]</color> Fine crisi rilevata. Porta sbloccata per apertura a interazione: <b>{name}</b>");
+                Sblocca();
+            }
+            else
+            {
+                Sblocca();
+            }
+        }
+    }
+    private void Awake()
+    {
         // FIX: stacca dalla gerarchia porta tutti gli oggetti statici (terminali, luci, collider
         // di interazione) PRIMA di calcolare targetTransform, così non vengono trascinati
         // dall'animazione di apertura/chiusura della porta.
-        DetacchiaOggettiStatici(); // chiama // riga-ok
-
-        // Se oggettoDaAnimare non è assegnato, preferisce il figlio che rappresenta l'anta (es. con MeshRenderer/MeshFilter)
-        // quando è presente un terminale o altri oggetti figli.
+        DetacchiaOggettiStatici();
+        // Auto-detect dell'anta: nei prefab importati il GameObject principale
+        // spesso è un contenitore con terminale, luci e mesh. Qui prendiamo il
+        // primo figlio "da porta" così l'animazione non porta via tutto il set.
         if (oggettoDaAnimare != null)
         {
-            targetTransform = oggettoDaAnimare; // setta // riga-ok
+            targetTransform = oggettoDaAnimare;
         }
         else
         {
             Transform antaTrovata = null;
-            // blocco: gira piu volte
-            foreach (Transform figlio in transform) // ciclo x // riga-ok
+            foreach (Transform figlio in transform)
             {
-                // blocco: controlla se va
-                if (figlio.GetComponent<TerminalePorta>() == null && (figlio.GetComponentInChildren<MeshRenderer>() != null || figlio.GetComponentInChildren<MeshFilter>() != null || figlio.GetComponentInChildren<SkinnedMeshRenderer>() != null)) // se ok // riga-ok
+                if (figlio.GetComponent<TerminalePorta>() == null && (figlio.GetComponentInChildren<MeshRenderer>() != null || figlio.GetComponentInChildren<MeshFilter>() != null || figlio.GetComponentInChildren<SkinnedMeshRenderer>() != null))
                 {
-                    antaTrovata = figlio; // setta // riga-ok
-                    break; // stop // riga-ok
+                    antaTrovata = figlio;
+                    break;
                 }
             }
-            targetTransform = (antaTrovata != null) ? antaTrovata : transform; // setta // riga-ok
+            targetTransform = (antaTrovata != null) ? antaTrovata : transform;
         }
 
-        colliderFisico = GetComponent<Collider>(); // setta // riga-ok
-        // blocco: controlla se va
-        if (colliderFisico == null) // se ok // riga-ok
-            colliderFisico = GetComponentInChildren<Collider>(); // setta // riga-ok
-
-        ostacolo = GetComponent<NavMeshObstacle>(); // setta // riga-ok
-        // blocco: controlla se va
-        if (ostacolo == null) // se ok // riga-ok
-            ostacolo = GetComponentInChildren<NavMeshObstacle>(); // setta // riga-ok
-
-        InizializzaAudioSource(); // chiama // riga-ok
-
-        // blocco: controlla se va
-        if (targetTransform.gameObject.isStatic) // se ok // riga-ok
-        { // apre // riga-ok
-            Debug.LogWarning($"<color=yellow>[PORTA] '{targetTransform.name}' aveva il flag STATIC attivo!</color> È stato rimosso automaticamente per consentire l'animazione di apertura/scorrimento.", this); // logga // riga-ok
-            targetTransform.gameObject.isStatic = false; // setta // riga-ok
-            // blocco: gira piu volte
-            foreach (Transform c in targetTransform.GetComponentsInChildren<Transform>(true)) // ciclo x // riga-ok
-            { // apre // riga-ok
-                c.gameObject.isStatic = false; // setta // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // blocco: controlla se va
-        if (tipoApertura == TipoApertura.Slide && Mathf.Approximately(offsetApertura, 0f)) // se ok // riga-ok
-        { // apre // riga-ok
-            Debug.LogWarning($"[PORTA] '{name}' ha Offset Apertura = 0! La porta non si sposterà visivamente.", this); // logga // riga-ok
-        } // chiude // riga-ok
-        // blocco: controlla se va
-        else if (tipoApertura == TipoApertura.Rotazione && Mathf.Approximately(angoloApertura, 0f)) // se ok // riga-ok
-        { // apre // riga-ok
-            Debug.LogWarning($"[PORTA] '{name}' ha Angolo Apertura = 0! La porta non ruoterà visivamente.", this); // logga // riga-ok
-        } // chiude // riga-ok
-
-        // Calcolo delle posizioni assolute nel mondo per evitare distorsioni da scale o rotazioni complesse dei padri
-        posizioneChiusaWorld = targetTransform.position; // setta // riga-ok
-        rotazioneChiusaWorld = targetTransform.rotation; // setta // riga-ok
-
-        Vector3 dirMondo = targetTransform.TransformDirection(direzioneScivolamento.normalized); // setta // riga-ok
-        posizioneApertaWorld = posizioneChiusaWorld + dirMondo * offsetApertura; // setta // riga-ok
-        rotazioneApertaWorld = rotazioneChiusaWorld * Quaternion.Euler(0f, angoloApertura, 0f); // setta // riga-ok
-    } // chiude // riga-ok
-
+        colliderFisico = GetComponent<Collider>();
+        if (colliderFisico == null)
+            colliderFisico = GetComponentInChildren<Collider>();
+        ostacolo = GetComponent<NavMeshObstacle>();
+        if (ostacolo == null)
+            ostacolo = GetComponentInChildren<NavMeshObstacle>();
+        InizializzaAudioSource();
+        if (targetTransform.gameObject.isStatic)
+        {
+            Debug.LogWarning($"<color=yellow>[PORTA] '{targetTransform.name}' aveva il flag STATIC attivo!</color> È stato rimosso automaticamente per consentire l'animazione di apertura/scorrimento.", this);
+            targetTransform.gameObject.isStatic = false;
+            foreach (Transform c in targetTransform.GetComponentsInChildren<Transform>(true))
+            {
+                c.gameObject.isStatic = false;
+            }
+        }
+        if (tipoApertura == TipoApertura.Slide && Mathf.Approximately(offsetApertura, 0f))
+        {
+            Debug.LogWarning($"[PORTA] '{name}' ha Offset Apertura = 0! La porta non si sposterà visivamente.", this);
+        }
+        else if (tipoApertura == TipoApertura.Rotazione && Mathf.Approximately(angoloApertura, 0f))
+        {
+            Debug.LogWarning($"[PORTA] '{name}' ha Angolo Apertura = 0! La porta non ruoterà visivamente.", this);
+        }
+        // Usiamo posizioni/rotazioni world già calcolate: è meno fragile di
+        // sommare localPosition quando il prefab ha parent scalati o ruotati male.
+        posizioneChiusaWorld = targetTransform.position;
+        rotazioneChiusaWorld = targetTransform.rotation;
+        Vector3 dirMondo = targetTransform.TransformDirection(direzioneScivolamento.normalized);
+        posizioneApertaWorld = posizioneChiusaWorld + dirMondo * offsetApertura;
+        rotazioneApertaWorld = rotazioneChiusaWorld * Quaternion.Euler(0f, angoloApertura, 0f);
+    }
     /// <summary>
     /// FIX: stacca dalla gerarchia della porta tutti i GameObject che devono restare FISSI
     /// (TerminalePorta, luci di indicazione, collider di interazione del pannello).
     /// Li reparenta al genitore della porta oppure li rende root-level, mantenendo la
     /// loro posizione/rotazione nel mondo invariata (worldPositionStays = true).
     /// </summary>
-    // blocco: funzione fa cose
-    private void DetacchiaOggettiStatici() // roba pub // riga-ok
-    { // apre // riga-ok
-        // Il padre a cui reparentare gli oggetti statici: se questa porta ha un parent
-        // nella gerarchia lo usiamo, altrimenti null = root della scena.
-        Transform nuovoPadre = transform.parent; // setta // riga-ok
+    private void DetacchiaOggettiStatici()
+    {
+        // Il nuovo parent resta vicino nella gerarchia, ma fuori dall'anta mobile.
+        // worldPositionStays=true mantiene il layout scenico identico.
+        Transform nuovoPadre = transform.parent;
 
-        // 1. Stacca tutti i TerminalePorta figli (pannello con i pin / tastierino)
-        TerminalePorta[] terminaliTrovati = GetComponentsInChildren<TerminalePorta>(true); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (TerminalePorta t in terminaliTrovati) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (t != null && t.transform != transform) // se ok // riga-ok
-            { // apre // riga-ok
-                t.transform.SetParent(nuovoPadre, true); // stacca mantenendo posizione world // chiama // riga-ok
-                Debug.Log($"<color=cyan>[PORTA FIX]</color> TerminalePorta '<b>{t.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // 1b. Stacca tutti i DatapadCodiciPorte figli (pannello datapad con codici/pin)
-        DatapadCodiciPorte[] datapadTrovati = GetComponentsInChildren<DatapadCodiciPorte>(true); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (DatapadCodiciPorte d in datapadTrovati) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (d != null && d.transform != transform) // se ok // riga-ok
-            { // apre // riga-ok
-                d.transform.SetParent(nuovoPadre, true); // stacca mantenendo posizione world // chiama // riga-ok
-                Debug.Log($"<color=cyan>[PORTA FIX]</color> DatapadCodiciPorte '<b>{d.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // 2. Stacca le luci indicatrici che sono figlie DIRETTE di questo transform
-        //    ma NON fanno parte della mesh della porta (es. luceMonitor assegnata come figlia)
-        Light[] luciTrovate = GetComponentsInChildren<Light>(true); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (Light l in luciTrovate) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (l == null) continue; // se ok // riga-ok
+        // Terminali e datapad sono interfacce, non pezzi dell'anta: se restano
+        // figli della porta, il pannello PIN si sposta/ruota insieme al portellone.
+        TerminalePorta[] terminaliTrovati = GetComponentsInChildren<TerminalePorta>(true);
+        foreach (TerminalePorta t in terminaliTrovati)
+        {
+            if (t != null && t.transform != transform)
+            {
+                t.transform.SetParent(nuovoPadre, true);
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> TerminalePorta '<b>{t.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente.");
+            }
+        }
+        DatapadCodiciPorte[] datapadTrovati = GetComponentsInChildren<DatapadCodiciPorte>(true);
+        foreach (DatapadCodiciPorte d in datapadTrovati)
+        {
+            if (d != null && d.transform != transform)
+            {
+                d.transform.SetParent(nuovoPadre, true);
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> DatapadCodiciPorte '<b>{d.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente.");
+            }
+        }
+        // Le luci di stato devono restare ferme vicino al terminale; le luci
+        // decorative dentro la mesh dell'anta invece restano attaccate all'anta.
+        Light[] luciTrovate = GetComponentsInChildren<Light>(true);
+        foreach (Light l in luciTrovate)
+        {
+            if (l == null) continue;
             // Stacca solo luci che sono figlie dirette di questa porta (non dell'oggettoDaAnimare)
             // così le luci della mesh della porta restano attaccate all'anta
-            bool figliaDellaPorta = l.transform.parent == transform; // setta // riga-ok
-            bool nonEParteDellAnta = oggettoDaAnimare == null || !l.transform.IsChildOf(oggettoDaAnimare); // setta // riga-ok
-            // blocco: controlla se va
-            if (figliaDellaPorta && nonEParteDellAnta) // se ok // riga-ok
-            { // apre // riga-ok
-                l.transform.SetParent(nuovoPadre, true); // chiama // riga-ok
-                Debug.Log($"<color=cyan>[PORTA FIX]</color> Luce '<b>{l.name}</b>' staccata dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-
-        // 3. Stacca i BoxCollider / CapsuleCollider marcati come Trigger figli diretti della porta
-        //    che NON appartengono all'anta (sono collider di interazione del pannello)
-        Collider[] collidersTrovati = GetComponentsInChildren<Collider>(true); // setta // riga-ok
-        // blocco: gira piu volte
-        foreach (Collider c in collidersTrovati) // ciclo x // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (c == null || c.gameObject == gameObject) continue; // salta collider proprio // se ok // riga-ok
-            bool figlioDellaPorta = c.transform.parent == transform; // setta // riga-ok
-            bool nonEParteDellAnta = oggettoDaAnimare == null || !c.transform.IsChildOf(oggettoDaAnimare); // setta // riga-ok
+            bool figliaDellaPorta = l.transform.parent == transform;
+            bool nonEParteDellAnta = oggettoDaAnimare == null || !l.transform.IsChildOf(oggettoDaAnimare);
+            if (figliaDellaPorta && nonEParteDellAnta)
+            {
+                l.transform.SetParent(nuovoPadre, true);
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> Luce '<b>{l.name}</b>' staccata dalla porta '<b>{name}</b>' e reso indipendente.");
+            }
+        }
+        // I trigger dei pannelli servono a PlayerInteract; se si muovono con la
+        // porta, il punto d'interazione diventa ballerino e difficile da usare.
+        Collider[] collidersTrovati = GetComponentsInChildren<Collider>(true);
+        foreach (Collider c in collidersTrovati)
+        {
+            if (c == null || c.gameObject == gameObject) continue;
+            bool figlioDellaPorta = c.transform.parent == transform;
+            bool nonEParteDellAnta = oggettoDaAnimare == null || !c.transform.IsChildOf(oggettoDaAnimare);
             // Stacca solo collider Trigger figli diretti (collider fisici dell'anta vengono tenuti)
-            // blocco: controlla se va
-            if (figlioDellaPorta && nonEParteDellAnta && c.isTrigger) // se ok // riga-ok
-            { // apre // riga-ok
-                c.transform.SetParent(nuovoPadre, true); // chiama // riga-ok
-                Debug.Log($"<color=cyan>[PORTA FIX]</color> Collider Trigger '<b>{c.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void Start() // roba pub // riga-ok
-    { // apre // riga-ok
-        // Se apertura a interazione è disattivata, ripristina lo stato se la porta era gia' stata aperta in precedenza
-        // blocco: controlla se va
-        if (!aperturaAInterazione && GameManager.Instance != null && !string.IsNullOrEmpty(portaId) && GameManager.Instance.GetCausalState(portaId)) // se ok // riga-ok
-        { // apre // riga-ok
-            ApplicaStatoIstantaneo(true); // chiama // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        // Se apertura a interazione è disattivata e la crisi è già risolta all'avvio
-        // blocco: controlla se va
-        if (apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata) // se ok // riga-ok
-        { // apre // riga-ok
-            ApplicaStatoIstantaneo(true); // chiama // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        ApplicaStatoIstantaneo(apertaAllInizio); // chiama // riga-ok
-        ConnettiTerminaleSePresente(); // chiama // riga-ok
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    [Header("Sicurezza & Terminale")] // nota unity // riga-ok
-    [Tooltip("Terminale di sicurezza collegato a questa porta. Se collegato, la porta è BLOCCATA in ROSSO finché non si completa il codice/bypass sul terminale. Se nullo, la porta è sempre libera e VERDE.")] // nota unity // riga-ok
-    public TerminalePorta terminaleSicurezza; // roba pub // riga-ok
-
-    [Tooltip("Se true, la porta è bloccata elettronicamente e richiede il terminale/codice/minigioco per sbloccarsi.")] // nota unity // riga-ok
-    [SerializeField] private bool bloccataElettronicamente = false; // setta // riga-ok
-
-    // blocco: funzione fa cose
-    private void ConnettiTerminaleSePresente() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (terminaleSicurezza == null) // se ok // riga-ok
-        { // apre // riga-ok
-            TerminalePorta[] tuttiITerminali = Object.FindObjectsByType<TerminalePorta>(FindObjectsSortMode.None); // setta // riga-ok
-            // blocco: gira piu volte
-            foreach (TerminalePorta t in tuttiITerminali) // ciclo x // riga-ok
-            { // apre // riga-ok
-                // blocco: controlla se va
-                if (t != null && t.porteCollegate.Contains(this)) // se ok // riga-ok
-                { // apre // riga-ok
-                    terminaleSicurezza = t; // setta // riga-ok
-                    break; // stop // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
+            if (figlioDellaPorta && nonEParteDellAnta && c.isTrigger)
+            {
+                c.transform.SetParent(nuovoPadre, true);
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> Collider Trigger '<b>{c.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente.");
+            }
+        }
+    }
+    private void Start()
+    {
+        // Porte automatiche: se erano state aperte e il GameManager lo ricorda,
+        // le riallineiamo subito senza animazione per non vedere scatti a inizio scena.
+        if (!aperturaAInterazione && GameManager.Instance != null && !string.IsNullOrEmpty(portaId) && GameManager.Instance.GetCausalState(portaId))
+        {
+            ApplicaStatoIstantaneo(true);
+            return;
+        }
+        // Caso reload dopo crisi risolta: il portellone di uscita deve risultare
+        // già coerente col finale, non chiuso per un frame.
+        if (apriAlTermineCrisi && MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata)
+        {
+            ApplicaStatoIstantaneo(true);
+            return;
+        }
+        ApplicaStatoIstantaneo(apertaAllInizio);
+        ConnettiTerminaleSePresente();
+        AggiornaFeedbackVisivo();
+    }
+    [Header("Sicurezza & Terminale")]
+    [Tooltip("Terminale di sicurezza collegato a questa porta. Se collegato, la porta è BLOCCATA in ROSSO finché non si completa il codice/bypass sul terminale. Se nullo, la porta è sempre libera e VERDE.")]
+    public TerminalePorta terminaleSicurezza;
+    [Tooltip("Se true, la porta è bloccata elettronicamente e richiede il terminale/codice/minigioco per sbloccarsi.")]
+    [SerializeField] private bool bloccataElettronicamente = false;
+    private void ConnettiTerminaleSePresente()
+    {
+        // Auto-wire "furbo" per le scene montate a mano: se il terminale elenca
+        // questa porta nelle porte collegate, la porta se lo aggancia da sola.
+        if (terminaleSicurezza == null)
+        {
+            TerminalePorta[] tuttiITerminali = Object.FindObjectsByType<TerminalePorta>(FindObjectsSortMode.None);
+            foreach (TerminalePorta t in tuttiITerminali)
+            {
+                if (t != null && t.porteCollegate.Contains(this))
+                {
+                    terminaleSicurezza = t;
+                    break;
+                }
+            }
+        }
+    }
     /// <summary>
     /// Controlla se la porta si può aprire (se possiede la credenziale o se non ne richiede).
     /// Se è collegata a un terminale non ancora sbloccato, la porta resta bloccata in ROSSO.
     /// Se non ha terminali né chiavi richieste, è sempre libera in VERDE.
     /// </summary>
-    // blocco: funzione fa cose
-    public bool PuoEssereAperta() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: porta fine livello solo auto
-        if (apriAlTermineCrisi) // se ok // riga-ok
-            return MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata; // torna val // riga-ok
-
+    public bool PuoEssereAperta()
+    {
+        // La porta di fine livello non si apre a mano: deve seguire solo lo stato missione.
+        if (apriAlTermineCrisi)
+            return MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata;
         // 1. Se è collegata a un terminale e il terminale non è ancora stato sbloccato -> BLOCCATA (ROSSO)
-        // blocco: controlla se va
-        if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato) // se ok // riga-ok
-            return false; // torna val // riga-ok
-
+        if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato)
+            return false;
         // 2. Se è stata forzata come bloccata elettronicamente
-        // blocco: controlla se va
-        if (bloccataElettronicamente) // se ok // riga-ok
-            return false; // torna val // riga-ok
-
+        if (bloccataElettronicamente)
+            return false;
         // 3. Se richiede una chiave/credenziale specifica
-        // blocco: controlla se va
-        if (!string.IsNullOrEmpty(credenzialeRichiesta)) // se ok // riga-ok
-        { // apre // riga-ok
-            // blocco: controlla se va
-            if (MissionManager.Instance != null && MissionManager.Instance.PossiedeCredenziale(credenzialeRichiesta)) // se ok // riga-ok
-                return true; // torna val // riga-ok
-
-            // blocco: controlla se va
-            if (GameManager.Instance != null && GameManager.Instance.IsSecuritySignatureUnlocked(credenzialeRichiesta)) // se ok // riga-ok
-                return true; // torna val // riga-ok
-
-            return false; // torna val // riga-ok
-        } // chiude // riga-ok
-
+        if (!string.IsNullOrEmpty(credenzialeRichiesta))
+        {
+            if (MissionManager.Instance != null && MissionManager.Instance.PossiedeCredenziale(credenzialeRichiesta))
+                return true;
+            if (GameManager.Instance != null && GameManager.Instance.IsSecuritySignatureUnlocked(credenzialeRichiesta))
+                return true;
+            return false;
+        }
         // 4. Se non richiede terminale né credenziali: LIBERA E APRIBILE SEMPRE (VERDE)!
-        return true; // torna val // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void InizializzaAudioSource() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (audioSource == null) // se ok // riga-ok
-            audioSource = GetComponent<AudioSource>(); // setta // riga-ok
-
-        // blocco: controlla se va
-        if (audioSource == null) // se ok // riga-ok
-        { // apre // riga-ok
-            audioSource = gameObject.AddComponent<AudioSource>(); // setta // riga-ok
-            audioSource.playOnAwake = false; // setta // riga-ok
-            audioSource.spatialBlend = 1.0f; // 3D Audio // setta // riga-ok
-            audioSource.rolloffMode = AudioRolloffMode.Logarithmic; // setta // riga-ok
-            audioSource.minDistance = 2.0f; // setta // riga-ok
-            audioSource.maxDistance = 18.0f; // setta // riga-ok
-            audioSource.dopplerLevel = 0f; // setta // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (clip == null) return; // se ok // riga-ok
-        InizializzaAudioSource(); // chiama // riga-ok
-        // blocco: controlla se va
-        if (audioSource != null) // se ok // riga-ok
-        { // apre // riga-ok
-            audioSource.pitch = Random.Range(0.96f, 1.04f); // setta // riga-ok
-            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
+        return true;
+    }
+    private void InizializzaAudioSource()
+    {
+        // AudioSource lazy: non obbliga ogni prefab porta ad averlo gia' configurato,
+        // ma quando serve crea un audio 3D coerente con la posizione della porta.
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1.0f; // 3D Audio
+            audioSource.rolloffMode = AudioRolloffMode.Logarithmic;
+            audioSource.minDistance = 2.0f;
+            audioSource.maxDistance = 18.0f;
+            audioSource.dopplerLevel = 0f;
+        }
+    }
+    public void RiproduciSuono(AudioClip clip, float volumeMoltiplicatore = 1.0f)
+    {
+        if (clip == null) return;
+        InizializzaAudioSource();
+        if (audioSource != null)
+        {
+            audioSource.pitch = Random.Range(0.96f, 1.04f);
+            audioSource.PlayOneShot(clip, volumeAudio * volumeMoltiplicatore);
+        }
+    }
     /// <summary>
     /// Sblocca la porta elettronicamente (da terminale con codice o minigioco di bypass) e la apre.
     /// </summary>
-    // blocco: funzione fa cose
-    public void SbloccaEDApri() // roba pub // riga-ok
-    { // apre // riga-ok
-        bloccataElettronicamente = false; // setta // riga-ok
-        credenzialeRichiesta = ""; // setta // riga-ok
-
-        RiproduciSuono(suonoSblocco, 1.0f); // chiama // riga-ok
-
-        // blocco: controlla se va
-        if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId)) // se ok // riga-ok
-            GameManager.Instance.SetCausalState(portaId, true); // chiama // riga-ok
-
-        // blocco: controlla se va
-        if (!aperta && !inAnimazione) // se ok // riga-ok
-        { // apre // riga-ok
-            StartCoroutine(AnimaPorta(true)); // corutina // riga-ok
-        } // chiude // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-        { // apre // riga-ok
-            AggiornaFeedbackVisivo(); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
+    public void SbloccaEDApri()
+    {
+        bloccataElettronicamente = false;
+        credenzialeRichiesta = "";
+        RiproduciSuono(suonoSblocco, 1.0f);
+        if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId))
+            GameManager.Instance.SetCausalState(portaId, true);
+        if (!aperta && !inAnimazione)
+        {
+            StartCoroutine(AnimaPorta(true));
+        }
+        else
+        {
+            AggiornaFeedbackVisivo();
+        }
+    }
     /// <summary>
     /// Sblocca solo la porta senza aprirla immediatamente (passa la luce a verde e permette l'interazione con E).
     /// </summary>
-    // blocco: funzione fa cose
-    public void Sblocca() // roba pub // riga-ok
-    { // apre // riga-ok
-        bloccataElettronicamente = false; // setta // riga-ok
-        credenzialeRichiesta = ""; // setta // riga-ok
-        RiproduciSuono(suonoSblocco, 1.0f); // chiama // riga-ok
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
+    public void Sblocca()
+    {
+        bloccataElettronicamente = false;
+        credenzialeRichiesta = "";
+        RiproduciSuono(suonoSblocco, 1.0f);
+        AggiornaFeedbackVisivo();
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // IInteractable: chiamato da PlayerInteract quando il player preme E
     // ─────────────────────────────────────────────────────────────────────────
+    public void Interact()
+    {
+        if (inAnimazione) return;
 
-    // blocco: funzione fa cose
-    public void Interact() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (inAnimazione) return; // se ok // riga-ok
-
-        // blocco: porta fine livello non manuale
-        if (apriAlTermineCrisi) // se ok // riga-ok
-        { // apre // riga-ok
-            RiproduciSuono(suonoBloccata, 0.8f); // chiama // riga-ok
-            Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: porta di fine livello. Si apre solo automaticamente a missione completata."); // logga // riga-ok
-            StartCoroutine(FlashCoroutine()); // corutina // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        // Toggle: se aperta, richiudi
-        // blocco: controlla se va
-        if (aperta) // se ok // riga-ok
-        { // apre // riga-ok
-            StartCoroutine(AnimaPorta(false)); // corutina // riga-ok
-            // blocco: controlla se va
-            if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId)) // se ok // riga-ok
-                GameManager.Instance.SetCausalState(portaId, false); // chiama // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        // Controlla se si può aprire
-        // blocco: controlla se va
-        if (!PuoEssereAperta()) // se ok // riga-ok
-        { // apre // riga-ok
-            RiproduciSuono(suonoBloccata, 1.0f); // chiama // riga-ok
-
-            // blocco: controlla se va
-            if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato) // se ok // riga-ok
-            { // apre // riga-ok
-                Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: Porta bloccata dal terminale di sicurezza! Interagisci con il terminale a fianco per inserire il codice o eseguire il bypass."); // logga // riga-ok
-            } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (!string.IsNullOrEmpty(credenzialeRichiesta)) // se ok // riga-ok
-            { // apre // riga-ok
-                Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: credenziale '{credenzialeRichiesta}' non posseduta. Porta bloccata."); // logga // riga-ok
-            } // chiude // riga-ok
-            StartCoroutine(FlashCoroutine()); // corutina // riga-ok
-            return; // torna val // riga-ok
-        } // chiude // riga-ok
-
-        // Apri
-        StartCoroutine(AnimaPorta(true)); // corutina // riga-ok
-        // blocco: controlla se va
-        if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId)) // se ok // riga-ok
-            GameManager.Instance.SetCausalState(portaId, true); // chiama // riga-ok
-    } // chiude // riga-ok
-
+        // Evita shortcut involontarie: il player non deve aprire il portellone prima del finale.
+        if (apriAlTermineCrisi)
+        {
+            RiproduciSuono(suonoBloccata, 0.8f);
+            Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: porta di fine livello. Si apre solo automaticamente a missione completata.");
+            StartCoroutine(FlashCoroutine());
+            return;
+        }
+        // Le porte normali sono toggle: lo stesso input apre e richiude.
+        if (aperta)
+        {
+            StartCoroutine(AnimaPorta(false));
+            if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId))
+                GameManager.Instance.SetCausalState(portaId, false);
+            return;
+        }
+        // Prima di animare facciamo passare tutti i gate logici: terminale,
+        // blocco elettronico, credenziale richiesta e stato missione.
+        if (!PuoEssereAperta())
+        {
+            RiproduciSuono(suonoBloccata, 1.0f);
+            if (terminaleSicurezza != null && !terminaleSicurezza.IsSbloccato)
+            {
+                Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: Porta bloccata dal terminale di sicurezza! Interagisci con il terminale a fianco per inserire il codice o eseguire il bypass.");
+            }
+            else if (!string.IsNullOrEmpty(credenzialeRichiesta))
+            {
+                Debug.LogWarning($"<color=yellow>[PORTA]</color> {portaId}: credenziale '{credenzialeRichiesta}' non posseduta. Porta bloccata.");
+            }
+            StartCoroutine(FlashCoroutine());
+            return;
+        }
+        // Stato salvato dopo l'avvio dell'animazione: se il player torna nel
+        // settore, la porta automatica può essere ripristinata coerentemente.
+        StartCoroutine(AnimaPorta(true));
+        if (GameManager.Instance != null && !string.IsNullOrEmpty(portaId))
+            GameManager.Instance.SetCausalState(portaId, true);
+    }
     // ─────────────────────────────────────────────────────────────────────────
-
-    // blocco: funzione fa cose
-    private IEnumerator AnimaPorta(bool versoAperta) // roba pub // riga-ok
-    { // apre // riga-ok
-        inAnimazione = true; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (versoAperta) // se ok // riga-ok
-            RiproduciSuono(suonoApertura, 1.0f); // chiama // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-            RiproduciSuono(suonoChiusura, 1.0f); // chiama // riga-ok
-
-        Vector3 posStart = targetTransform.position; // setta // riga-ok
-        Vector3 posFine  = versoAperta ? posizioneApertaWorld : posizioneChiusaWorld; // setta // riga-ok
-
-        Quaternion rotStart = targetTransform.rotation; // setta // riga-ok
-        Quaternion rotFine  = versoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld; // setta // riga-ok
-
-        float tempo = 0f; // setta // riga-ok
-        float dur = Mathf.Max(durataAnimazione, 0.01f); // setta // riga-ok
-
-        // blocco: gira piu volte
-        while (tempo < dur) // ciclo x // riga-ok
-        { // apre // riga-ok
-            float dt = Time.deltaTime > 0f ? Time.deltaTime : Time.unscaledDeltaTime; // setta // riga-ok
-            tempo += dt; // setta // riga-ok
-            float t = Mathf.SmoothStep(0f, 1f, tempo / dur); // setta // riga-ok
-
-            // blocco: controlla se va
-            if (tipoApertura == TipoApertura.Slide) // se ok // riga-ok
-                targetTransform.position = Vector3.Lerp(posStart, posFine, t); // setta // riga-ok
-            // blocco: caso diverso
-            else // se no // riga-ok
-                targetTransform.rotation = Quaternion.Slerp(rotStart, rotFine, t); // setta // riga-ok
-
-            yield return null; // aspetta // riga-ok
-        } // chiude // riga-ok
-
+    private IEnumerator AnimaPorta(bool versoAperta)
+    {
+        // Animazione unica per slide/rotazione. SmoothStep evita il movimento
+        // "lineare duro" da prototipo e dà un'apertura più pesante/tecnica.
+        inAnimazione = true;
+        if (versoAperta)
+            RiproduciSuono(suonoApertura, 1.0f);
+        else
+            RiproduciSuono(suonoChiusura, 1.0f);
+        Vector3 posStart = targetTransform.position;
+        Vector3 posFine  = versoAperta ? posizioneApertaWorld : posizioneChiusaWorld;
+        Quaternion rotStart = targetTransform.rotation;
+        Quaternion rotFine  = versoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld;
+        float tempo = 0f;
+        float dur = Mathf.Max(durataAnimazione, 0.01f);
+        while (tempo < dur)
+        {
+            float dt = Time.deltaTime > 0f ? Time.deltaTime : Time.unscaledDeltaTime;
+            tempo += dt;
+            float t = Mathf.SmoothStep(0f, 1f, tempo / dur);
+            if (tipoApertura == TipoApertura.Slide)
+                targetTransform.position = Vector3.Lerp(posStart, posFine, t);
+            else
+                targetTransform.rotation = Quaternion.Slerp(rotStart, rotFine, t);
+            yield return null;
+        }
         // Snap finale preciso
-        // blocco: controlla se va
-        if (tipoApertura == TipoApertura.Slide) // se ok // riga-ok
-            targetTransform.position = posFine; // setta // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-            targetTransform.rotation = rotFine; // setta // riga-ok
-
-        aperta = versoAperta; // setta // riga-ok
-        inAnimazione = false; // setta // riga-ok
-        AggiornaStato(); // chiama // riga-ok
-
-        Debug.Log($"<color=green>[PORTA]</color> {portaId}: {(aperta ? "APERTA" : "CHIUSA")} (Pos finale: {targetTransform.position})"); // logga // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void ApplicaStatoIstantaneo(bool statoAperta) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (targetTransform == null) // se ok // riga-ok
-            targetTransform = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (tipoApertura == TipoApertura.Slide) // se ok // riga-ok
-            targetTransform.position = statoAperta ? posizioneApertaWorld : posizioneChiusaWorld; // setta // riga-ok
-        // blocco: caso diverso
-        else // se no // riga-ok
-            targetTransform.rotation = statoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld; // setta // riga-ok
-
-        aperta = statoAperta; // setta // riga-ok
-        AggiornaStato(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void AggiornaStato() // roba pub // riga-ok
-    { // apre // riga-ok
+        if (tipoApertura == TipoApertura.Slide)
+            targetTransform.position = posFine;
+        else
+            targetTransform.rotation = rotFine;
+        aperta = versoAperta;
+        inAnimazione = false;
+        AggiornaStato();
+        Debug.Log($"<color=green>[PORTA]</color> {portaId}: {(aperta ? "APERTA" : "CHIUSA")} (Pos finale: {targetTransform.position})");
+    }
+    private void ApplicaStatoIstantaneo(bool statoAperta)
+    {
+        if (targetTransform == null)
+            targetTransform = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform;
+        if (tipoApertura == TipoApertura.Slide)
+            targetTransform.position = statoAperta ? posizioneApertaWorld : posizioneChiusaWorld;
+        else
+            targetTransform.rotation = statoAperta ? rotazioneApertaWorld : rotazioneChiusaWorld;
+        aperta = statoAperta;
+        AggiornaStato();
+    }
+    private void AggiornaStato()
+    {
         // Disabilita collider e navmesh se aperta per consentire il passaggio
-        // blocco: controlla se va
-        if (colliderFisico != null) // se ok // riga-ok
-            colliderFisico.enabled = !aperta; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (ostacolo != null) // se ok // riga-ok
-            ostacolo.enabled = !aperta; // setta // riga-ok
-
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
+        if (colliderFisico != null)
+            colliderFisico.enabled = !aperta;
+        if (ostacolo != null)
+            ostacolo.enabled = !aperta;
+        AggiornaFeedbackVisivo();
+    }
     /// <summary>
     /// Aggiorna il colore della Point Light e del Cubo in base alla possibilità di apertura.
     /// </summary>
-    // blocco: funzione fa cose
-    public void AggiornaFeedbackVisivo() // roba pub // riga-ok
-    { // apre // riga-ok
-        bool puoAprire = PuoEssereAperta(); // setta // riga-ok
-        ImpostaColoreFeedback(puoAprire ? coloreSbloccato : coloreBloccato); // chiama // riga-ok
-    } // chiude // riga-ok
-
+    public void AggiornaFeedbackVisivo()
+    {
+        bool puoAprire = PuoEssereAperta();
+        ImpostaColoreFeedback(puoAprire ? coloreSbloccato : coloreBloccato);
+    }
     /// <summary>
     /// Applica il colore sia alla Light component sia al materiale del Cubo/Renderer.
     /// </summary>
-    // blocco: funzione fa cose
-    private void ImpostaColoreFeedback(Color colore) // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: controlla se va
-        if (luceDiStato != null) // se ok // riga-ok
-            luceDiStato.color = colore; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (oggettoEmettitoreLuce != null) // se ok // riga-ok
-        { // apre // riga-ok
-            Material mat = oggettoEmettitoreLuce.material; // setta // riga-ok
-            // blocco: controlla se va
-            if (mat != null) // se ok // riga-ok
-            { // apre // riga-ok
-                mat.color = colore; // setta // riga-ok
-
-                // blocco: controlla se va
-                if (mat.HasProperty("_BaseColor")) // se ok // riga-ok
-                    mat.SetColor("_BaseColor", colore); // chiama // riga-ok
-
-                // blocco: controlla se va
-                if (mat.HasProperty("_EmissionColor")) // se ok // riga-ok
-                { // apre // riga-ok
-                    mat.EnableKeyword("_EMISSION"); // chiama // riga-ok
-                    mat.SetColor("_EmissionColor", colore * intensitaEmissione); // chiama // riga-ok
-                } // chiude // riga-ok
-            } // chiude // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private IEnumerator FlashCoroutine() // roba pub // riga-ok
-    { // apre // riga-ok
-        // blocco: gira piu volte
-        for (int i = 0; i < 3; i++) // ciclo x // riga-ok
-        { // apre // riga-ok
-            ImpostaColoreFeedback(Color.white); // chiama // riga-ok
-            yield return new WaitForSeconds(0.1f); // aspetta // riga-ok
-            ImpostaColoreFeedback(coloreBloccato); // chiama // riga-ok
-            yield return new WaitForSeconds(0.1f); // aspetta // riga-ok
-        } // chiude // riga-ok
-        AggiornaFeedbackVisivo(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    [ContextMenu("Test Toggle Porta (In Play Mode)")] // nota unity // riga-ok
-    // blocco: funzione fa cose
-    public void TestToggle() // roba pub // riga-ok
-    { // apre // riga-ok
-        Interact(); // chiama // riga-ok
-    } // chiude // riga-ok
-
-    // blocco: funzione fa cose
-    private void OnDrawGizmosSelected() // roba pub // riga-ok
-    { // apre // riga-ok
-        Transform t = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform; // setta // riga-ok
-
-        // blocco: controlla se va
-        if (tipoApertura == TipoApertura.Slide) // se ok // riga-ok
-        { // apre // riga-ok
-            Vector3 dir = t.TransformDirection(direzioneScivolamento.normalized); // setta // riga-ok
-            Vector3 targetPos = t.position + dir * offsetApertura; // setta // riga-ok
-
-            Gizmos.color = Color.green; // setta // riga-ok
-            Gizmos.DrawLine(t.position, targetPos); // chiama // riga-ok
-            Gizmos.DrawWireCube(targetPos, Vector3.one * 0.5f); // chiama // riga-ok
-        } // chiude // riga-ok
-    } // chiude // riga-ok
-} // chiude // riga-ok
+    private void ImpostaColoreFeedback(Color colore)
+    {
+        if (luceDiStato != null)
+            luceDiStato.color = colore;
+        if (oggettoEmettitoreLuce != null)
+        {
+            Material mat = oggettoEmettitoreLuce.material;
+            if (mat != null)
+            {
+                mat.color = colore;
+                if (mat.HasProperty("_BaseColor"))
+                    mat.SetColor("_BaseColor", colore);
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", colore * intensitaEmissione);
+                }
+            }
+        }
+    }
+    private IEnumerator FlashCoroutine()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            ImpostaColoreFeedback(Color.white);
+            yield return new WaitForSeconds(0.1f);
+            ImpostaColoreFeedback(coloreBloccato);
+            yield return new WaitForSeconds(0.1f);
+        }
+        AggiornaFeedbackVisivo();
+    }
+    [ContextMenu("Test Toggle Porta (In Play Mode)")]
+    public void TestToggle()
+    {
+        Interact();
+    }
+    private void OnDrawGizmosSelected()
+    {
+        Transform t = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform;
+        if (tipoApertura == TipoApertura.Slide)
+        {
+            Vector3 dir = t.TransformDirection(direzioneScivolamento.normalized);
+            Vector3 targetPos = t.position + dir * offsetApertura;
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(t.position, targetPos);
+            Gizmos.DrawWireCube(targetPos, Vector3.one * 0.5f);
+        }
+    }
+}
