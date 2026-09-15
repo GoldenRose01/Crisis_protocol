@@ -248,57 +248,71 @@ public class CyberHUD : MonoBehaviour
             visorReticleContainer.localScale = new Vector3(pulse, pulse, 1f);
         }
         // Aggiornamento Countdown a schermo LCD (Conteggio all'indietro)
-        if (timerAttivo && testoTimerValore != null)
-        {
+        // blocco: controlla se va
+        if (timerAttivo && testoTimerValore != null) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (MissionManager.Instance != null && (MissionManager.Instance.MissioneTerminata || MissionManager.Instance.EstrazioneSbloccata)) // se ok // riga-ok
+            { // apre // riga-ok
+                // blocco: controlla se va
+                if (MissionManager.Instance.EstrazioneSbloccata && timerContainer != null && timerContainer.gameObject.activeSelf) // se ok // riga-ok
+                    timerContainer.gameObject.SetActive(false); // disattiva // riga-ok
+                // Il tempo si congela qui
+            } // chiude // riga-ok
+            else // altrimenti // riga-ok
+            { // apre // riga-ok
+                tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime); // setta // riga-ok
+            } // chiude // riga-ok
+
+            int minuti = (int)(tempoRimanenteCountdown / 60f); // setta // riga-ok
+            int secondi = (int)(tempoRimanenteCountdown % 60f); // setta // riga-ok
+            int decimi = (int)((tempoRimanenteCountdown * 10f) % 10f); // setta // riga-ok
+            testoTimerValore.text = $"{minuti:D2}:{secondi:D2}.{decimi:D1}"; // setta // riga-ok
+
+            // Integrazione dinamica con lo stato di emergenza e countdown
+            // blocco: controlla se va
             if (MissionManager.Instance != null && (MissionManager.Instance.MissioneTerminata || MissionManager.Instance.EstrazioneSbloccata))
             {
-                if (MissionManager.Instance.EstrazioneSbloccata && timerContainer != null && timerContainer.gameObject.activeSelf)
-                    timerContainer.gameObject.SetActive(false);
-                return;
+                // Se la missione è sbloccata/terminata non controlliamo le condizioni di sconfitta per tempo, andiamo oltre
             }
-            tempoRimanenteCountdown = Mathf.Max(0f, tempoRimanenteCountdown - Time.deltaTime);
-            int minuti = (int)(tempoRimanenteCountdown / 60f);
-            int secondi = (int)(tempoRimanenteCountdown % 60f);
-            int decimi = (int)((tempoRimanenteCountdown * 10f) % 10f);
-            testoTimerValore.text = $"{minuti:D2}:{secondi:D2}.{decimi:D1}";
-            // Integrazione dinamica con lo stato di emergenza e countdown
-            if (tempoRimanenteCountdown <= 0f)
-            {
-                testoTimerValore.text = "00:00.0";
-                testoTimerValore.color = warningRed;
-                if (testoTimerStatus != null)
-                {
-                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL DEFEAT";
-                    testoTimerStatus.color = warningRed;
-                }
-                if (sconfittaATempoScaduto)
-                {
-                    if (MissionManager.Instance != null && !MissionManager.Instance.MissioneTerminata)
-                    {
-                        MissionManager.Instance.TerminaPerTempoScaduto();
-                    }
-                    else
-                    {
-                        SalutePlayer player = Object.FindAnyObjectByType<SalutePlayer>();
-                        if (player != null && player.SaluteAttuale > 0)
-                        {
-                            player.SubisciDanno(99999f);
-                        }
-                        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA");
-                    }
-                }
-            }
-            else if (tempoRimanenteCountdown <= 60f)
-            {
+            else if (tempoRimanenteCountdown <= 0f) // se ok // riga-ok
+            { // apre // riga-ok
+                testoTimerValore.text = "00:00.0"; // setta // riga-ok
+                testoTimerValore.color = warningRed; // setta // riga-ok
+                if (testoTimerStatus != null) // se ok // riga-ok
+                { // apre // riga-ok
+                    testoTimerStatus.text = "⚠️ TIME EXPIRED // CRITICAL DEFEAT"; // setta // riga-ok
+                    testoTimerStatus.color = warningRed; // setta // riga-ok
+                } // chiude // riga-ok
+
+                if (sconfittaATempoScaduto) // se ok // riga-ok
+                { // apre // riga-ok
+                    if (MissionManager.Instance != null && !MissionManager.Instance.MissioneTerminata) // se ok // riga-ok
+                    { // apre // riga-ok
+                        MissionManager.Instance.TerminaPerTempoScaduto(); // chiama // riga-ok
+                    } // chiude // riga-ok
+                    else // altrimenti // riga-ok
+                    { // apre // riga-ok
+                        SalutePlayer player = Object.FindAnyObjectByType<SalutePlayer>(); // trova // riga-ok
+                        if (player != null && player.SaluteAttuale > 0) // se ok // riga-ok
+                        { // apre // riga-ok
+                            player.SubisciDanno(99999f); // chiama // riga-ok
+                        } // chiude // riga-ok
+                        DeathScreenController.ShowAndReloadCurrentScene(3.0f, 0f, "TEMPO SCADUTO // EVACUAZIONE FALLITA"); // chiama // riga-ok
+                    } // chiude // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
+            else if (tempoRimanenteCountdown <= 60f) // se ok // riga-ok
+            { // apre // riga-ok
                 // Ultimo minuto: allarme rosso lampeggiante
-                float blink = Mathf.Sin(Time.unscaledTime * 10f);
-                testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.6f, 0.6f, 1f);
-                if (testoTimerStatus != null)
-                {
-                    testoTimerStatus.text = "⚠️ T-MINUS CRITICAL // EVACUATE";
-                    testoTimerStatus.color = warningRed;
-                }
-            }
+                float blink = Mathf.Sin(Time.unscaledTime * 10f); // setta // riga-ok
+                testoTimerValore.color = blink > 0f ? warningRed : new Color(1f, 0.6f, 0.6f, 1f); // setta // riga-ok
+                if (testoTimerStatus != null) // se ok // riga-ok
+                { // apre // riga-ok
+                    testoTimerStatus.text = "⚠️ T-MINUS CRITICAL // EVACUATE"; // setta // riga-ok
+                    testoTimerStatus.color = warningRed; // setta // riga-ok
+                } // chiude // riga-ok
+            } // chiude // riga-ok
             else if (MissionManager.Instance != null && testoTimerStatus != null)
             {
                 float collasso = MissionManager.Instance.CollassoCorrente;

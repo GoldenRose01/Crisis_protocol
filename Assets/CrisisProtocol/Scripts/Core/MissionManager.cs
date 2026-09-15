@@ -124,13 +124,15 @@ public class MissionManager : MonoBehaviour
             Debug.LogWarning("[DEBUG] Tasto F7 premuto: Vittoria forzata e passaggio al prossimo livello.");
             ForzaCompletamentoMissioneDebug();
         }
-        if (missioneTerminata)
-            return;
-        // Il collasso cresce continuamente finche' la missione e' attiva.
+        // blocco: controlla se va
+        if (missioneTerminata || estrazioneSbloccata) // se ok // riga-ok
+            return; // torna val // riga-ok
+
+        // Il collasso cresce continuamente finche' la missione e' attiva e non e' sbloccata l'estrazione.
         // Eventi, danni e allarmi possono aumentarlo; contenimenti riusciti possono ridurlo.
-        tempoMissione += Time.deltaTime;
-        AggiungiCollasso(collassoStrutturale.IncrementoPerSecondo * Time.deltaTime);
-    }
+        tempoMissione += Time.deltaTime; // setta // riga-ok
+        AggiungiCollasso(collassoStrutturale.IncrementoPerSecondo * Time.deltaTime); // chiama // riga-ok
+    } // chiude // riga-ok
     public bool RegistraCredenziale(string credentialId)
     {
         // Le credenziali sono risorse di accesso: vengono contate per UI/punteggio

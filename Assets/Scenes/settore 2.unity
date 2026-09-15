@@ -2660,8 +2660,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efba17459434ddf49ad9a473f9bfdf1f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  velocitaCamminata: 4
-  velocitaCorsa: 8
+  velocitaCamminata: 6
+  velocitaCorsa: 10
   forzaPrimoSalto: 5
   forzaSecondoSalto: 3.5
   cameraTransform: {fileID: 977874952}

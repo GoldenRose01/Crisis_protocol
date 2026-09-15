@@ -100,7 +100,7 @@ public sealed class EndGameCreditsController : MonoBehaviour
         EnsureInterface();
         if (scoreValueText != null)
         {
-            scoreValueText.text = $"PUNTEGGIO TOTALE: {finalScore:N0} PTS  //  SETTORI COMPLETATI: 3 / 3";
+            scoreValueText.text = $"SETTORI COMPLETATI: 3 / 3";
         }
         ModalUIState.TryOpen("EndGameCredits", true, true);
         Cursor.lockState = CursorLockMode.None;
