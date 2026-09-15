@@ -17,7 +17,7 @@ using CrisisProtocol.UI; // usa lib // riga-ok
 [Serializable] // nota unity // riga-ok
 // blocco: classe x roba grossa
 public class VoceCodicePorta // classe qui // riga-ok
-{ // apre // riga-ok
+{// apre // riga-ok
     [Tooltip("Nome identificativo della porta o del settore (es. 'SETTORE REATTORE A1').")] // nota unity // riga-ok
     public string nomePorta = "SETTORE REATTORE"; // roba pub // riga-ok
 
@@ -80,16 +80,16 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
     [SerializeField] private bool evidenziaInVisualePlayer = true; // setta // riga-ok
 
     [Tooltip("Altezza del marker luminoso sopra l'oggetto.")] // nota unity // riga-ok
-    [SerializeField] private float altezzaMarkerVisuale = 1.15f; // setta // riga-ok
+    [SerializeField] private float altezzaMarkerVisuale = 2.5f; // setta // riga-ok
 
     [Tooltip("Grandezza del marker visivo automatico.")] // nota unity // riga-ok
-    [SerializeField] private float scalaMarkerVisuale = 0.18f; // setta // riga-ok
+    [SerializeField] private float scalaMarkerVisuale = 0.35f; // setta // riga-ok
 
     [Tooltip("Distanza della luce usata per far risaltare il datapad.")] // nota unity // riga-ok
-    [SerializeField] private float raggioLuceVisuale = 4.5f; // setta // riga-ok
+    [SerializeField] private float raggioLuceVisuale = 7.0f; // setta // riga-ok
 
     [Tooltip("Intensita' base della luce automatica sopra il datapad.")] // nota unity // riga-ok
-    [SerializeField] private float intensitaLuceVisuale = 1.75f; // setta // riga-ok
+    [SerializeField] private float intensitaLuceVisuale = 3.5f; // setta // riga-ok
 
     [Header("Audio")] // nota unity // riga-ok
     [Tooltip("Suono di accensione / battitura all'apertura del datapad.")] // nota unity // riga-ok
@@ -102,6 +102,14 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
     private Renderer rendererMarkerVisuale; // cache rend // riga-ok
     private Material materialeMarkerVisuale; // cache mat // riga-ok
     private Camera cameraPrincipale; // cache cam // riga-ok
+
+    // FIX: blocca posizione nel mondo — registra pos/rot iniziali e le reimpone ogni LateUpdate
+    private Vector3    _posMondiale;        // posizione world registrata // riga-ok
+    private Quaternion _rotMondiale;        // rotazione world registrata // riga-ok
+    private bool       _posizioneFissata = false; // flag attivo // riga-ok
+    private Vector3    _lucePosWorld;       // pos world luce esterna // riga-ok
+    private Quaternion _luceRotWorld;       // rot world luce esterna // riga-ok
+    private bool       _lucePosRegistrata = false; // flag luce // riga-ok
 
     void Start() // chiama // riga-ok
     { // apre // riga-ok
@@ -143,6 +151,11 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
         } // chiude // riga-ok
 
         ConfiguraEvidenzaVisuale(); // chiama // riga-ok
+
+        // FIX: registra la posizione e rotazione mondiali DOPO che tutto è posizionato
+        _posMondiale     = transform.position; // setta // riga-ok
+        _rotMondiale     = transform.rotation; // setta // riga-ok
+        _posizioneFissata = true; // attiva il lock // setta // riga-ok
     } // chiude // riga-ok
 
     void Update() // chiama // riga-ok
@@ -155,6 +168,35 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
         } // chiude // riga-ok
 
         AggiornaEvidenzaVisuale(); // chiama // riga-ok
+    } // chiude // riga-ok
+
+    // FIX: eseguito DOPO tutti gli Update — forza il pannello a restare nella posizione iniziale
+    // qualunque cosa lo stia spostando (parent mobile, physics, animazioni, ecc.)
+    void LateUpdate() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (!_posizioneFissata) return; // non ancora pronto // se ok // riga-ok
+
+        // Blocca posizione e rotazione di questo oggetto
+        transform.position = _posMondiale; // forza pos // setta // riga-ok
+        transform.rotation = _rotMondiale; // forza rot // setta // riga-ok
+
+        // Blocca anche la luce esterna se presente e separata
+        // blocco: controlla se va
+        if (luceOlogramma != null && luceOlogramma.transform.parent != transform) // se ok // riga-ok
+        { // apre // riga-ok
+            // La luce è su un oggetto separato non figlio di questo: la blocca al suo posto
+            // (registra la sua posizione iniziale al primo frame)
+            // blocco: controlla se va
+            if (!_lucePosRegistrata) // se ok // riga-ok
+            { // apre // riga-ok
+                _lucePosWorld = luceOlogramma.transform.position; // setta // riga-ok
+                _luceRotWorld = luceOlogramma.transform.rotation; // setta // riga-ok
+                _lucePosRegistrata = true; // setta // riga-ok
+            } // chiude // riga-ok
+            luceOlogramma.transform.position = _lucePosWorld; // blocca luce // setta // riga-ok
+            luceOlogramma.transform.rotation = _luceRotWorld; // blocca luce // setta // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: crea marker vista
@@ -186,6 +228,24 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
         luceMarkerVisuale.color = coloreOlogramma; // setta col // riga-ok
         luceMarkerVisuale.range = raggioLuceVisuale; // setta raggio // riga-ok
         luceMarkerVisuale.intensity = intensitaLuceVisuale; // setta forza // riga-ok
+
+        // Crea anello olografico attorno alla sfera
+        LineRenderer anello = markerVisuale.AddComponent<LineRenderer>(); // crea line // riga-ok
+        anello.useWorldSpace = false; // spazio locale // riga-ok
+        anello.loop = true; // chiudi cerchio // riga-ok
+        anello.positionCount = 36; // 36 segmenti // riga-ok
+        anello.startWidth = 0.08f; // spessore // riga-ok
+        anello.endWidth = 0.08f; // spessore // riga-ok
+        anello.material = materialeMarkerVisuale; // stesso materiale // riga-ok
+        anello.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // no ombre // riga-ok
+        anello.receiveShadows = false; // no ombre // riga-ok
+        
+        float raggioAnello = 1.6f; // Raggio locale dell'anello // riga-ok
+        for (int i = 0; i < 36; i++) // ciclo x // riga-ok
+        { // apre // riga-ok
+            float rad = Mathf.Deg2Rad * (i * 10f); // calcola angolo // riga-ok
+            anello.SetPosition(i, new Vector3(Mathf.Sin(rad) * raggioAnello, 0f, Mathf.Cos(rad) * raggioAnello)); // setta // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: materiale marker
@@ -217,16 +277,37 @@ public class DatapadCodiciPorte : MonoBehaviour, IInteractable // classe qui // 
         float scala = scalaMarkerVisuale * Mathf.Lerp(0.85f, 1.25f, pulse); // scala ora // riga-ok
         markerVisuale.transform.localScale = Vector3.one * scala; // applica // riga-ok
 
+        // Aggiunge un movimento di fluttuazione (su e giù) per renderlo inequivocabile
+        float floatOffset = Mathf.Sin(Time.time * 2.5f) * 0.35f; // offset fluttuazione // riga-ok
+        
+        // FIX VISIBILITA': Se l'oggetto è un grande server rack (come nel Settore 2) e la luce 
+        // è in basso nello scaffale, il marker finirebbe nascosto dentro il mobile.
+        // Soluzione: troviamo il punto più alto del collider in World Space e piazziamo il marker lì.
+        Collider col = GetComponent<Collider>(); // setta // riga-ok
+        // blocco: controlla se va
+        if (col != null) // se ok // riga-ok
+        { // apre // riga-ok
+            // Posiziona il marker al centro X/Z, ma sopra il tetto del collider
+            markerVisuale.transform.position = new Vector3(
+                col.bounds.center.x, 
+                col.bounds.max.y + 0.6f + floatOffset, 
+                col.bounds.center.z
+            ); // pos world // riga-ok
+        } // chiude // riga-ok
+        // blocco: caso diverso
+        else // se no // riga-ok
+        { // apre // riga-ok
+            // Fallback se non ha un collider
+            markerVisuale.transform.position = transform.position + Vector3.up * (altezzaMarkerVisuale + floatOffset); // pos fallback // riga-ok
+        } // chiude // riga-ok
+
+        // FIX: non ruotare il marker verso la camera — era la causa del movimento apparente.
+        // Facciamo ruotare l'oggetto sul suo asse Y locale così l'anello gira in modo figo.
+        markerVisuale.transform.localRotation = Quaternion.Euler(0f, Time.time * 120f, 0f); // ruota anello // riga-ok
+
         if (luceMarkerVisuale != null) // se ok // riga-ok
         { // apre // riga-ok
             luceMarkerVisuale.intensity = intensitaLuceVisuale * Mathf.Lerp(0.65f, 1.35f, pulse); // pulsa // riga-ok
-        } // chiude // riga-ok
-
-        if (cameraPrincipale == null) cameraPrincipale = Camera.main; // trova cam // riga-ok
-        if (cameraPrincipale != null) // se ok // riga-ok
-        { // apre // riga-ok
-            Vector3 direzioneCamera = markerVisuale.transform.position - cameraPrincipale.transform.position; // calcola dir // riga-ok
-            if (direzioneCamera.sqrMagnitude > 0.001f) markerVisuale.transform.rotation = Quaternion.LookRotation(direzioneCamera); // guarda cam // riga-ok
         } // chiude // riga-ok
     } // chiude // riga-ok
 

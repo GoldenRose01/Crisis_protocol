@@ -13786,7 +13786,7 @@ MonoBehaviour:
     totaleFocolaiDaContenere: 0
     contaFocolaiInScena: 1
   usaTempoLimite: 1
-  tempoLimiteMinuti: 2.5
+  tempoLimiteMinuti: 3
   sconfittaAScadenzaTimer: 1
   collassoStrutturale:
     collassoIniziale: 0
@@ -13892,7 +13892,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1683159268394439858, guid: dd194e333985254458e0628ab11f3757, type: 3}
       propertyPath: m_Name
-      value: Cube (22)
+      value: stanza di controllo
       objectReference: {fileID: 0}
     - target: {fileID: 2358184869440474884, guid: dd194e333985254458e0628ab11f3757, type: 3}
       propertyPath: m_Mesh

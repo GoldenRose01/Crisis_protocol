@@ -123,6 +123,8 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable // classe qui // ri
 
         // 2. Jet Stream (Getto Gas in Pressione)
         ParticleSystem psJet = gasRoot.AddComponent<ParticleSystem>(); // setta // riga-ok
+        // FIX: ferma subito il sistema prima di modificarne le proprieta' (duration non si puo' impostare mentre e' in play)
+        psJet.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); // ferma // riga-ok
         var mainJet = psJet.main; // setta // riga-ok
         mainJet.playOnAwake = true; // setta // riga-ok
         mainJet.loop = true; // setta // riga-ok
@@ -181,6 +183,8 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable // classe qui // ri
         cloudGo.transform.localPosition = new Vector3(0f, 0.3f * sc, 0.6f * sc); // setta // riga-ok
 
         ParticleSystem psCloud = cloudGo.AddComponent<ParticleSystem>(); // setta // riga-ok
+        // FIX: ferma subito prima di modificare duration
+        psCloud.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); // ferma // riga-ok
         var mainCloud = psCloud.main; // setta // riga-ok
         mainCloud.playOnAwake    = true; // setta // riga-ok
         mainCloud.loop           = true; // setta // riga-ok

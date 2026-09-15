@@ -160,7 +160,32 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
     // blocco: funzione fa cose
     private void Awake() // roba pub // riga-ok
     { // apre // riga-ok
-        targetTransform = (oggettoDaAnimare != null) ? oggettoDaAnimare : transform; // setta // riga-ok
+        // FIX: stacca dalla gerarchia porta tutti gli oggetti statici (terminali, luci, collider
+        // di interazione) PRIMA di calcolare targetTransform, così non vengono trascinati
+        // dall'animazione di apertura/chiusura della porta.
+        DetacchiaOggettiStatici(); // chiama // riga-ok
+
+        // Se oggettoDaAnimare non è assegnato, preferisce il figlio che rappresenta l'anta (es. con MeshRenderer/MeshFilter)
+        // quando è presente un terminale o altri oggetti figli.
+        if (oggettoDaAnimare != null)
+        {
+            targetTransform = oggettoDaAnimare; // setta // riga-ok
+        }
+        else
+        {
+            Transform antaTrovata = null;
+            // blocco: gira piu volte
+            foreach (Transform figlio in transform) // ciclo x // riga-ok
+            {
+                // blocco: controlla se va
+                if (figlio.GetComponent<TerminalePorta>() == null && (figlio.GetComponentInChildren<MeshRenderer>() != null || figlio.GetComponentInChildren<MeshFilter>() != null || figlio.GetComponentInChildren<SkinnedMeshRenderer>() != null)) // se ok // riga-ok
+                {
+                    antaTrovata = figlio; // setta // riga-ok
+                    break; // stop // riga-ok
+                }
+            }
+            targetTransform = (antaTrovata != null) ? antaTrovata : transform; // setta // riga-ok
+        }
 
         colliderFisico = GetComponent<Collider>(); // setta // riga-ok
         // blocco: controlla se va
@@ -204,6 +229,85 @@ public class PortaSettore : MonoBehaviour, IInteractable // classe qui // riga-o
         Vector3 dirMondo = targetTransform.TransformDirection(direzioneScivolamento.normalized); // setta // riga-ok
         posizioneApertaWorld = posizioneChiusaWorld + dirMondo * offsetApertura; // setta // riga-ok
         rotazioneApertaWorld = rotazioneChiusaWorld * Quaternion.Euler(0f, angoloApertura, 0f); // setta // riga-ok
+    } // chiude // riga-ok
+
+    /// <summary>
+    /// FIX: stacca dalla gerarchia della porta tutti i GameObject che devono restare FISSI
+    /// (TerminalePorta, luci di indicazione, collider di interazione del pannello).
+    /// Li reparenta al genitore della porta oppure li rende root-level, mantenendo la
+    /// loro posizione/rotazione nel mondo invariata (worldPositionStays = true).
+    /// </summary>
+    // blocco: funzione fa cose
+    private void DetacchiaOggettiStatici() // roba pub // riga-ok
+    { // apre // riga-ok
+        // Il padre a cui reparentare gli oggetti statici: se questa porta ha un parent
+        // nella gerarchia lo usiamo, altrimenti null = root della scena.
+        Transform nuovoPadre = transform.parent; // setta // riga-ok
+
+        // 1. Stacca tutti i TerminalePorta figli (pannello con i pin / tastierino)
+        TerminalePorta[] terminaliTrovati = GetComponentsInChildren<TerminalePorta>(true); // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (TerminalePorta t in terminaliTrovati) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (t != null && t.transform != transform) // se ok // riga-ok
+            { // apre // riga-ok
+                t.transform.SetParent(nuovoPadre, true); // stacca mantenendo posizione world // chiama // riga-ok
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> TerminalePorta '<b>{t.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+
+        // 1b. Stacca tutti i DatapadCodiciPorte figli (pannello datapad con codici/pin)
+        DatapadCodiciPorte[] datapadTrovati = GetComponentsInChildren<DatapadCodiciPorte>(true); // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (DatapadCodiciPorte d in datapadTrovati) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (d != null && d.transform != transform) // se ok // riga-ok
+            { // apre // riga-ok
+                d.transform.SetParent(nuovoPadre, true); // stacca mantenendo posizione world // chiama // riga-ok
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> DatapadCodiciPorte '<b>{d.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+
+        // 2. Stacca le luci indicatrici che sono figlie DIRETTE di questo transform
+        //    ma NON fanno parte della mesh della porta (es. luceMonitor assegnata come figlia)
+        Light[] luciTrovate = GetComponentsInChildren<Light>(true); // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (Light l in luciTrovate) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (l == null) continue; // se ok // riga-ok
+            // Stacca solo luci che sono figlie dirette di questa porta (non dell'oggettoDaAnimare)
+            // così le luci della mesh della porta restano attaccate all'anta
+            bool figliaDellaPorta = l.transform.parent == transform; // setta // riga-ok
+            bool nonEParteDellAnta = oggettoDaAnimare == null || !l.transform.IsChildOf(oggettoDaAnimare); // setta // riga-ok
+            // blocco: controlla se va
+            if (figliaDellaPorta && nonEParteDellAnta) // se ok // riga-ok
+            { // apre // riga-ok
+                l.transform.SetParent(nuovoPadre, true); // chiama // riga-ok
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> Luce '<b>{l.name}</b>' staccata dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
+
+        // 3. Stacca i BoxCollider / CapsuleCollider marcati come Trigger figli diretti della porta
+        //    che NON appartengono all'anta (sono collider di interazione del pannello)
+        Collider[] collidersTrovati = GetComponentsInChildren<Collider>(true); // setta // riga-ok
+        // blocco: gira piu volte
+        foreach (Collider c in collidersTrovati) // ciclo x // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (c == null || c.gameObject == gameObject) continue; // salta collider proprio // se ok // riga-ok
+            bool figlioDellaPorta = c.transform.parent == transform; // setta // riga-ok
+            bool nonEParteDellAnta = oggettoDaAnimare == null || !c.transform.IsChildOf(oggettoDaAnimare); // setta // riga-ok
+            // Stacca solo collider Trigger figli diretti (collider fisici dell'anta vengono tenuti)
+            // blocco: controlla se va
+            if (figlioDellaPorta && nonEParteDellAnta && c.isTrigger) // se ok // riga-ok
+            { // apre // riga-ok
+                c.transform.SetParent(nuovoPadre, true); // chiama // riga-ok
+                Debug.Log($"<color=cyan>[PORTA FIX]</color> Collider Trigger '<b>{c.name}</b>' staccato dalla porta '<b>{name}</b>' e reso indipendente."); // logga // riga-ok
+            } // chiude // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose

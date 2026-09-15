@@ -95,6 +95,14 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
         } // chiude // riga-ok
     } // chiude // riga-ok
 
+    // FIX: blocca posizione nel mondo — registra pos/rot iniziali e le reimpone ogni LateUpdate
+    private Vector3    _posMondiale        = Vector3.zero;  // pos world // riga-ok
+    private Quaternion _rotMondiale        = Quaternion.identity; // rot world // riga-ok
+    private bool       _posizioneFissata   = false; // flag // riga-ok
+    private Vector3    _lucePosWorld       = Vector3.zero;  // pos luce esterna // riga-ok
+    private Quaternion _luceRotWorld       = Quaternion.identity; // rot luce esterna // riga-ok
+    private bool       _lucePosRegistrata  = false; // flag luce // riga-ok
+
     void Start() // chiama // riga-ok
     { // apre // riga-ok
         SincronizzaPortaLegacy(); // chiama // riga-ok
@@ -125,7 +133,39 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
         } // chiude // riga-ok
 
         AggiornaGraficaMonitor(); // chiama // riga-ok
+
+        // FIX: registra posizione e rotazione mondiali DOPO il posizionamento completo
+        _posMondiale      = transform.position; // setta // riga-ok
+        _rotMondiale      = transform.rotation; // setta // riga-ok
+        _posizioneFissata = true; // attiva lock // setta // riga-ok
     } // chiude // riga-ok
+
+    // FIX: eseguito DOPO tutti gli Update — forza il terminale a restare fermo
+    // qualunque cosa lo stia muovendo (porta, physics, animazioni, ecc.)
+    void LateUpdate() // chiama // riga-ok
+    { // apre // riga-ok
+        // blocco: controlla se va
+        if (!_posizioneFissata) return; // non pronto // se ok // riga-ok
+
+        transform.position = _posMondiale; // blocca pos // setta // riga-ok
+        transform.rotation = _rotMondiale; // blocca rot // setta // riga-ok
+
+        // Blocca anche luceMonitor se è su un oggetto separato non figlio di questo
+        // blocco: controlla se va
+        if (luceMonitor != null && luceMonitor.transform.parent != transform) // se ok // riga-ok
+        { // apre // riga-ok
+            // blocco: controlla se va
+            if (!_lucePosRegistrata) // se ok // riga-ok
+            { // apre // riga-ok
+                _lucePosWorld      = luceMonitor.transform.position; // setta // riga-ok
+                _luceRotWorld      = luceMonitor.transform.rotation; // setta // riga-ok
+                _lucePosRegistrata = true; // setta // riga-ok
+            } // chiude // riga-ok
+            luceMonitor.transform.position = _lucePosWorld; // blocca // setta // riga-ok
+            luceMonitor.transform.rotation = _luceRotWorld; // blocca // setta // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+
 
     // blocco: compat vecchia porta
     private void SincronizzaPortaLegacy() // roba pub // riga-ok
@@ -174,6 +214,14 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
             TerminalePortaUI ui = uiObj.AddComponent<TerminalePortaUI>(); // setta // riga-ok
             ui.ApriTerminale(this); // chiama // riga-ok
         } // chiude // riga-ok
+
+        // Mostra hint HUD: il terminale richiede credenziali, il player deve cercarle
+        // blocco: controlla se va
+        if (!giaSbloccato && CyberHUD.Instance != null) // se ok // riga-ok
+        { // apre // riga-ok
+            string msg = $"\u26a0  TERMINALE: {(string.IsNullOrEmpty(nomeTerminale) ? "SICUREZZA" : nomeTerminale.ToUpper())}\nCerca le credenziali di accesso nei dintorni!"; // setta // riga-ok
+            CyberHUD.Instance.MostraHintCredenziali(msg); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     /// <summary>
@@ -185,6 +233,10 @@ public class TerminalePorta : MonoBehaviour, IInteractable // classe qui // riga
         giaSbloccato = true; // setta // riga-ok
         AggiornaGraficaMonitor(); // chiama // riga-ok
         RiproduciSuono(suonoAccessoGarantito); // chiama // riga-ok
+
+        // Nasconde l'hint credenziali: il terminale e' ora sbloccato
+        // blocco: controlla se va
+        if (CyberHUD.Instance != null) CyberHUD.Instance.NascondiHintCredenziali(); // chiama // riga-ok
 
         // blocco: controlla se va
         if (porteCollegate != null && porteCollegate.Count > 0) // se ok // riga-ok

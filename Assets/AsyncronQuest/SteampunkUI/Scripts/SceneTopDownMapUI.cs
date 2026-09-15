@@ -531,12 +531,7 @@ namespace AsyncronQuest.SteampunkUI // zona cod // riga-ok
                     isInteractable = true; // setta // riga-ok
                     nomeTattico = string.IsNullOrEmpty(datapad.titoloDatapad) ? "DATAPAD SICUREZZA" : datapad.titoloDatapad; // setta // riga-ok
                 } // chiude // riga-ok
-                // blocco: controlla se va
-                else if (mb is CuboNeroTeletrasporto) // se ok // riga-ok
-                { // apre // riga-ok
-                    isInteractable = true; // setta // riga-ok
-                    nomeTattico = "TELETRASPORTO"; // setta // riga-ok
-                } // chiude // riga-ok
+                // blocco: rimosso controllo CuboNeroTeletrasporto (la mappa non deve mostrare l'uscita in anticipo)
                 // blocco: controlla se va
                 else if (mb is IInteractable) // se ok // riga-ok
                 { // apre // riga-ok

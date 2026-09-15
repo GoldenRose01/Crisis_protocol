@@ -26274,7 +26274,7 @@ MonoBehaviour:
     totaleFocolaiDaContenere: 0
     contaFocolaiInScena: 1
   usaTempoLimite: 1
-  tempoLimiteMinuti: 0.8
+  tempoLimiteMinuti: 3
   sconfittaAScadenzaTimer: 1
   collassoStrutturale:
     collassoIniziale: 0

@@ -98,6 +98,20 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
     private Text notificaSubText; // roba pub // riga-ok
     private Coroutine notificaCoroutine; // roba pub // riga-ok
 
+    // 4b. Banner Hint Credenziali (icona terminale lampeggiante)
+    private RectTransform hintCredenzialiPanel; // roba pub // riga-ok
+    private CanvasGroup hintCredenzialiGroup; // roba pub // riga-ok
+    private Text hintCredenzialiTesto; // roba pub // riga-ok
+    private Image hintIconaTerminale; // roba pub // riga-ok
+    private Coroutine hintCredenzialiCoroutine; // roba pub // riga-ok
+
+    // 4c. Banner Hint Tutorial Dinamico (lampeggiante, in alto/centro)
+    private RectTransform hintTutorialPanel; // roba pub // riga-ok
+    private CanvasGroup hintTutorialGroup; // roba pub // riga-ok
+    private Text hintTutorialTesto; // roba pub // riga-ok
+    private Image hintIconaTutorial; // roba pub // riga-ok
+    private Coroutine hintTutorialCoroutine; // roba pub // riga-ok
+
     // 5. Flash e Feedback Impatto Danni
     private CanvasGroup damageFlashGroup; // roba pub // riga-ok
     private Coroutine damageFlashCoroutine; // roba pub // riga-ok
@@ -240,6 +254,21 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         } // chiude // riga-ok
 
         SetTargetLocked(false); // chiama // riga-ok
+
+        // LOGICA TUTORIAL DINAMICO SU CARICAMENTO SETTORE
+        string sceneNameLow = currentScene.ToLower(); // setta // riga-ok
+        if (sceneNameLow.Contains("settore 0")) // se ok // riga-ok
+        { // apre // riga-ok
+            MostraHintTutorial("TUTORIAL: Usa [W][A][S][D] per muoverti, il Mouse per la visuale, [E] per interagire,[Q] per scansionare l'ambiente , [ESC] per pausa/mappa."); // chiama // riga-ok
+        } // chiude // riga-ok
+        else if (sceneNameLow.Contains("settore 1")) // se ok // riga-ok
+        { // apre // riga-ok
+            MostraHintTutorial("TUTORIAL: Cerca le credenziali per la porta bloccata. Segui la luce blu lampeggiante per trovare la keycard!"); // chiama // riga-ok
+        } // chiude // riga-ok
+        else // se no // riga-ok
+        { // apre // riga-ok
+            NascondiHintTutorial(); // chiama // riga-ok
+        } // chiude // riga-ok
     } // chiude // riga-ok
 
     // blocco: funzione fa cose
@@ -518,15 +547,15 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         Text bodyText = bodyGO.AddComponent<Text>(); // setta // riga-ok
         bodyText.font = font; // setta // riga-ok
         bodyText.text =
-            "1. OBIETTIVO\\n" +
-            "   Ripristina il settore in emergenza, trova le keycard e completa le procedure prima che il timer arrivi a zero.\\n\\n" +
-            "2. ESPLORAZIONE\\n" +
-            "   Muoviti nei settori, osserva gli indizi luminosi e avvicinati agli oggetti interattivi quando compare il prompt [E].\\n\\n" +
-            "3. INTERAZIONI\\n" +
-            "   Usa i terminali, recupera strumenti e ripara i sistemi segnalati dalla HUD. Le keycard sbloccano nuove zone.\\n\\n" +
-            "4. PERICOLO\\n" +
-            "   Tieni d'occhio batteria/vita e countdown. Se subisci danni la HUD lampeggia, quindi cerca riparo o cambia percorso.\\n\\n" +
-            "5. COMANDI RAPIDI\\n" +
+            "1. OBIETTIVO\n" +
+            "   Ripristina il settore in emergenza, trova le keycard e completa le procedure prima che il timer arrivi a zero.\n\n" +
+            "2. ESPLORAZIONE\n" +
+            "   Muoviti nei settori, osserva gli indizi luminosi e avvicinati agli oggetti interattivi quando compare il prompt [E].\n\n" +
+            "3. INTERAZIONI\n" +
+            "   Usa i terminali, recupera strumenti e ripara i sistemi segnalati dalla HUD. Le keycard sbloccano nuove zone.\n\n" +
+            "4. PERICOLO\n" +
+            "   Tieni d'occhio batteria/vita e countdown. Se subisci danni la HUD lampeggia, quindi cerca riparo o cambia percorso.\n\n" +
+            "5. COMANDI RAPIDI\n" +
             "   WASD: movimento | Mouse: visuale | E: interagisci | Q: scanner | F1: tutorial | ESC: chiudi/pause"; // setta // riga-ok
         bodyText.fontSize = 20; // setta // riga-ok
         bodyText.lineSpacing = 1.12f; // setta // riga-ok
@@ -1302,4 +1331,215 @@ public class CyberHUD : MonoBehaviour // classe qui // riga-ok
         tex.Apply(); // chiama // riga-ok
         return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(6, 6, 6, 6)); // torna val // riga-ok
     } // chiude // riga-ok
+
+    // =========================================================================
+    // 8. HINT CREDENZIALI — banner lampeggiante "cerca le credenziali"
+    // =========================================================================
+
+    /// <summary>
+    /// Mostra il banner lampeggiante che indica al giocatore di cercare le credenziali
+    /// vicino al terminale di sicurezza. Rimane visibile finche' non si chiama NascondiHintCredenziali().
+    /// </summary>
+    public void MostraHintCredenziali(string messaggioOpzionale = null) // roba pub // riga-ok
+    { // apre // riga-ok
+        if (hudCanvas == null) return; // non pronto // riga-ok
+
+        // Costruisce il panel al primo uso
+        if (hintCredenzialiPanel == null) // se ok // riga-ok
+            CostruisciHintCredenzialiPanel(); // chiama // riga-ok
+
+        // Imposta il testo personalizzato o quello di default
+        if (hintCredenzialiTesto != null) // se ok // riga-ok
+        { // apre // riga-ok
+            hintCredenzialiTesto.text = messaggioOpzionale ?? // setta // riga-ok
+                "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!"; // setta // riga-ok
+        } // chiude // riga-ok
+
+        hintCredenzialiPanel.gameObject.SetActive(true); // mostra // riga-ok
+
+        // Riavvia lampeggio
+        if (hintCredenzialiCoroutine != null) StopCoroutine(hintCredenzialiCoroutine); // ferma vecchio // riga-ok
+        hintCredenzialiCoroutine = StartCoroutine(LampeggiaBannerCredenziali()); // avvia // riga-ok
+    } // chiude // riga-ok
+
+    /// <summary>
+    /// Nasconde il banner hint credenziali (da chiamare quando le credenziali vengono trovate).
+    /// </summary>
+    public void NascondiHintCredenziali() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (hintCredenzialiCoroutine != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(hintCredenzialiCoroutine); // ferma // riga-ok
+            hintCredenzialiCoroutine = null; // setta // riga-ok
+        } // chiude // riga-ok
+        if (hintCredenzialiPanel != null) // se ok // riga-ok
+            hintCredenzialiPanel.gameObject.SetActive(false); // nasconde // riga-ok
+    } // chiude // riga-ok
+
+    // Costruisce il banner hint al primo utilizzo
+    private void CostruisciHintCredenzialiPanel() // roba priv // riga-ok
+    { // apre // riga-ok
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf"); // setta // riga-ok
+
+        // Panel contenitore — in basso a sinistra, sopra la barra HP
+        GameObject panelGO = new GameObject("Hint_Credenziali_Panel"); // setta // riga-ok
+        panelGO.transform.SetParent(hudCanvas.transform, false); // chiama // riga-ok
+        hintCredenzialiPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
+        hintCredenzialiPanel.anchorMin = new Vector2(0f, 0f); // setta // riga-ok
+        hintCredenzialiPanel.anchorMax = new Vector2(0f, 0f); // setta // riga-ok
+        hintCredenzialiPanel.pivot     = new Vector2(0f, 0f); // setta // riga-ok
+        hintCredenzialiPanel.anchoredPosition = new Vector2(24f, 130f); // setta // riga-ok
+        hintCredenzialiPanel.sizeDelta = new Vector2(420f, 80f); // setta // riga-ok
+
+        // Sfondo arancione semi-trasparente con bordo lampeggiante
+        Image bgImg = panelGO.AddComponent<Image>(); // setta // riga-ok
+        bgImg.color = new Color(0.9f, 0.45f, 0.0f, 0.88f); // arancione // setta // riga-ok
+        hintCredenzialiGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
+        hintCredenzialiGroup.alpha = 1f; // setta // riga-ok
+
+        // Icona terminale (testo emoji simulato)
+        GameObject iconaGO = new GameObject("Hint_Icona"); // setta // riga-ok
+        iconaGO.transform.SetParent(hintCredenzialiPanel, false); // chiama // riga-ok
+        hintIconaTerminale = iconaGO.AddComponent<Image>(); // setta // riga-ok
+        hintIconaTerminale.color = new Color(1f, 1f, 0.2f, 1f); // giallo // setta // riga-ok
+        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>(); // setta // riga-ok
+        iconaRect.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.anchorMax = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.pivot     = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.anchoredPosition = new Vector2(12f, 0f); // setta // riga-ok
+        iconaRect.sizeDelta = new Vector2(16f, 16f); // setta // riga-ok
+
+        // Testo messaggio
+        GameObject testoGO = new GameObject("Hint_Testo"); // setta // riga-ok
+        testoGO.transform.SetParent(hintCredenzialiPanel, false); // chiama // riga-ok
+        hintCredenzialiTesto = testoGO.AddComponent<Text>(); // setta // riga-ok
+        hintCredenzialiTesto.font      = font; // setta // riga-ok
+        hintCredenzialiTesto.fontSize  = 17; // setta // riga-ok
+        hintCredenzialiTesto.fontStyle = FontStyle.Bold; // setta // riga-ok
+        hintCredenzialiTesto.color     = Color.white; // setta // riga-ok
+        hintCredenzialiTesto.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
+        hintCredenzialiTesto.raycastTarget = false; // setta // riga-ok
+        hintCredenzialiTesto.text =
+            "⚠  TERMINALE BLOCCATO\nCerca le credenziali di accesso nei dintorni!"; // setta // riga-ok
+        RectTransform testoRect = testoGO.GetComponent<RectTransform>(); // setta // riga-ok
+        testoRect.anchorMin = Vector2.zero; // setta // riga-ok
+        testoRect.anchorMax = Vector2.one; // setta // riga-ok
+        testoRect.offsetMin = new Vector2(36f, 4f); // setta // riga-ok
+        testoRect.offsetMax = new Vector2(-10f, -4f); // setta // riga-ok
+
+        panelGO.SetActive(false); // nascosto di default // riga-ok
+    } // chiude // riga-ok
+
+    // Coroutine lampeggio banner credenziali: pulsa alpha tra 0.4 e 1.0
+    private IEnumerator LampeggiaBannerCredenziali() // roba priv // riga-ok
+    { // apre // riga-ok
+        float velocita = 2.8f; // velocita lampeggio // setta // riga-ok
+        while (true) // ciclo infinito // riga-ok
+        { // apre // riga-ok
+            float alpha = Mathf.Lerp(0.4f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f); // calcola // riga-ok
+            if (hintCredenzialiGroup != null) hintCredenzialiGroup.alpha = alpha; // setta // riga-ok
+            // Lampeggia anche l'icona con colore alternato
+            if (hintIconaTerminale != null) // se ok // riga-ok
+            { // apre // riga-ok
+                float t = (Mathf.Sin(Time.unscaledTime * velocita * 1.5f) + 1f) * 0.5f; // setta // riga-ok
+                hintIconaTerminale.color = Color.Lerp(new Color(1f, 0.6f, 0f, 1f), new Color(1f, 1f, 0.2f, 1f), t); // setta // riga-ok
+            } // chiude // riga-ok
+            yield return null; // aspetta frame // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+
+    // =========================================================================
+    // 9. HINT TUTORIAL DINAMICO
+    // =========================================================================
+
+    public void MostraHintTutorial(string messaggio) // roba pub // riga-ok
+    { // apre // riga-ok
+        if (hudCanvas == null) return; // non pronto // riga-ok
+
+        if (hintTutorialPanel == null) // se ok // riga-ok
+            CostruisciHintTutorialPanel(); // chiama // riga-ok
+
+        if (hintTutorialTesto != null) // se ok // riga-ok
+            hintTutorialTesto.text = messaggio; // setta // riga-ok
+
+        hintTutorialPanel.gameObject.SetActive(true); // mostra // riga-ok
+
+        if (hintTutorialCoroutine != null) StopCoroutine(hintTutorialCoroutine); // ferma vecchio // riga-ok
+        hintTutorialCoroutine = StartCoroutine(LampeggiaBannerTutorial()); // avvia // riga-ok
+    } // chiude // riga-ok
+
+    public void NascondiHintTutorial() // roba pub // riga-ok
+    { // apre // riga-ok
+        if (hintTutorialCoroutine != null) // se ok // riga-ok
+        { // apre // riga-ok
+            StopCoroutine(hintTutorialCoroutine); // ferma // riga-ok
+            hintTutorialCoroutine = null; // setta // riga-ok
+        } // chiude // riga-ok
+        if (hintTutorialPanel != null) // se ok // riga-ok
+            hintTutorialPanel.gameObject.SetActive(false); // nasconde // riga-ok
+    } // chiude // riga-ok
+
+    private void CostruisciHintTutorialPanel() // roba priv // riga-ok
+    { // apre // riga-ok
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") ?? Resources.GetBuiltinResource<Font>("Arial.ttf"); // setta // riga-ok
+
+        // Panel contenitore — in basso, sopra il prompt prossimita' ma centrato
+        GameObject panelGO = new GameObject("Hint_Tutorial_Panel"); // setta // riga-ok
+        panelGO.transform.SetParent(hudCanvas.transform, false); // chiama // riga-ok
+        hintTutorialPanel = panelGO.AddComponent<RectTransform>(); // setta // riga-ok
+        hintTutorialPanel.anchorMin = new Vector2(0.5f, 0f); // setta // riga-ok
+        hintTutorialPanel.anchorMax = new Vector2(0.5f, 0f); // setta // riga-ok
+        hintTutorialPanel.pivot     = new Vector2(0.5f, 0f); // setta // riga-ok
+        hintTutorialPanel.anchoredPosition = new Vector2(0f, 220f); // setta // riga-ok
+        hintTutorialPanel.sizeDelta = new Vector2(700f, 60f); // setta // riga-ok
+
+        // Sfondo ciano semi-trasparente
+        Image bgImg = panelGO.AddComponent<Image>(); // setta // riga-ok
+        bgImg.color = new Color(0.05f, 0.45f, 0.6f, 0.85f); // ciano // setta // riga-ok
+        hintTutorialGroup = panelGO.AddComponent<CanvasGroup>(); // setta // riga-ok
+        hintTutorialGroup.alpha = 1f; // setta // riga-ok
+
+        // Icona ingranaggio tutorial
+        GameObject iconaGO = new GameObject("Tutorial_Icona"); // setta // riga-ok
+        iconaGO.transform.SetParent(hintTutorialPanel, false); // chiama // riga-ok
+        hintIconaTutorial = iconaGO.AddComponent<Image>(); // setta // riga-ok
+        hintIconaTutorial.color = new Color(0.4f, 1f, 1f, 1f); // ciano chiaro // setta // riga-ok
+        RectTransform iconaRect = iconaGO.GetComponent<RectTransform>(); // setta // riga-ok
+        iconaRect.anchorMin = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.anchorMax = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.pivot     = new Vector2(0f, 0.5f); // setta // riga-ok
+        iconaRect.anchoredPosition = new Vector2(16f, 0f); // setta // riga-ok
+        iconaRect.sizeDelta = new Vector2(24f, 24f); // setta // riga-ok
+
+        // Testo messaggio tutorial
+        GameObject testoGO = new GameObject("Tutorial_Testo"); // setta // riga-ok
+        testoGO.transform.SetParent(hintTutorialPanel, false); // chiama // riga-ok
+        hintTutorialTesto = testoGO.AddComponent<Text>(); // setta // riga-ok
+        hintTutorialTesto.font      = font; // setta // riga-ok
+        hintTutorialTesto.fontSize  = 18; // setta // riga-ok
+        hintTutorialTesto.fontStyle = FontStyle.Bold; // setta // riga-ok
+        hintTutorialTesto.color     = Color.white; // setta // riga-ok
+        hintTutorialTesto.alignment = TextAnchor.MiddleLeft; // setta // riga-ok
+        hintTutorialTesto.raycastTarget = false; // setta // riga-ok
+        RectTransform testoRect = testoGO.GetComponent<RectTransform>(); // setta // riga-ok
+        testoRect.anchorMin = Vector2.zero; // setta // riga-ok
+        testoRect.anchorMax = Vector2.one; // setta // riga-ok
+        testoRect.offsetMin = new Vector2(50f, 4f); // setta // riga-ok
+        testoRect.offsetMax = new Vector2(-10f, -4f); // setta // riga-ok
+
+        panelGO.SetActive(false); // nascosto di default // riga-ok
+    } // chiude // riga-ok
+
+    private IEnumerator LampeggiaBannerTutorial() // roba priv // riga-ok
+    { // apre // riga-ok
+        float velocita = 2.0f; // velocita lampeggio // setta // riga-ok
+        while (true) // ciclo infinito // riga-ok
+        { // apre // riga-ok
+            float alpha = Mathf.Lerp(0.6f, 1.0f, (Mathf.Sin(Time.unscaledTime * velocita) + 1f) * 0.5f); // calcola // riga-ok
+            if (hintTutorialGroup != null) hintTutorialGroup.alpha = alpha; // setta // riga-ok
+            yield return null; // aspetta frame // riga-ok
+        } // chiude // riga-ok
+    } // chiude // riga-ok
+
 } // chiude // riga-ok
+
