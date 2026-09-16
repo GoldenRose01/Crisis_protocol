@@ -1,52 +1,57 @@
 # Struttura progetto
 
-Questo progetto e' organizzato per tenere separati codice, asset di gioco, materiali, modelli e documentazione. L'idea e' semplice: se un file non e' codice, non deve stare dentro `Scripts`.
+Il progetto e' organizzato per separare codice gameplay, asset, scene e documentazione. La regola base e': il codice sta in `Scripts`, gli asset stanno in cartelle asset dedicate.
 
 ## Cartelle principali
 
 - `Assets/CrisisProtocol/Scripts`
-  Codice gameplay del progetto. Qui devono restare solo file `.cs` e relativi `.meta`.
+  Codice gameplay diviso in `Core`, `Mission`, `Player`, `Enemy`, `Environment`, `UI`, `Interfaces` e `Data`.
 
 - `Assets/CrisisProtocol/Models`
-  Modelli 3D proprietari del progetto, divisi per contesto:
-  - `Environment`: porte, terminali, tavoli e oggetti ambientali.
-  - `MissionEmergency`: generatori, serbatoi, ascensori e asset legati alle emergenze.
-  - `Props`: oggetti interattivi o kit specifici, tipo keypad e proiettori.
+  Modelli 3D del progetto, divisi per ambiente, props ed emergenze.
 
 - `Assets/CrisisProtocol/Materials`
-  Materiali usati dal progetto. I materiali legati a emergenze o prototipi missione stanno in `MissionEmergency`.
+  Materiali del progetto.
 
 - `Assets/CrisisProtocol/Prefabs`
   Prefab riusabili nelle scene.
 
 - `Assets/CrisisProtocol/Animations`
-  Controller e animazioni del progetto.
+  Animazioni e controller.
 
 - `Assets/CrisisProtocol/Terrain`
-  TerrainData e asset di terreno, tolti dalla root di `Assets` per non impastare tutto.
+  TerrainData e asset legati al terreno.
+
+- `Assets/AsyncronQuest`
+  Menu principale, pause menu, mappa tattica, death screen, tooltip, shader UI e asset visivi di interfaccia.
 
 - `Assets/Scenes`
-  Scene Unity principali.
+  Scene giocabili: `MainMenu-Scene`, `settore 0`, `settore 1`, `settore 2`.
+
+- `Assets/_Legacy`
+  Scene e asset storici non attivi in build.
 
 - `docs/design`
   GDD e documenti di design.
 
-- `docs/reports`
-  Report e documenti di consegna.
+- `docs/technical`
+  Architettura, dipendenze, struttura e manutenzione.
 
-- `docs/archive`
-  File legacy o temporanei che non devono stare nella root del repo.
+- `docs/process`
+  Checklist e report di processo.
 
 ## Regola pratica
 
-Quando importi roba nuova in Unity:
+Quando importi o crei nuovi file:
 
-1. Modello 3D: mettilo in `Assets/CrisisProtocol/Models/...`.
-2. Materiale: mettilo in `Assets/CrisisProtocol/Materials/...`.
-3. Script: mettilo in `Assets/CrisisProtocol/Scripts/...`.
-4. Documento: mettilo in `docs/design`, `docs/reports` o `docs/archive`.
-5. Non lasciare asset sciolti nella root di `Assets`, pk dopo due giorni diventa impossibile capire cosa serve davvero.
+1. Script: `Assets/CrisisProtocol/Scripts/...`
+2. Modello 3D: `Assets/CrisisProtocol/Models/...`
+3. Materiale: `Assets/CrisisProtocol/Materials/...`
+4. Prefab: `Assets/CrisisProtocol/Prefabs/...`
+5. Documento: `docs/design`, `docs/technical` o `docs/process`
+
+Spostare asset Unity sempre conservando il relativo `.meta`, altrimenti scene e prefab possono perdere riferimenti.
 
 ## Commenti nel codice
 
-I commenti devono spiegare perche' esiste un blocco o quale problema risolve. Evitare commenti tipo `setta`, `chiama`, `fa cose`, `riga-ok`: sono rumore e non aiutano chi legge.
+I commenti devono spiegare il perche' di un blocco o il problema che risolve. Evitare commenti vuoti tipo `setta`, `chiama`, `fa cose`, `riga-ok`: aggiungono rumore e non aiutano chi legge.

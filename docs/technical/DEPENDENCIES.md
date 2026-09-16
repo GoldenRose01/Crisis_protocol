@@ -1,4 +1,4 @@
-# Dependencies
+# Dipendenze
 
 ## Unity
 
@@ -8,15 +8,15 @@ Versione progetto:
 Unity 6000.0.74f1
 ```
 
-File sorgente:
+File di riferimento:
 
 ```text
 ProjectSettings/ProjectVersion.txt
 ```
 
-## Unity packages diretti
+## Package Unity
 
-Pacchetti principali dichiarati in `Packages/manifest.json`:
+Package principali dichiarati in `Packages/manifest.json`:
 
 - `com.unity.render-pipelines.universal` `17.0.4`
 - `com.unity.inputsystem` `1.14.0`
@@ -28,41 +28,48 @@ Pacchetti principali dichiarati in `Packages/manifest.json`:
 - `com.unity.test-framework` `1.6.0`
 - `com.unity.cloud.gltfast` `6.19.0`
 
-Il lock file `Packages/packages-lock.json` deve restare versionato insieme al manifest.
+`Packages/packages-lock.json` deve restare versionato insieme al manifest.
+
+## Scene di build
+
+Le scene abilitate in `ProjectSettings/EditorBuildSettings.asset` sono:
+
+- `Assets/Scenes/MainMenu-Scene.unity`
+- `Assets/Scenes/settore 0.unity`
+- `Assets/Scenes/settore 1.unity`
+- `Assets/Scenes/settore 2.unity`
+
+Le scene in `_Legacy` restano disattivate.
 
 ## Git LFS
 
-Il progetto contiene asset binari grandi: modelli `.fbx/.glb`, texture `.png/.jpg`, audio/video, PDF e documenti Word. Questi file sono configurati in `.gitattributes` per Git LFS.
-
-Installazione richiesta:
+Il progetto contiene asset binari grandi: modelli, texture, audio, video e documenti. Usare Git LFS quando configurato dalla repo:
 
 ```powershell
 git lfs install
-```
-
-Controllo file LFS:
-
-```powershell
-git lfs track
 git lfs status
 ```
 
 ## File generati da Unity
 
-Non sono dipendenze da versionare:
+Non versionare:
 
 - `Library/`
 - `Temp/`
 - `Obj/`
 - `Logs/`
 - `UserSettings/`
+- `Build/`
 - `build/`
-- file `.csproj`, `.sln`, `.slnx` rigenerabili.
+- file `.csproj`, `.sln`, `.slnx` generati dall'editor
 
-## Verifica rapida
+## Verifica
 
-```powershell
-dotnet build Crisis_protocol.slnx
-```
+La verifica piu' affidabile e' da Unity:
 
-La compilazione C# puo' mostrare warning da asset esterni, ma non deve mostrare errori.
+1. aprire il progetto con Unity `6000.0.74f1`;
+2. controllare la Console;
+3. avviare `MainMenu-Scene` in Play Mode;
+4. generare una build Windows e testare i settori.
+
+Il comando `dotnet build` e' opzionale: funziona solo se sulla macchina e' installato un .NET SDK compatibile, non solo il runtime.

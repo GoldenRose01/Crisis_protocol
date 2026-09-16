@@ -1,231 +1,313 @@
 # Sector Containment: Emergency
 
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/QblLKDUe)
-
 Titolo alternativo: `Crisis Protocol: Red Line`.
 
-Prototipo 3D realizzato in Unity per un action-stealth sci-fi con elementi puzzle-strategy. Il giocatore interpreta un operatore di emergenza in un'infrastruttura tecnologica ad alta sicurezza colpita da un guasto critico a catena.
+Prototipo 3D realizzato in Unity per PC Windows. Il gioco e' un action-stealth sci-fi con componenti puzzle e gestione emergenze: il giocatore interpreta un operatore tecnico mandato in una struttura ad alta sicurezza durante una crisi a catena.
 
-L'obiettivo e' attraversare settori in quarantena, recuperare credenziali e frequenze di accesso, contenere focolai d'emergenza e raggiungere l'estrazione prima del collasso strutturale.
+Il loop attuale e' centrato su esplorazione di settori, recupero credenziali, lettura di datapad, sblocco terminali, contenimento di focolai tecnici, evitamento di droni/guardie e apertura del portellone di estrazione a fine settore.
 
-Il progetto combina esplorazione, scanner di emergenza, contenimento di focolai/sistemi compromessi, IA nemica su NavMesh, UI di missione e punteggio.
-
-## Stato del progetto
+## Stato attuale
 
 - Motore: Unity `6000.0.74f1`
-- Pipeline grafica: Universal Render Pipeline `17.0.4`
+- Render pipeline: Universal Render Pipeline `17.0.4`
 - Input: Unity Input System `1.14.0`
-- Scena principale abilitata in build: `Assets/Scenes/locale.unity`
-- Scene presenti nel progetto: `MainMenu-Scene`, `locale`, `Passato_1961`, `test`
-- Verifica C# locale: `dotnet build Crisis_protocol.slnx` completato con `0` errori
+- Target: PC Windows
+- Build scenes attive:
+  - `Assets/Scenes/MainMenu-Scene.unity`
+  - `Assets/Scenes/settore 0.unity`
+  - `Assets/Scenes/settore 1.unity`
+  - `Assets/Scenes/settore 2.unity`
+- Scene legacy disattivate in build:
+  - `Assets/_Legacy/Scenes/locale.unity`
+  - `Assets/_Legacy/Scenes/Passato_1961.unity`
 
-I warning attuali arrivano principalmente da asset/plugin esterni, in particolare `Blockout`, che usa alcune API Unity obsolete. Non bloccano la compilazione del gameplay custom.
+Nota: la verifica completa va fatta da Unity generando una nuova build. Il controllo C# da terminale puo' non essere disponibile se sulla macchina e' installato solo il runtime .NET e non l'SDK.
 
-La documentazione completa e' organizzata in [`docs/README.md`](docs/README.md):
+## Cosa c'e' nel gioco
 
-- [`docs/design/GDD.md`](docs/design/GDD.md): Game Design Document.
-- [`docs/technical/ARCHITECTURE.md`](docs/technical/ARCHITECTURE.md): moduli e responsabilita' tecniche.
-- [`docs/technical/DEPENDENCIES.md`](docs/technical/DEPENDENCIES.md): dipendenze Unity e Git LFS.
-- [`docs/technical/MAINTENANCE.md`](docs/technical/MAINTENANCE.md): checklist di manutenzione.
-- [`docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`](docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md): trasformazione dal prototipo progetto-precedente al nuovo GDD.
-- [`docs/process/RELEASE_CHECKLIST.md`](docs/process/RELEASE_CHECKLIST.md): controlli prima di consegna o push.
+### Menu e flusso
 
-## Gameplay
+- Menu principale neon con sfondo video/fallback visivo.
+- Selezione livello per i settori disponibili.
+- Avvio da `settore 0`.
+- Progressione fino a `settore 2`.
+- Schermata finale con crediti e pulsanti per nuova partita o menu principale.
+- Schermata morte con pulsanti di retry/menu.
 
-L'obiettivo e' sopravvivere alla crisi del settore, stabilizzare l'infrastruttura e completare l'estrazione.
+### Settori
 
-Il loop principale e':
+- `settore 0`: introduzione e primo settore giocabile.
+- `settore 1`: area con portellone di uscita, gas tossico, drone di ronda e focolai tecnici.
+- `settore 2`: area server/reattore con porte tecniche, sala chimica, reattore, datapad e pericoli ambientali.
 
-1. Ricevi il briefing e identifica i settori critici dell'impianto.
-2. Entra nel settore isolato evitando droni, guardie e sistemi automatizzati compromessi.
-3. Recupera credenziali, chiavi di sicurezza o frequenze.
-4. Usa scanner e interazioni per analizzare focolai, terminali e anomalie.
-5. Contieni tutti i focolai richiesti.
-6. Raggiungi il portellone di quarantena ed estrai prima che il collasso arrivi al 100%.
+Ogni settore segue la stessa logica base:
 
-Il punteggio tiene conto di focolai contenuti, credenziali raccolte, integrita' residua, tempo impiegato, danni subiti, allarmi e tentativi errati.
+1. entra nel settore;
+2. esplora e identifica focolai, porte e terminali;
+3. recupera credenziali o codici;
+4. usa scanner/datapad/terminali;
+5. contiene tutti i focolai richiesti;
+6. apri il portellone finale solo quando la missione lo consente.
+
+### HUD e controlli
+
+- HUD cyber/neon con stato missione.
+- Tutorial testuale apribile da tastiera con `F1`.
+- Scanner ambientale per evidenziare/intercettare oggetti importanti.
+- Mappa tattica dal menu pausa.
+- Pause menu con `ESC`.
+- Terminali PIN e bypass interattivi.
+- Datapad olografico per codici porte.
+- Cursor lock gestito tramite `ModalUIState` quando si aprono GUI.
+
+Comandi principali:
+
+```text
+WASD / movimento configurato nel player
+Mouse / visuale e attacco
+E / interazione
+Q / scanner
+F1 / tutorial HUD
+ESC / pausa e mappa
+```
 
 ## Sistemi principali
 
-### Missione e collasso
+### Missione
 
-`MissionManager` governa lo stato della missione:
+`Assets/CrisisProtocol/Scripts/Core/MissionManager.cs`
 
-- inizializza gli obiettivi del settore;
-- aumenta progressivamente il collasso strutturale;
-- registra credenziali, focolai contenuti, allarmi e danni;
-- sblocca l'estrazione quando gli obiettivi sono completati;
-- determina vittoria o sconfitta;
-- notifica la UI tramite eventi statici.
+Gestisce:
 
-Classi di supporto:
+- stato del settore;
+- credenziali raccolte;
+- focolai contenuti;
+- collasso strutturale;
+- sblocco estrazione;
+- eventi verso HUD/UI;
+- vittoria, sconfitta e fine gioco.
 
-- `SectorObjectiveSettings`: calcolo del numero di focolai da contenere.
-- `StructuralCollapseSettings`: valori di collasso, penalita' e recupero.
-- `SectorScoreSettings`: regole di scoring provvisorio e finale.
+Supporti:
 
-### Persistenza e stato globale
+- `SectorObjectiveSettings`
+- `StructuralCollapseSettings`
+- `SectorScoreSettings`
+- `SectorContainmentTags`
 
-`GameManager` mantiene lo stato globale tra scene e sessioni:
+### Stato globale
 
-- firme di sicurezza e credenziali acquisite;
-- incidenti/focolai risolti;
-- storico delle autorizzazioni sbloccate;
-- canali operativi temporanei;
-- stato volatile degli ostacoli legacy.
+`Assets/CrisisProtocol/Scripts/Core/GameManager.cs`
 
-Il salvataggio viene scritto in:
+Mantiene:
+
+- dati tra scene;
+- salvataggio JSON;
+- credenziali/firme acquisite;
+- focolai e stati risolti;
+- reset nuova partita;
+- compatibilita' con alcuni wrapper legacy.
+
+Salvataggio:
 
 ```text
 Application.persistentDataPath/SectorContainment_Save.json
 ```
 
-Se esiste ancora un vecchio `PreviousProject_Save.json`, viene letto come salvataggio legacy e convertito in memoria ai nuovi campi. Nota importante: il registro degli ostacoli causali e' volutamente volatile. Gli ostacoli possono cambiare durante la sessione, ma vengono ripristinati al riavvio del gioco.
+### Interazione player
 
-### Scanner di emergenza
+Script principali:
 
-`ScannerTemporale` mantiene il nome tecnico legacy per non rompere scene e prefab, ma ora funziona come scanner di emergenza. Emette un raycast dalla prospettiva della camera e riconosce credenziali, focolai, interagibili e ostacoli legacy trasformati in firme di sicurezza.
+- `Assets/CrisisProtocol/Scripts/Player/PlayerInteract.cs`
+- `Assets/CrisisProtocol/Scripts/Mission/EmergencyScanner.cs`
+- `Assets/CrisisProtocol/Scripts/Player/SalutePlayer.cs`
+- `Assets/CrisisProtocol/Scripts/Player/GestoreArmi.cs`
+- `Assets/CrisisProtocol/Scripts/Player/SparoPlayer.cs`
+- `Assets/CrisisProtocol/Scripts/Player/AttaccoPlayer.cs`
 
-Comando predefinito:
+Il player interagisce con oggetti che implementano `IInteractable`, tra cui porte, terminali, datapad, credenziali e focolai.
 
-```text
-Q
-```
+### Porte, terminali e datapad
 
-Per funzionare correttamente richiede:
+Script principali:
 
-- una `Main Camera`;
-- un layer scansionabile assegnato;
-- oggetti bersaglio con `AccessCredentialPickup`, `EmergencyHotspot`, `IInteractable` o `OstacoloCausale`;
-- un `GameManager` attivo nella scena o persistente.
+- `Assets/CrisisProtocol/Scripts/Environment/PortaSettore.cs`
+- `Assets/CrisisProtocol/Scripts/Environment/TerminalePorta.cs`
+- `Assets/CrisisProtocol/Scripts/UI/TerminalePortaUI.cs`
+- `Assets/CrisisProtocol/Scripts/Environment/DatapadCodiciPorte.cs`
+- `Assets/CrisisProtocol/Scripts/UI/DatapadOlogrammaUI.cs`
 
-### Emergenze di settore
+Funzioni attuali:
 
-Gli script in `Assets/script/SectorEmergency` definiscono il nucleo della missione di contenimento:
+- porte con stato rosso/verde;
+- portelloni finali apribili solo a fine livello;
+- terminali con PIN e minigioco bypass;
+- datapad evidenziati nello spazio di gioco;
+- chiusura GUI e gestione mouse in build;
+- fallback runtime per luci/materiali di stato.
 
-- `EmergencyHotspot`: focolaio contenibile tramite interazione.
-- `AccessCredentialPickup`: raccolta di credenziali/autorizzazioni.
-- `QuarantineGate`: punto di estrazione finale.
-- `StructuralHazard`: sorgenti di stress o danno ambientale.
-- `SectorContainmentTags`: gestione centralizzata dei tag Unity richiesti.
+### Emergenze ambientali
 
-### IA e combattimento
+Script principali:
 
-`ViaggiatoreTemporale`, `GuardiaNpc`, `DroneRonda` e gli script collegati gestiscono nemici e minacce:
+- `Assets/CrisisProtocol/Scripts/Mission/SectorEmergency/EmergencyHotspot.cs`
+- `Assets/CrisisProtocol/Scripts/Mission/SectorEmergency/StructuralHazard.cs`
+- `Assets/script/LuceEmergenzaSettore.cs`
 
-- pattugliamento su NavMesh;
-- rilevamento del player tramite raggio visivo;
-- inseguimento;
-- combattimento a distanza;
-- danno tramite interfaccia `IDamageable`;
-- stati di morte e cleanup.
+Focolai supportati:
 
-Per gli NPC basati su NavMesh e' necessario avere una NavMesh valida nella scena.
+- scintille elettriche;
+- perdite chimiche;
+- gas tossico;
+- luci di emergenza;
+- hazard che aumentano stress/collasso o danneggiano il player.
 
-### UI e feedback
+Il gas del settore 1 viene generato a runtime se non e' salvato in scena. Ha un materiale particellare runtime per evitare che in build sparisca per shader/materiali non inclusi.
 
-La cartella `Assets/AsyncronQuest` contiene sistemi di interfaccia e feedback:
+### Nemici
 
-- schermata di morte;
-- tooltip temporali;
-- UI steampunk;
-- transizioni video;
-- controller HUD e menu.
+Script principali:
 
-Gli eventi esposti da `MissionManager` e `GameManager` consentono alla UI di aggiornare progressi, punteggio, collasso, credenziali e stato dell'estrazione.
+- `Assets/CrisisProtocol/Scripts/Enemy/DroneRonda.cs`
+- `Assets/CrisisProtocol/Scripts/Enemy/GuardiaNpc.cs`
+- `Assets/CrisisProtocol/Scripts/Enemy/ManutenzioneBot.cs`
+- `Assets/CrisisProtocol/Scripts/Enemy/npc.cs`
 
-## Struttura del repository
+Funzioni attuali:
+
+- pattugliamento waypoint/NavMesh;
+- cono visivo con luce;
+- stato ronda/allarme;
+- sparo e danno al player;
+- modalita' pacifica a emergenza completata;
+- correzione anti-soffitto per droni troppo alti.
+
+### UI e mappa tattica
+
+Script principali:
+
+- `Assets/CrisisProtocol/Scripts/UI/CyberHUD.cs`
+- `Assets/CrisisProtocol/Scripts/UI/HUDManager.cs`
+- `Assets/CrisisProtocol/Scripts/UI/CrisisProtocolUIController.cs`
+- `Assets/CrisisProtocol/Scripts/UI/EndGameCreditsController.cs`
+- `Assets/AsyncronQuest/SteampunkUI/Scripts/AsyncronQuestSteampunkUI.cs`
+- `Assets/AsyncronQuest/SteampunkUI/Scripts/CrisisProtocolPauseMenu.cs`
+- `Assets/AsyncronQuest/SteampunkUI/Scripts/SceneTopDownMapUI.cs`
+- `Assets/AsyncronQuest/Death/Scripts/DeathScreenController.cs`
+
+La mappa usa lo shader `UI/TacticalNeonMap`, incluso tra gli shader sempre presenti in build. Se lo shader non viene trovato, il codice applica un fallback verde/scuro.
+
+## Struttura repository
 
 ```text
 Assets/
-  AsyncronQuest/              UI, tooltip, video, sistemi scanner legacy
-  Audio/                      Effetti sonori e tracce ambientali
-  Blockout/                   Asset e strumenti di blockout
-  Materials/                  Materiali e texture
-  Scenes/                     Scene principali del progetto
-  script/                     Gameplay custom principale
-    SectorEmergency/          Sistemi di missione e contenimento
-  prefab/                     Prefab di personaggi, oggetti e props
-docs/                         Documentazione modulare
-  design/                     GDD e direzione creativa
-  technical/                  architettura, dipendenze, manutenzione
-  process/                    checklist di consegna e release
-Editor/                       Utility editor
-Packages/                     Dipendenze Unity
-ProjectSettings/              Configurazione progetto Unity
-tools/                        Strumenti ausiliari
-build/                        Build locale generata, ignorata da Git
+  AsyncronQuest/
+    Death/                       schermata morte
+    SteampunkUI/                 menu principale, pausa, mappa, shader UI
+    Tooltips/                    tooltip e feedback testuali
+  CrisisProtocol/
+    Animations/                  animazioni e controller
+    Materials/                   materiali progetto
+    Models/                      modelli 3D organizzati
+    Prefabs/                     prefab gameplay
+    Scripts/
+      Core/                      GameManager, MissionManager, audio scena
+      Data/                      dati configurabili
+      Enemy/                     droni, guardie, bot
+      Environment/               porte, terminali, datapad, camera, props
+      Interfaces/                IInteractable, IDamageable
+      Mission/                   scanner, ostacoli, sector emergency
+      Player/                    movimento, salute, armi, interazione
+      UI/                        HUD, terminali, datapad, credits, modal
+    Terrain/                     terrain data
+  Scenes/                        MainMenu, settore 0, settore 1, settore 2
+docs/
+  design/                        GDD
+  technical/                     struttura progetto e dipendenze
+Packages/                        pacchetti Unity
+ProjectSettings/                 configurazione Unity
 ```
-
-## Requisiti
-
-- Unity `6000.0.74f1`, stessa versione indicata in `ProjectSettings/ProjectVersion.txt`.
-- Moduli Unity standard per Windows build, URP, Input System e NavMesh.
-- .NET SDK compatibile con la generazione dei progetti C# Unity, utile per controlli rapidi da terminale.
 
 ## Setup
 
 1. Clona il repository.
 2. Apri Unity Hub.
-3. Seleziona `Add project from disk`.
-4. Scegli la cartella root del repository.
-5. Apri con Unity `6000.0.74f1`.
-6. Attendi la rigenerazione di `Library/` e degli asset importati.
-7. Apri la scena `Assets/Scenes/locale.unity`.
-8. Premi Play.
-
-Alla prima apertura Unity puo' impiegare diversi minuti per importare texture, modelli, package e cache.
-
-## Comandi utili
-
-Verifica C# fuori da Unity:
-
-```powershell
-dotnet build Crisis_protocol.slnx
-```
-
-Controllo dei file modificati:
-
-```powershell
-git status --short
-```
-
-Ricerca degli script custom:
-
-```powershell
-rg --files -g "*.cs" Assets/script Assets/AsyncronQuest Editor
-```
-
-## Controlli in editor
-
-Prima di consegnare o creare una build, verificare:
-
-- `MissionManager` presente nella scena gameplay.
-- `GameManager` presente nella scena iniziale o caricato in modo persistente.
-- Player con tag corretto definito in `SectorContainmentTags`.
-- Oggetti interagibili con collider e componente `IInteractable`.
-- Hotspot con `hotspotId` univoco.
-- Credenziali con ID coerenti con i requisiti degli hotspot.
-- `QuarantineGate` collegato alla logica di estrazione.
-- NavMesh bake valido per guardie, droni e unita' ostili.
-- `Main Camera` presente per scanner e raycast visivi.
-- Scene necessarie abilitate in `File > Build Profiles` o `Build Settings`.
+3. Aggiungi il progetto dalla cartella root.
+4. Usa Unity `6000.0.74f1`.
+5. Lascia completare importazione asset e rigenerazione `Library/`.
+6. Apri `Assets/Scenes/MainMenu-Scene.unity`.
+7. Premi Play.
 
 ## Build
 
-La cartella `build/` contiene una build locale Windows generata in precedenza, ma e' ignorata da Git. Per produrre una nuova build:
+Per generare una build aggiornata:
 
 1. Apri Unity.
-2. Vai su `File > Build Profiles`.
-3. Seleziona la piattaforma desiderata.
-4. Controlla che `Assets/Scenes/locale.unity` sia inclusa.
-5. Avvia `Build` o `Build And Run`.
+2. Vai in `File > Build Profiles` o `Build Settings`.
+3. Verifica che siano attive:
+   - `MainMenu-Scene`
+   - `settore 0`
+   - `settore 1`
+   - `settore 2`
+4. Genera una nuova build Windows.
+5. Testa in build reale:
+   - click mouse su menu, terminali, datapad, credits;
+   - mappa pausa con sfondo verde/neon;
+   - gas settore 1;
+   - drone settore 1 non incastrato nel soffitto;
+   - portellone finale che si apre solo a obiettivo completato;
+   - luci stato porte rosso/verde.
 
-Per una consegna pulita e' preferibile generare una build nuova dopo aver aperto il progetto nella versione Unity corretta.
+## Troubleshooting
 
-## Note di versionamento
+### Il mouse non clicca una GUI in build
 
-Il repository usa una `.gitignore` impostata per Unity. Sono ignorate cartelle generate o pesanti come:
+Controllare che la GUI crei o riattivi `EventSystem` con `InputSystemUIInputModule`. Le UI principali sono gia' state aggiornate: menu, pausa, HUD tutorial, terminale porta, datapad, death screen e credits.
+
+### La mappa perde il verde in build
+
+Controllare:
+
+- shader `UI/TacticalNeonMap` in `ProjectSettings/GraphicsSettings.asset`;
+- `SceneTopDownMapUI`;
+- `CrisisProtocolPauseMenu` per fallback cornice/sfondo runtime.
+
+### Il gas non si vede
+
+Controllare:
+
+- hotspot con `modalitaVisiva = ToxicGasLeak`;
+- `EmergencyHotspot.GeneraPerditaGasSeAssente()`;
+- renderer particellari e materiale runtime `RuntimeGasMaterial`;
+- se il focolaio e' gia' stato contenuto, le particelle vengono spente.
+
+### Il drone e' troppo alto
+
+Controllare:
+
+- posizione root del drone nella scena;
+- offset locale del prefab `drone_nemico 1`;
+- waypoint assegnati;
+- opzioni anti-soffitto in `DroneRonda`.
+
+### L'estrazione non si apre
+
+Controllare:
+
+- tutti gli `EmergencyHotspot` richiesti contenuti;
+- credenziali raccolte;
+- `MissionManager.EstrazioneSbloccata`;
+- `PortaSettore.apriAlTermineCrisi`;
+- portellone finale non aperto manualmente prima della fine livello.
+
+## Documentazione
+
+- [`docs/design/GDD.md`](docs/design/GDD.md): Game Design Document.
+- [`docs/technical/PROJECT_STRUCTURE.md`](docs/technical/PROJECT_STRUCTURE.md): struttura cartelle.
+- [`docs/technical/DEPENDENCIES.md`](docs/technical/DEPENDENCIES.md): dipendenze.
+
+## Note Git
+
+Il progetto usa `.gitignore` Unity. Non versionare:
 
 - `Library/`
 - `Temp/`
@@ -233,62 +315,6 @@ Il repository usa una `.gitignore` impostata per Unity. Sono ignorate cartelle g
 - `Build/` e `build/`
 - `Logs/`
 - `UserSettings/`
-- file `.csproj`, `.sln`, `.slnx` generati dall'editor
+- file `.csproj`, `.sln`, `.slnx` generati.
 
-Gli asset Unity devono invece mantenere il proprio file `.meta` quando sono tracciati da Git, per non rompere riferimenti, prefab e scene.
-
-## Documentazione di design
-
-Sono presenti documenti di progetto in formato Word:
-
-- `progetto-precedente_Base_Info_Game_Design_Document.docx`
-- `progetto-precedente_Game_Design_Document_Task_Force_Temporale.docx`
-- `Mini_Report_Struttura_progetto-precedente.docx`
-- `docs/design/GDD.md`
-- `docs/technical/ARCHITECTURE.md`
-- `docs/technical/DEPENDENCIES.md`
-- `docs/technical/MAINTENANCE.md`
-- `docs/technical/MIGRATION_FROM_PREVIOUS_PROJECT.md`
-- `docs/process/RELEASE_CHECKLIST.md`
-
-Questi file descrivono concept, struttura, direzione di design e manutenzione tecnica del progetto. Il file `docs/design/GDD.md` contiene la versione Markdown pulita e leggibile del GDD allegato.
-
-## Troubleshooting
-
-Se Unity mostra riferimenti mancanti:
-
-- lascia terminare l'importazione degli asset;
-- chiudi e riapri Unity;
-- controlla che i `.meta` siano presenti;
-- verifica che la versione Unity coincida con `6000.0.74f1`.
-
-Se gli NPC non si muovono:
-
-- controlla che la scena abbia una NavMesh valida;
-- verifica che il `NavMeshAgent` sia attivo;
-- assicurati che l'NPC sia posizionato sulla NavMesh.
-
-Se lo scanner non trova bersagli:
-
-- controlla il layer assegnato a `layerScansionabile`;
-- verifica che il bersaglio abbia `AccessCredentialPickup`, `EmergencyHotspot`, `IInteractable` o `OstacoloCausale`;
-- controlla che la camera abbia il tag `MainCamera`;
-- verifica distanza e direzione del raycast nel Gizmo.
-
-Se l'estrazione non si sblocca:
-
-- verifica il numero totale di `EmergencyHotspot`;
-- controlla che ogni focolaio abbia un `hotspotId` univoco;
-- verifica che la credenziale richiesta sia stata raccolta;
-- controlla i log di `MissionManager`.
-
-## Verifica eseguita
-
-Ultima verifica locale:
-
-```text
-dotnet build Crisis_protocol.slnx
-Risultato: 0 errori, 47 warning
-```
-
-I warning rilevati riguardano principalmente API obsolete in asset esterni `Blockout` e non impediscono la compilazione del progetto.
+Conservare sempre i file `.meta` degli asset tracciati: scene e prefab Unity dipendono da quei GUID.
