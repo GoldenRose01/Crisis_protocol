@@ -12,6 +12,7 @@ using CrisisProtocol.UI;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 namespace AsyncronQuest.SteampunkUI
@@ -43,7 +44,6 @@ namespace AsyncronQuest.SteampunkUI
         [SerializeField] private Sprite mainMenuBackgroundSprite;
         [SerializeField, Range(0f, 1f)] private float backgroundImageAlpha = 0.35f;
         private const string DefaultNeonVideoPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/DEVE_ESSERE_SOLO_IL_NEON_NENTE.mp4";
-        private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
         private const string MasterVolumePrefKey = "MasterVolume";
         private const string PreMuteVolumePrefKey = "PreMuteVolume";
         private Canvas mainCanvas;
@@ -1206,22 +1206,16 @@ namespace AsyncronQuest.SteampunkUI
             EventSystem eventSystem = EventSystem.current;
             if (!eventSystem)
                 eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
-            Type inputSystemUiModule = Type.GetType(InputSystemUiModuleTypeName);
-            if (inputSystemUiModule != null)
+
+            InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+            if (inputModule == null)
             {
                 StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>();
                 if (oldModule != null) UnityEngine.Object.Destroy(oldModule);
-                Component inputModule = eventSystem.GetComponent(inputSystemUiModule);
-                if (!inputModule)
-                    inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule);
-                if (inputModule is Behaviour behaviour)
-                    behaviour.enabled = true;
-                inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null);
+                inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+                inputModule.AssignDefaultActions();
             }
-            else if (!eventSystem.GetComponent<StandaloneInputModule>())
-            {
-                eventSystem.gameObject.AddComponent<StandaloneInputModule>();
-            }
+            inputModule.enabled = true;
         }
     }
 }

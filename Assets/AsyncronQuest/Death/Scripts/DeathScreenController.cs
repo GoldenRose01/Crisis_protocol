@@ -9,6 +9,7 @@
 using System.Collections; // usa lib // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.EventSystems; // usa lib // riga-ok
+using UnityEngine.InputSystem.UI; // usa lib input ui
 using UnityEngine.SceneManagement; // usa lib // riga-ok
 using UnityEngine.UI; // usa lib // riga-ok
 
@@ -20,7 +21,6 @@ using UnityEditor; // usa lib // riga-ok
 // blocco: classe x roba grossa
 public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-ok
 { // apre // riga-ok
-    private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem"; // roba pub // riga-ok
 
 #if UNITY_EDITOR // prep ok // riga-ok
     private const string DefaultDeathScreenPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Death_screen.png"; // roba pub // riga-ok
@@ -58,7 +58,7 @@ public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-
         if (Instance || FindFirstObjectByType<DeathScreenController>()) // se ok // riga-ok
             return; // torna val // riga-ok
 
-        GameObject root = new GameObject("progetto-precedente Death Screen Controller"); // setta // riga-ok
+        GameObject root = new GameObject("Crisis Protocol Death Screen Controller"); // crea controller runtime
         DontDestroyOnLoad(root); // chiama // riga-ok
         root.AddComponent<DeathScreenController>(); // chiama // riga-ok
     } // chiude // riga-ok
@@ -498,29 +498,15 @@ public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-
         if (!eventSystem) // se ok // riga-ok
             eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>(); // setta // riga-ok
 
-        System.Type inputSystemUiModule = System.Type.GetType(InputSystemUiModuleTypeName); // setta // riga-ok
-        // blocco: controlla se va
-        if (inputSystemUiModule != null) // se ok // riga-ok
+        InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>(); // prende input moderno
+        if (inputModule == null) // se manca
         { // apre // riga-ok
-            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // setta // riga-ok
-            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
-
-            Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
-            // blocco: controlla se va
-            if (!inputModule) // se ok // riga-ok
-                inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule); // setta // riga-ok
-
-            // blocco: controlla se va
-            if (inputModule is Behaviour behaviour) // se ok // riga-ok
-                behaviour.enabled = true; // setta // riga-ok
-
-            inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null); // chiama // riga-ok
+            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // legacy vecchio
+            if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // rimuove conflitto
+            inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>(); // aggancia mouse build
+            inputModule.AssignDefaultActions(); // mappa click/tasti
         } // chiude // riga-ok
-        // blocco: controlla se va
-        else if (!eventSystem.GetComponent<StandaloneInputModule>()) // se ok // riga-ok
-        { // apre // riga-ok
-            eventSystem.gameObject.AddComponent<StandaloneInputModule>(); // chiama // riga-ok
-        } // chiude // riga-ok
+        inputModule.enabled = true; // lascia attivo
     } // chiude // riga-ok
 
 #if UNITY_EDITOR // prep ok // riga-ok
@@ -538,4 +524,3 @@ public sealed class DeathScreenController : MonoBehaviour // classe qui // riga-
     } // chiude // riga-ok
 #endif // prep ok // riga-ok
 } // chiude // riga-ok
-

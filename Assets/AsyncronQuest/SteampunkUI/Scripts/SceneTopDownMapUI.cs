@@ -157,17 +157,34 @@ namespace AsyncronQuest.SteampunkUI
         {
             if (tacticalNeonMaterial != null) return;
             Shader shader = Shader.Find("UI/TacticalNeonMap");
+            if (shader == null)
+                shader = Shader.Find("UI/Default");
+
             if (shader != null)
             {
                 tacticalNeonMaterial = new Material(shader);
-                tacticalNeonMaterial.name = "Mat_TacticalNeonMap";
-                tacticalNeonMaterial.SetColor("_EdgeColor", neonWallColor);
-                tacticalNeonMaterial.SetColor("_BackgroundColor", cameraClearColor);
-                tacticalNeonMaterial.SetFloat("_EdgeThreshold", 0.08f);
-                tacticalNeonMaterial.SetFloat("_EdgeGlow", 2.6f);
-                tacticalNeonMaterial.SetFloat("_BlueprintStrength", 0.35f);
+                tacticalNeonMaterial.name = shader.name == "UI/TacticalNeonMap" ? "Mat_TacticalNeonMap" : "Mat_TacticalNeonMap_Fallback";
+
+                // In Editor lo shader custom fa edge-detection neon. In build,
+                // se lo shader fosse assente/strippato, il fallback UI/Default
+                // mantiene almeno tinta verde fluo e sfondo scuro invece di sparire.
+                if (tacticalNeonMaterial.HasProperty("_EdgeColor"))
+                    tacticalNeonMaterial.SetColor("_EdgeColor", neonWallColor);
+                if (tacticalNeonMaterial.HasProperty("_BackgroundColor"))
+                    tacticalNeonMaterial.SetColor("_BackgroundColor", cameraClearColor);
+                if (tacticalNeonMaterial.HasProperty("_EdgeThreshold"))
+                    tacticalNeonMaterial.SetFloat("_EdgeThreshold", 0.08f);
+                if (tacticalNeonMaterial.HasProperty("_EdgeGlow"))
+                    tacticalNeonMaterial.SetFloat("_EdgeGlow", 2.6f);
+                if (tacticalNeonMaterial.HasProperty("_BlueprintStrength"))
+                    tacticalNeonMaterial.SetFloat("_BlueprintStrength", 0.35f);
+                if (tacticalNeonMaterial.HasProperty("_Color"))
+                    tacticalNeonMaterial.SetColor("_Color", new Color(0.25f, 1f, 0.45f, 1f));
                 if (rawImage != null)
+                {
                     rawImage.material = tacticalNeonMaterial;
+                    rawImage.color = Color.white;
+                }
             }
         }
         private void RecalculateLevelBoundsAndFraming()

@@ -9,13 +9,14 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using CrisisProtocol.UI;
 [DisallowMultipleComponent]
 public sealed class EndGameCreditsController : MonoBehaviour
 {
-    private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
     [Header("Colori Neon")]
     [SerializeField] private Color neonGreen = new Color(0f, 1f, 0.45f, 1f);
     [SerializeField] private Color neonCyan = new Color(0f, 0.9f, 1f, 1f);
@@ -29,6 +30,8 @@ public sealed class EndGameCreditsController : MonoBehaviour
     private RectTransform creditsContentRect;
     private Text scoreValueText;
     private Text subtitleBannerText;
+    private RectTransform nuovaPartitaButtonRect;
+    private RectTransform mainMenuButtonRect;
     private AudioSource audioSource;
     private Coroutine creditsScrollRoutine;
     private bool isShowing = false;
@@ -67,8 +70,11 @@ public sealed class EndGameCreditsController : MonoBehaviour
     }
     private void Update()
     {
+        if (isShowing)
+            GestisciClickMouseFinale();
+
         // Tasto di test rapido F8 per visualizzare immediatamente la schermata di fine gioco
-        if (Input.GetKeyDown(KeyCode.F8))
+        if (UnityEngine.Input.GetKeyDown(KeyCode.F8))
         {
             Debug.LogWarning("[DEBUG] Tasto F8 premuto: Test Schermata Finale & Titoli di Coda.");
             Show(15000);
@@ -98,6 +104,7 @@ public sealed class EndGameCreditsController : MonoBehaviour
         if (isShowing) return;
         isShowing = true;
         EnsureInterface();
+        EnsureEventSystem();
         if (scoreValueText != null)
         {
             scoreValueText.text = $"SETTORI COMPLETATI: 3 / 3";
@@ -370,11 +377,11 @@ public sealed class EndGameCreditsController : MonoBehaviour
         scRect.offsetMin = Vector2.zero;
         scRect.offsetMax = Vector2.zero;
         // 9. Pulsanti Azione (Nuova Partita / Menu Principale)
-        CreateCyberButton(centerPanel.transform, "Btn_NuovaPartita", "🔄 NUOVA PARTITA", new Vector2(-190f, -380f), new Vector2(320f, 54f), neonGreen, NuovaPartita, defaultFont);
-        CreateCyberButton(centerPanel.transform, "Btn_MainMenu", "🏠 MENU PRINCIPALE", new Vector2(190f, -380f), new Vector2(320f, 54f), neonCyan, TornaAlMenuPrincipale, defaultFont);
+        nuovaPartitaButtonRect = CreateCyberButton(centerPanel.transform, "Btn_NuovaPartita", "🔄 NUOVA PARTITA", new Vector2(-190f, -380f), new Vector2(320f, 54f), neonGreen, NuovaPartita, defaultFont).GetComponent<RectTransform>();
+        mainMenuButtonRect = CreateCyberButton(centerPanel.transform, "Btn_MainMenu", "🏠 MENU PRINCIPALE", new Vector2(190f, -380f), new Vector2(320f, 54f), neonCyan, TornaAlMenuPrincipale, defaultFont).GetComponent<RectTransform>();
         canvas.gameObject.SetActive(false);
     }
-    private void CreateCyberButton(Transform parent, string name, string label, Vector2 anchoredPos, Vector2 size, Color themeColor, UnityEngine.Events.UnityAction onClick, Font font)
+    private Button CreateCyberButton(Transform parent, string name, string label, Vector2 anchoredPos, Vector2 size, Color themeColor, UnityEngine.Events.UnityAction onClick, Font font)
     {
         GameObject btnObj = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         btnObj.transform.SetParent(parent, false);
@@ -390,6 +397,7 @@ public sealed class EndGameCreditsController : MonoBehaviour
         outline.effectColor = themeColor;
         outline.effectDistance = new Vector2(2f, -2f);
         Button btn = btnObj.GetComponent<Button>();
+        btn.targetGraphic = img;
         ColorBlock cb = btn.colors;
         cb.normalColor = img.color;
         cb.highlightedColor = themeColor;
@@ -406,6 +414,7 @@ public sealed class EndGameCreditsController : MonoBehaviour
         text.alignment = TextAnchor.MiddleCenter;
         text.color = Color.white;
         text.text = label;
+        text.raycastTarget = false;
         RectTransform tRect = text.rectTransform;
         Stretch(tRect);
         // Effetto hover / click sonoro
@@ -420,6 +429,38 @@ public sealed class EndGameCreditsController : MonoBehaviour
             text.color = Color.white;
         });
         trigger.triggers.Add(exitEntry);
+        return btn;
+    }
+    private void GestisciClickMouseFinale()
+    {
+        Vector2 screenPosition;
+        bool clickPremuto = false;
+        Mouse mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+        {
+            screenPosition = mouse.position.ReadValue();
+            clickPremuto = true;
+        }
+        else if (UnityEngine.Input.GetMouseButtonDown(0))
+        {
+            screenPosition = UnityEngine.Input.mousePosition;
+            clickPremuto = true;
+        }
+        else
+        {
+            return;
+        }
+
+        if (!clickPremuto) return;
+        if (nuovaPartitaButtonRect != null && RectTransformUtility.RectangleContainsScreenPoint(nuovaPartitaButtonRect, screenPosition, null))
+        {
+            NuovaPartita();
+            return;
+        }
+        if (mainMenuButtonRect != null && RectTransformUtility.RectangleContainsScreenPoint(mainMenuButtonRect, screenPosition, null))
+        {
+            TornaAlMenuPrincipale();
+        }
     }
     private static void Stretch(RectTransform rt)
     {
@@ -430,17 +471,20 @@ public sealed class EndGameCreditsController : MonoBehaviour
     }
     private static void EnsureEventSystem()
     {
-        if (EventSystem.current != null)
-            return;
-        GameObject es = new GameObject("EventSystem", typeof(EventSystem));
-        var inputModuleType = System.Type.GetType(InputSystemUiModuleTypeName);
-        if (inputModuleType != null)
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
         {
-            es.AddComponent(inputModuleType);
+            eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
         }
-        else
+
+        InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+        if (inputModule == null)
         {
-            es.AddComponent<StandaloneInputModule>();
+            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>();
+            if (oldModule != null) Destroy(oldModule);
+            inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
         }
+        inputModule.enabled = true;
     }
 }

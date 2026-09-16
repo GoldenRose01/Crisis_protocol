@@ -132,6 +132,7 @@ public class PortaSettore : MonoBehaviour, IInteractable
     }
     private void Awake()
     {
+        InizializzaFeedbackVisivo();
         // FIX: stacca dalla gerarchia porta tutti gli oggetti statici (terminali, luci, collider
         // di interazione) PRIMA di calcolare targetTransform, così non vengono trascinati
         // dall'animazione di apertura/chiusura della porta.
@@ -495,21 +496,76 @@ public class PortaSettore : MonoBehaviour, IInteractable
     private void ImpostaColoreFeedback(Color colore)
     {
         if (luceDiStato != null)
+        {
+            luceDiStato.enabled = true;
             luceDiStato.color = colore;
+            luceDiStato.intensity = Mathf.Max(luceDiStato.intensity, 2.5f);
+            luceDiStato.range = Mathf.Max(luceDiStato.range, 5.0f);
+        }
         if (oggettoEmettitoreLuce != null)
         {
             Material mat = oggettoEmettitoreLuce.material;
+            if (mat != null && !mat.HasProperty("_EmissionColor"))
+            {
+                Shader fallbackShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default");
+                if (fallbackShader != null)
+                {
+                    mat = new Material(fallbackShader) { name = $"{oggettoEmettitoreLuce.name}_RuntimeDoorStatusGlow" };
+                    oggettoEmettitoreLuce.material = mat;
+                }
+            }
             if (mat != null)
             {
                 mat.color = colore;
                 if (mat.HasProperty("_BaseColor"))
                     mat.SetColor("_BaseColor", colore);
+                if (mat.HasProperty("_Color"))
+                    mat.SetColor("_Color", colore);
                 if (mat.HasProperty("_EmissionColor"))
                 {
                     mat.EnableKeyword("_EMISSION");
+                    mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
                     mat.SetColor("_EmissionColor", colore * intensitaEmissione);
                 }
             }
+        }
+    }
+    private void InizializzaFeedbackVisivo()
+    {
+        // Le scene vecchie non sempre hanno luceDiStato / emettitore collegati
+        // nell'Inspector. Qui recuperiamo una spia credibile prima di staccare i
+        // figli dalla porta, così il portellone mostra rosso/verde anche in build.
+        if (luceDiStato == null)
+        {
+            Light[] luciTrovate = GetComponentsInChildren<Light>(true);
+            if (luciTrovate != null && luciTrovate.Length > 0)
+                luceDiStato = luciTrovate[0];
+        }
+
+        if (oggettoEmettitoreLuce == null)
+        {
+            Renderer[] rendererTrovati = GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer rend in rendererTrovati)
+            {
+                if (rend == null) continue;
+                string n = rend.name.ToLowerInvariant();
+                if (n.Contains("luce") || n.Contains("light") || n.Contains("led") || n.Contains("lamp") || n.Contains("spia") || n.Contains("status") || n.Contains("exit") || n.Contains("uscita") || n.Contains("monitor"))
+                {
+                    oggettoEmettitoreLuce = rend;
+                    break;
+                }
+            }
+        }
+
+        if (luceDiStato == null)
+        {
+            GameObject luceRuntime = new GameObject("Runtime_Door_Status_Light");
+            luceRuntime.transform.SetParent(transform, false);
+            luceRuntime.transform.localPosition = Vector3.up * 1.6f + Vector3.forward * 0.15f;
+            luceDiStato = luceRuntime.AddComponent<Light>();
+            luceDiStato.type = LightType.Point;
+            luceDiStato.range = 5.0f;
+            luceDiStato.intensity = 2.5f;
         }
     }
     private IEnumerator FlashCoroutine()

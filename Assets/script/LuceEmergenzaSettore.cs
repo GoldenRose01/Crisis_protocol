@@ -221,27 +221,47 @@ public class LuceEmergenzaSettore : MonoBehaviour // classe qui // riga-ok
             // blocco: controlla se va
             if (rend != null) // se ok // riga-ok
             { // apre // riga-ok
-                Material mat = rend.material; // setta // riga-ok
-                // blocco: controlla se va
-                if (mat != null) // se ok // riga-ok
-                { // apre // riga-ok
-                    Color c = coloreEmergenza * fattoreLuminosita; // setta // riga-ok
-                    mat.color = coloreEmergenza; // setta // riga-ok
-
-                    // blocco: controlla se va
-                    if (mat.HasProperty("_BaseColor")) // se ok // riga-ok
-                        mat.SetColor("_BaseColor", coloreEmergenza); // chiama // riga-ok
-
-                    // blocco: controlla se va
-                    if (mat.HasProperty("_EmissionColor")) // se ok // riga-ok
-                    { // apre // riga-ok
-                        mat.EnableKeyword("_EMISSION"); // chiama // riga-ok
-                        mat.SetColor("_EmissionColor", c * intensitaEmissioneCubo); // chiama // riga-ok
-                    } // chiude // riga-ok
-                } // chiude // riga-ok
+                ApplicaColoreEmettitore(rend, coloreEmergenza, fattoreLuminosita);
             } // chiude // riga-ok
         } // chiude // riga-ok
     } // chiude // riga-ok
+
+    private void ApplicaColoreEmettitore(Renderer rend, Color coloreBase, float fattoreLuminosita)
+    {
+        if (rend == null) return;
+
+        // In Editor molti materiali "sembrano" emissivi anche se lo shader non è
+        // incluso bene nel player. In build invece diventano opachi/spenti: se
+        // manca una proprietà emissione, usiamo un materiale runtime unlit sicuro.
+        Material mat = rend.material;
+        if (mat == null) return;
+
+        if (!mat.HasProperty("_EmissionColor"))
+        {
+            Shader fallbackShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Sprites/Default");
+            if (fallbackShader != null)
+            {
+                mat = new Material(fallbackShader) { name = $"{rend.name}_RuntimeEmergencyGlow" };
+                rend.material = mat;
+            }
+        }
+
+        Color coloreVisibile = coloreBase;
+        coloreVisibile.a = 1f;
+        mat.color = coloreVisibile;
+
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", coloreVisibile);
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", coloreVisibile);
+
+        if (mat.HasProperty("_EmissionColor"))
+        {
+            mat.EnableKeyword("_EMISSION");
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            mat.SetColor("_EmissionColor", coloreBase * Mathf.Max(0.05f, fattoreLuminosita) * intensitaEmissioneCubo);
+        }
+    }
 
     /// <summary>
     /// Attiva o disattiva lo stato di emergenza.
@@ -317,17 +337,7 @@ public class LuceEmergenzaSettore : MonoBehaviour // classe qui // riga-ok
                     // blocco: caso diverso
                     else // se no // riga-ok
                     { // apre // riga-ok
-                        mat.color = coloreStandbyRisolto; // setta // riga-ok
-                        // blocco: controlla se va
-                        if (mat.HasProperty("_BaseColor")) // se ok // riga-ok
-                            mat.SetColor("_BaseColor", coloreStandbyRisolto); // chiama // riga-ok
-
-                        // blocco: controlla se va
-                        if (mat.HasProperty("_EmissionColor")) // se ok // riga-ok
-                        { // apre // riga-ok
-                            mat.EnableKeyword("_EMISSION"); // chiama // riga-ok
-                            mat.SetColor("_EmissionColor", coloreStandbyRisolto * intensitaEmissioneCubo); // chiama // riga-ok
-                        } // chiude // riga-ok
+                        ApplicaColoreEmettitore(rend, coloreStandbyRisolto, 1f);
                     } // chiude // riga-ok
                 } // chiude // riga-ok
             } // chiude // riga-ok

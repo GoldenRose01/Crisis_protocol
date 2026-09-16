@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using CrisisProtocol.UI;
 /// <summary>
 /// Interfaccia grafica completa per i Terminali di Sicurezza delle Porte.
@@ -82,6 +84,7 @@ public class TerminalePortaUI : MonoBehaviour
     {
         terminaleAttivo = terminale;
         CostruisciUISeNecessario();
+        EnsureEventSystem();
         if (canvasRoot != null) canvasRoot.gameObject.SetActive(true);
         if (bgOverlay != null) bgOverlay.SetActive(true);
         if (pannelloPrincipale != null) pannelloPrincipale.SetActive(true);
@@ -462,6 +465,7 @@ public class TerminalePortaUI : MonoBehaviour
         Image imgClose = btnCloseObj.AddComponent<Image>();
         imgClose.color = new Color(0.8f, 0.2f, 0.2f);
         Button btnClose = btnCloseObj.AddComponent<Button>();
+        btnClose.targetGraphic = imgClose;
         btnClose.onClick.AddListener(ChiudiTerminale);
         GameObject txtCloseObj = new GameObject("X");
         txtCloseObj.transform.SetParent(btnCloseObj.transform, false);
@@ -474,6 +478,7 @@ public class TerminalePortaUI : MonoBehaviour
         txtClose.fontSize = 20;
         txtClose.alignment = TextAnchor.MiddleCenter;
         txtClose.color = Color.white;
+        txtClose.raycastTarget = false;
         txtClose.horizontalOverflow = HorizontalWrapMode.Overflow;
         txtClose.verticalOverflow = VerticalWrapMode.Overflow;
         // Barra Messaggi di Stato
@@ -623,6 +628,7 @@ public class TerminalePortaUI : MonoBehaviour
         Image img = btnObj.AddComponent<Image>();
         img.color = coloreSfondo ?? new Color(0.12f, 0.22f, 0.32f, 1f);
         Button btn = btnObj.AddComponent<Button>();
+        btn.targetGraphic = img;
         btn.onClick.AddListener(onClick);
         ColorBlock cb = btn.colors;
         cb.highlightedColor = (coloreSfondo ?? new Color(0.12f, 0.22f, 0.32f, 1f)) * 1.25f;
@@ -640,9 +646,26 @@ public class TerminalePortaUI : MonoBehaviour
         txt.fontStyle = FontStyle.Bold;
         txt.alignment = TextAnchor.MiddleCenter;
         txt.color = Color.white;
+        txt.raycastTarget = false;
         txt.horizontalOverflow = HorizontalWrapMode.Overflow;
         txt.verticalOverflow = VerticalWrapMode.Overflow;
         return btn;
+    }
+    private static void EnsureEventSystem()
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+            eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
+
+        InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+        if (inputModule == null)
+        {
+            StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>();
+            if (oldModule != null) Destroy(oldModule);
+            inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
+        }
+        inputModule.enabled = true;
     }
     #endregion
 }

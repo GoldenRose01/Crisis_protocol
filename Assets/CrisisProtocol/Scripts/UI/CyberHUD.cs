@@ -10,6 +10,7 @@ using System.Collections;
 using System.Collections.Generic;
 using CrisisProtocol.UI;
 using UnityEngine;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 /// <summary>
 /// HUD Cybernetico avanzato in stile Visore Robot:
@@ -564,22 +565,16 @@ public class CyberHUD : MonoBehaviour
         {
             eventSystem = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem)).GetComponent<UnityEngine.EventSystems.EventSystem>();
         }
-        System.Type inputSystemUiModule = System.Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem");
-        if (inputSystemUiModule != null)
+
+        InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+        if (inputModule == null)
         {
             UnityEngine.EventSystems.StandaloneInputModule oldModule = eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>();
             if (oldModule != null) UnityEngine.Object.Destroy(oldModule);
-            Component inputModule = eventSystem.GetComponent(inputSystemUiModule);
-            if (!inputModule)
-                inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule);
-            if (inputModule is Behaviour behaviour)
-                behaviour.enabled = true;
-            inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null);
+            inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
         }
-        else if (!eventSystem.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>())
-        {
-            eventSystem.gameObject.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-        }
+        inputModule.enabled = true;
     }
     // Chiusura pulita: riporta focus e stato modale alla partita.
     private void ChiudiTutorialPanel()

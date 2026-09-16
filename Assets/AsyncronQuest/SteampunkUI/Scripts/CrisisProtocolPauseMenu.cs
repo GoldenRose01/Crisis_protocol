@@ -12,6 +12,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if UNITY_EDITOR
@@ -23,7 +24,6 @@ namespace AsyncronQuest.SteampunkUI
     {
         private const string MainMenuSceneName = "MainMenu-Scene";
         private const string ModalOwner = "PauseMenu";
-        private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
 #if UNITY_EDITOR
         private const string DefaultPauseMenuBackgroundPath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/Option_menu.png";
         private const string DefaultMapFramePath = "Assets/AsyncronQuest/SteampunkUI/UI_Style/TacticalMap_Frame.jpg";
@@ -282,6 +282,10 @@ namespace AsyncronQuest.SteampunkUI
                 frameBg.preserveAspect = false;
                 frameBg.raycastTarget = false;
             }
+            else
+            {
+                BuildRuntimeMapFrame(canvasRoot);
+            }
           // 1. Create the map group under the canvas root
             RectTransform mapGroup = CreateRect("Fullscreen_Map_Group", canvasRoot);
             // 2. Set anchors to the center so it doesn't automatically stretch with the screen
@@ -395,6 +399,54 @@ namespace AsyncronQuest.SteampunkUI
             if (mapFrameSprite != null) return mapFrameSprite;
 #endif
             return null;
+        }
+        private void BuildRuntimeMapFrame(RectTransform canvasRoot)
+        {
+            // In build AssetDatabase non esiste, quindi la cornice JPG dell'Editor
+            // può mancare. Questo fallback disegna un frame neon via UI pura.
+            Image outer = CreateImage("Runtime_Map_Frame_Backdrop", canvasRoot, new Color(0.0f, 0.08f, 0.045f, 0.58f));
+            Stretch(outer.rectTransform);
+            outer.raycastTarget = false;
+
+            RectTransform top = CreateRect("Runtime_Frame_Top", canvasRoot);
+            top.anchorMin = new Vector2(0f, 1f);
+            top.anchorMax = new Vector2(1f, 1f);
+            top.pivot = new Vector2(0.5f, 1f);
+            top.offsetMin = new Vector2(32f, -12f);
+            top.offsetMax = new Vector2(-32f, 0f);
+            Image topLine = top.gameObject.AddComponent<Image>();
+            topLine.color = new Color(0f, 1f, 0.42f, 0.92f);
+            topLine.raycastTarget = false;
+
+            RectTransform bottom = CreateRect("Runtime_Frame_Bottom", canvasRoot);
+            bottom.anchorMin = new Vector2(0f, 0f);
+            bottom.anchorMax = new Vector2(1f, 0f);
+            bottom.pivot = new Vector2(0.5f, 0f);
+            bottom.offsetMin = new Vector2(32f, 0f);
+            bottom.offsetMax = new Vector2(-32f, 12f);
+            Image bottomLine = bottom.gameObject.AddComponent<Image>();
+            bottomLine.color = new Color(0f, 1f, 0.42f, 0.92f);
+            bottomLine.raycastTarget = false;
+
+            RectTransform left = CreateRect("Runtime_Frame_Left", canvasRoot);
+            left.anchorMin = new Vector2(0f, 0f);
+            left.anchorMax = new Vector2(0f, 1f);
+            left.pivot = new Vector2(0f, 0.5f);
+            left.offsetMin = new Vector2(24f, 32f);
+            left.offsetMax = new Vector2(36f, -32f);
+            Image leftLine = left.gameObject.AddComponent<Image>();
+            leftLine.color = new Color(0f, 1f, 0.42f, 0.92f);
+            leftLine.raycastTarget = false;
+
+            RectTransform right = CreateRect("Runtime_Frame_Right", canvasRoot);
+            right.anchorMin = new Vector2(1f, 0f);
+            right.anchorMax = new Vector2(1f, 1f);
+            right.pivot = new Vector2(1f, 0.5f);
+            right.offsetMin = new Vector2(-36f, 32f);
+            right.offsetMax = new Vector2(-24f, -32f);
+            Image rightLine = right.gameObject.AddComponent<Image>();
+            rightLine.color = new Color(0f, 1f, 0.42f, 0.92f);
+            rightLine.raycastTarget = false;
         }
         private void LoadMainMenuScene()
         {
@@ -594,22 +646,16 @@ namespace AsyncronQuest.SteampunkUI
             EventSystem eventSystem = EventSystem.current;
             if (!eventSystem)
                 eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
-            Type inputSystemUiModule = Type.GetType(InputSystemUiModuleTypeName);
-            if (inputSystemUiModule != null)
+
+            InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+            if (inputModule == null)
             {
                 StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>();
                 if (oldModule != null) UnityEngine.Object.Destroy(oldModule);
-                Component inputModule = eventSystem.GetComponent(inputSystemUiModule);
-                if (!inputModule)
-                    inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule);
-                if (inputModule is Behaviour behaviour)
-                    behaviour.enabled = true;
-                inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null);
+                inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+                inputModule.AssignDefaultActions();
             }
-            else if (!eventSystem.GetComponent<StandaloneInputModule>())
-            {
-                eventSystem.gameObject.AddComponent<StandaloneInputModule>();
-            }
+            inputModule.enabled = true;
         }
 #if UNITY_EDITOR
         private void AssignDefaultEditorAssets()

@@ -11,6 +11,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using CrisisProtocol.UI;
 /// <summary>
 /// Gestore dell'interfaccia olografica LED verde acqua / ciano per la lettura dei codici di sicurezza e PIN delle porte.
@@ -19,7 +20,6 @@ public class DatapadOlogrammaUI : MonoBehaviour
 {
     public static DatapadOlogrammaUI Instance { get; private set; }
     private const string ModalOwner = "DatapadOlogramma";
-    private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem";
     private Canvas canvasRoot;
     private GameObject bgOverlay;
     private GameObject pannelloOlogramma;
@@ -463,23 +463,16 @@ public class DatapadOlogrammaUI : MonoBehaviour
         {
             eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
         }
-        System.Type inputSystemModuleType = System.Type.GetType(InputSystemUiModuleTypeName);
-        if (inputSystemModuleType != null)
+
+        InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+        if (inputModule == null)
         {
             StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>();
             if (oldModule != null) UnityEngine.Object.Destroy(oldModule);
-            Component newModule = eventSystem.GetComponent(inputSystemModuleType);
-            if (newModule == null)
-            {
-                newModule = eventSystem.gameObject.AddComponent(inputSystemModuleType);
-                System.Reflection.MethodInfo m = inputSystemModuleType.GetMethod("AssignDefaultActions");
-                if (m != null) m.Invoke(newModule, null);
-            }
+            inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            inputModule.AssignDefaultActions();
         }
-        else if (eventSystem.GetComponent<StandaloneInputModule>() == null)
-        {
-            eventSystem.gameObject.AddComponent<StandaloneInputModule>();
-        }
+        inputModule.enabled = true;
     }
     #endregion
 }

@@ -11,6 +11,7 @@ using AsyncronQuest.SteampunkUI; // usa lib // riga-ok
 using TMPro; // usa lib // riga-ok
 using UnityEngine; // usa lib // riga-ok
 using UnityEngine.EventSystems; // usa lib // riga-ok
+using UnityEngine.InputSystem.UI; // usa input ui
 using UnityEngine.UI; // usa lib // riga-ok
 
 namespace AsyncronQuest.Tooltips // zona cod // riga-ok
@@ -19,8 +20,6 @@ namespace AsyncronQuest.Tooltips // zona cod // riga-ok
     // blocco: classe x roba grossa
     public sealed class TooltipManager : MonoBehaviour // classe qui // riga-ok
     { // apre // riga-ok
-        private const string InputSystemUiModuleTypeName = "UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem"; // roba pub // riga-ok
-
         [Header("Localization")] // nota unity // riga-ok
         [SerializeField] private string languageCode = "It"; // setta // riga-ok
 
@@ -356,30 +355,15 @@ namespace AsyncronQuest.Tooltips // zona cod // riga-ok
             if (!eventSystem) // se ok // riga-ok
                 eventSystem = new GameObject("EventSystem", typeof(EventSystem)).GetComponent<EventSystem>(); // setta // riga-ok
 
-            System.Type inputSystemUiModule = System.Type.GetType(InputSystemUiModuleTypeName); // setta // riga-ok
-            // blocco: controlla se va
-            if (inputSystemUiModule != null) // se ok // riga-ok
+            InputSystemUIInputModule inputModule = eventSystem.GetComponent<InputSystemUIInputModule>(); // input nuovo
+            if (inputModule == null) // se manca
             { // apre // riga-ok
-                StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // setta // riga-ok
-                if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // chiama // riga-ok
-
-                Component inputModule = eventSystem.GetComponent(inputSystemUiModule); // setta // riga-ok
-                // blocco: controlla se va
-                if (!inputModule) // se ok // riga-ok
-                    inputModule = eventSystem.gameObject.AddComponent(inputSystemUiModule); // setta // riga-ok
-
-                // blocco: controlla se va
-                if (inputModule is Behaviour behaviour) // se ok // riga-ok
-                    behaviour.enabled = true; // setta // riga-ok
-
-                inputSystemUiModule.GetMethod("AssignDefaultActions")?.Invoke(inputModule, null); // chiama // riga-ok
+                StandaloneInputModule oldModule = eventSystem.GetComponent<StandaloneInputModule>(); // legacy vecchio
+                if (oldModule != null) UnityEngine.Object.Destroy(oldModule); // evita doppio input
+                inputModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>(); // abilita click build
+                inputModule.AssignDefaultActions(); // mappa mouse/tasti
             } // chiude // riga-ok
-            // blocco: controlla se va
-            else if (!eventSystem.GetComponent<StandaloneInputModule>()) // se ok // riga-ok
-            { // apre // riga-ok
-                eventSystem.gameObject.AddComponent<StandaloneInputModule>(); // chiama // riga-ok
-            } // chiude // riga-ok
+            inputModule.enabled = true; // resta vivo
         } // chiude // riga-ok
     } // chiude // riga-ok
 } // chiude // riga-ok
-
