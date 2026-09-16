@@ -73,7 +73,10 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
     {
         Transform existing = transform.Find("VFX_Gas_Leak_Emitter");
         if (existing != null && existing.GetComponent<ParticleSystem>() != null)
+        {
+            AssicuraMaterialiGasVisibili(existing);
             return;
+        }
         float sc = moltiplicatoreParticelle;
         // 1. Root Emettitore Getto Gas — usa il punto custom se definito, altrimenti posiziona calcolata
         GameObject gasRoot = new GameObject("VFX_Gas_Leak_Emitter");
@@ -136,6 +139,7 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         {
             rendJet.renderMode = ParticleSystemRenderMode.Billboard;
             rendJet.alignment = ParticleSystemRenderSpace.View;
+            ConfiguraRendererGas(rendJet, new Color(0.36f, 1f, 0.24f, 0.72f), 40);
         }
         // 3. Secondary Billowing Cloud (Nube di Gas Espansa)
         GameObject cloudGo = new GameObject("Gas_Cloud_Billowing");
@@ -181,6 +185,7 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         if (rendCloud != null)
         {
             rendCloud.renderMode = ParticleSystemRenderMode.Billboard;
+            ConfiguraRendererGas(rendCloud, new Color(0.44f, 1f, 0.18f, 0.42f), 39);
         }
         // 4. Pericolo Ambientale (StructuralHazard)
         StructuralHazard hazard = gasRoot.AddComponent<StructuralHazard>();
@@ -191,6 +196,47 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
         AggiungiParticellaGuasto(psJet);
         AggiungiParticellaGuasto(psCloud);
         Debug.Log($"<color=lime>[GAS LEAK]</color> Generato sistema particellare perdita di gas su <b>{name}</b>!");
+    }
+    private static void AssicuraMaterialiGasVisibili(Transform gasRoot)
+    {
+        if (gasRoot == null) return;
+        ParticleSystemRenderer[] renderers = gasRoot.GetComponentsInChildren<ParticleSystemRenderer>(true);
+        foreach (ParticleSystemRenderer rend in renderers)
+        {
+            if (rend == null) continue;
+            bool nube = rend.name.ToLower().Contains("cloud") || rend.name.ToLower().Contains("nube");
+            ConfiguraRendererGas(rend, nube ? new Color(0.44f, 1f, 0.18f, 0.42f) : new Color(0.36f, 1f, 0.24f, 0.72f), nube ? 39 : 40);
+        }
+    }
+    private static void ConfiguraRendererGas(ParticleSystemRenderer rend, Color coloreGas, int sortingOrder)
+    {
+        // In build alcuni materiali particellari importati/editor-only possono
+        // risultare invisibili. Questo materiale runtime usa shader comuni URP o
+        // builtin, quindi il gas resta leggibile anche fuori dall'Editor.
+        if (rend == null) return;
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ??
+                        Shader.Find("Universal Render Pipeline/Unlit") ??
+                        Shader.Find("Particles/Standard Unlit") ??
+                        Shader.Find("Sprites/Default");
+        if (shader != null)
+        {
+            Material mat = new Material(shader) { name = $"{rend.name}_RuntimeGasMaterial" };
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", coloreGas);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", coloreGas);
+            if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", coloreGas);
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", coloreGas * 1.6f);
+            }
+            rend.material = mat;
+        }
+        rend.enabled = true;
+        rend.sortingOrder = sortingOrder;
+        rend.renderMode = ParticleSystemRenderMode.Billboard;
+        rend.alignment = ParticleSystemRenderSpace.View;
+        rend.minParticleSize = Mathf.Max(rend.minParticleSize, 0.02f);
+        rend.maxParticleSize = Mathf.Max(rend.maxParticleSize, 0.8f);
     }
     private void OnValidate()
     {
@@ -361,6 +407,7 @@ public class EmergencyHotspot : MonoBehaviour, IInteractable
             ParticleSystemRenderer rend = ps.GetComponent<ParticleSystemRenderer>();
             if (rend != null && rend.material != null)
             {
+                ConfiguraRendererGas(rend, coloreGas, 40);
                 Material mat = rend.material;
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", coloreGas);
                 if (mat.HasProperty("_TintColor")) mat.SetColor("_TintColor", coloreGas);

@@ -13,6 +13,9 @@ public class DroneRonda : MonoBehaviour
 {
     [Header("Pattugliamento")]
     [SerializeField] private bool applicaTagDroneAutomatico = true;
+    [SerializeField] private bool correggiQuotaAntiSoffitto = true;
+    [SerializeField] private float distanzaMinimaDalSoffitto = 0.65f;
+    [SerializeField] private float altezzaMinimaDaTerra = 1.8f;
     public Transform[] waypoints;
     public float velocita = 3f;
     private int indiceWaypointAttuale = 0;
@@ -111,6 +114,7 @@ public class DroneRonda : MonoBehaviour
         ApplicaTagUnity();
         if (luceDrone == null)
             luceDrone = GetComponentInChildren<Light>();
+        CorreggiQuotaIniziale();
         TrovaRiferimentoPlayer();
         AllineaLuce();
     }
@@ -146,6 +150,7 @@ public class DroneRonda : MonoBehaviour
     {
         if (ModalUIState.IsModalOpen)
             return;
+        MantieniQuotaSicura();
         bool emergenzaFinita = MissionManager.Instance != null && MissionManager.Instance.EstrazioneSbloccata;
         if (emergenzaFinita && pacificaAFineEmergenza)
         {
@@ -249,6 +254,80 @@ public class DroneRonda : MonoBehaviour
         if (Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), new Vector3(targetPos.x, 0, targetPos.z)) < 0.4f)
         {
             indiceWaypointAttuale = (indiceWaypointAttuale + 1) % waypoints.Length;
+        }
+    }
+    private void CorreggiQuotaIniziale()
+    {
+        if (!correggiQuotaAntiSoffitto) return;
+
+        // Le scene assemblate a mano possono avere il contenitore del drone e il
+        // prefab visivo con offset diversi. Se il modello parte incastrato nel
+        // soffitto, lo script abbassa tutto prima che inizi la ronda.
+        Bounds bounds;
+        if (!TryGetDroneBounds(out bounds)) return;
+
+        float abbassamento = CalcolaAbbassamentoDaSoffitto(bounds);
+        if (abbassamento > 0.01f)
+        {
+            transform.position += Vector3.down * abbassamento;
+            Debug.LogWarning($"<color=yellow>[DRONE]</color> '{name}' era troppo vicino al soffitto: abbassato di {abbassamento:F2}m.", this);
+        }
+
+        MantieniAltezzaMinimaDaTerra();
+    }
+    private void MantieniQuotaSicura()
+    {
+        if (!correggiQuotaAntiSoffitto) return;
+        Bounds bounds;
+        if (!TryGetDroneBounds(out bounds)) return;
+
+        float abbassamento = CalcolaAbbassamentoDaSoffitto(bounds);
+        if (abbassamento > 0.01f)
+            transform.position += Vector3.down * Mathf.Min(abbassamento, Time.deltaTime * 3.0f);
+
+        MantieniAltezzaMinimaDaTerra();
+    }
+    private bool TryGetDroneBounds(out Bounds bounds)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        bounds = new Bounds(transform.position, Vector3.one * 0.5f);
+        bool trovato = false;
+        foreach (Renderer rend in renderers)
+        {
+            if (rend == null) continue;
+            if (!trovato)
+            {
+                bounds = rend.bounds;
+                trovato = true;
+            }
+            else
+            {
+                bounds.Encapsulate(rend.bounds);
+            }
+        }
+        return trovato;
+    }
+    private float CalcolaAbbassamentoDaSoffitto(Bounds bounds)
+    {
+        Vector3 origine = new Vector3(bounds.center.x, bounds.max.y + 0.05f, bounds.center.z);
+        if (Physics.Raycast(origine, Vector3.up, out RaycastHit hit, distanzaMinimaDalSoffitto + 1.0f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.transform.root == transform.root)
+                return 0f;
+            float distanza = hit.distance;
+            if (distanza < distanzaMinimaDalSoffitto)
+                return distanzaMinimaDalSoffitto - distanza;
+        }
+        return 0f;
+    }
+    private void MantieniAltezzaMinimaDaTerra()
+    {
+        if (Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, out RaycastHit hit, 12f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.transform.root == transform.root) return;
+            float yMinima = hit.point.y + altezzaMinimaDaTerra;
+            if (transform.position.y < yMinima)
+                transform.position = new Vector3(transform.position.x, yMinima, transform.position.z);
         }
     }
     private bool HaLineaDiVistaLibera(Vector3 eyeOrigin, Vector3 playerChest, float maxDistance)
